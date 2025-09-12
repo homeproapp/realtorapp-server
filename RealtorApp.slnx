@@ -1,0 +1,12 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/RealtorApp.Api/RealtorApp.Api.csproj" />
+    <Project Path="src/RealtorApp.Contracts/RealtorApp.Contracts.csproj" />
+    <Project Path="src/RealtorApp.Domain/RealtorApp.Domain.csproj" />
+  </Folder>
+</Solution>
