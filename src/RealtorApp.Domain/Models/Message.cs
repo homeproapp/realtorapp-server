@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RealtorApp.Contracts.Models;
+namespace RealtorApp.Domain.Models;
 
 public partial class Message
 {
@@ -12,6 +12,8 @@ public partial class Message
     public long SenderId { get; set; }
 
     public string MessageText { get; set; } = null!;
+
+    public bool? IsRead { get; set; }
 
     public DateTime CreatedAt { get; set; }
 

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RealtorApp.Contracts.Models;
+namespace RealtorApp.Domain.Models;
 
 public partial class Task
 {
@@ -16,6 +16,10 @@ public partial class Task
     public short? Priority { get; set; }
 
     public short? Status { get; set; }
+
+    public DateTime? FollowUpDate { get; set; }
+
+    public int? EstimatedCost { get; set; }
 
     public DateTime CreatedAt { get; set; }
 

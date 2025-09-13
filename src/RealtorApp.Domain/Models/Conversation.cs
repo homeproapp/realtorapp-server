@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RealtorApp.Contracts.Models;
+namespace RealtorApp.Domain.Models;
 
 public partial class Conversation
 {
@@ -17,7 +17,7 @@ public partial class Conversation
 
     public virtual Agent Agent { get; set; } = null!;
 
-    public virtual ICollection<ClientsConversation> ClientsConversations { get; set; } = new List<ClientsConversation>();
+    public virtual ICollection<ConversationsProperty> ConversationsProperties { get; set; } = new List<ConversationsProperty>();
 
     public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
 }

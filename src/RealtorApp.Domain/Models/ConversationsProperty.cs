@@ -1,15 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RealtorApp.Contracts.Models;
+namespace RealtorApp.Domain.Models;
 
-public partial class ClientsConversation
+public partial class ConversationsProperty
 {
     public long ClientConversationId { get; set; }
 
     public long ConversationId { get; set; }
 
-    public long ClientId { get; set; }
+    public long PropertyId { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
@@ -17,7 +17,7 @@ public partial class ClientsConversation
 
     public DateTime? DeletedAt { get; set; }
 
-    public virtual Client Client { get; set; } = null!;
-
     public virtual Conversation Conversation { get; set; } = null!;
+
+    public virtual Property Property { get; set; } = null!;
 }

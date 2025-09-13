@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RealtorApp.Contracts.Models;
+namespace RealtorApp.Domain.Models;
 
 public partial class Property
 {
@@ -58,6 +58,8 @@ public partial class Property
     public DateTime? DeletedAt { get; set; }
 
     public virtual ICollection<ClientsProperty> ClientsProperties { get; set; } = new List<ClientsProperty>();
+
+    public virtual ICollection<ConversationsProperty> ConversationsProperties { get; set; } = new List<ConversationsProperty>();
 
     public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
 }

@@ -2,15 +2,15 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
-namespace RealtorApp.Contracts.Models;
+namespace RealtorApp.Domain.Models;
 
-public partial class AppDbContext : DbContext
+public partial class RealtorAppDbContext : DbContext
 {
-    public AppDbContext()
+    public RealtorAppDbContext()
     {
     }
 
-    public AppDbContext(DbContextOptions<AppDbContext> options)
+    public RealtorAppDbContext(DbContextOptions<RealtorAppDbContext> options)
         : base(options)
     {
     }
@@ -21,13 +21,13 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Client> Clients { get; set; }
 
-    public virtual DbSet<ClientsConversation> ClientsConversations { get; set; }
-
     public virtual DbSet<ClientsProperty> ClientsProperties { get; set; }
 
     public virtual DbSet<ContactAttachment> ContactAttachments { get; set; }
 
     public virtual DbSet<Conversation> Conversations { get; set; }
+
+    public virtual DbSet<ConversationsProperty> ConversationsProperties { get; set; }
 
     public virtual DbSet<File> Files { get; set; }
 
@@ -48,7 +48,6 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<ThirdPartyContact> ThirdPartyContacts { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -133,36 +132,6 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey<Client>(d => d.UserId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("clients_user_id_fkey");
-        });
-
-        modelBuilder.Entity<ClientsConversation>(entity =>
-        {
-            entity.HasKey(e => e.ClientConversationId).HasName("clients_conversations_pkey");
-
-            entity.ToTable("clients_conversations");
-
-            entity.HasIndex(e => e.ClientId, "ix_clients_conversations_client_id");
-
-            entity.Property(e => e.ClientConversationId).HasColumnName("client_conversation_id");
-            entity.Property(e => e.ClientId).HasColumnName("client_id");
-            entity.Property(e => e.ConversationId).HasColumnName("conversation_id");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("updated_at");
-
-            entity.HasOne(d => d.Client).WithMany(p => p.ClientsConversations)
-                .HasForeignKey(d => d.ClientId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("clients_conversations_client_id_fkey");
-
-            entity.HasOne(d => d.Conversation).WithMany(p => p.ClientsConversations)
-                .HasForeignKey(d => d.ConversationId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("clients_conversations_conversation_id_fkey");
         });
 
         modelBuilder.Entity<ClientsProperty>(entity =>
@@ -260,6 +229,36 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.AgentId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("conversations_agent_id_fkey");
+        });
+
+        modelBuilder.Entity<ConversationsProperty>(entity =>
+        {
+            entity.HasKey(e => e.ClientConversationId).HasName("conversations_properties_pkey");
+
+            entity.ToTable("conversations_properties");
+
+            entity.HasIndex(e => e.PropertyId, "ix_conversations_properties_property_id");
+
+            entity.Property(e => e.ClientConversationId).HasColumnName("client_conversation_id");
+            entity.Property(e => e.ConversationId).HasColumnName("conversation_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.PropertyId).HasColumnName("property_id");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Conversation).WithMany(p => p.ConversationsProperties)
+                .HasForeignKey(d => d.ConversationId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("conversations_properties_conversation_id_fkey");
+
+            entity.HasOne(d => d.Property).WithMany(p => p.ConversationsProperties)
+                .HasForeignKey(d => d.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("conversations_properties_property_id_fkey");
         });
 
         modelBuilder.Entity<File>(entity =>
@@ -375,6 +374,9 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.IsRead)
+                .HasDefaultValue(false)
+                .HasColumnName("is_read");
             entity.Property(e => e.MessageText).HasColumnName("message_text");
             entity.Property(e => e.SenderId).HasColumnName("sender_id");
             entity.Property(e => e.UpdatedAt)
@@ -450,6 +452,8 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("tasks");
 
+            entity.HasIndex(e => e.FollowUpDate, "ix_tasks_follow_up_date");
+
             entity.HasIndex(e => e.PropertyId, "ix_tasks_property_id");
 
             entity.Property(e => e.TaskId).HasColumnName("task_id");
@@ -457,6 +461,8 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.EstimatedCost).HasColumnName("estimated_cost");
+            entity.Property(e => e.FollowUpDate).HasColumnName("follow_up_date");
             entity.Property(e => e.Priority).HasColumnName("priority");
             entity.Property(e => e.PropertyId).HasColumnName("property_id");
             entity.Property(e => e.Room).HasColumnName("room");

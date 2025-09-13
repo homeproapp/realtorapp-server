@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RealtorApp.Contracts.Models;
+namespace RealtorApp.Domain.Models;
 
-public partial class FilesTask
+public partial class TaskAttachment
 {
-    public long FileTaskId { get; set; }
-
-    public long FileId { get; set; }
+    public long AttachmentId { get; set; }
 
     public long TaskId { get; set; }
 
@@ -17,7 +15,7 @@ public partial class FilesTask
 
     public DateTime? DeletedAt { get; set; }
 
-    public virtual File File { get; set; } = null!;
+    public virtual Attachment Attachment { get; set; } = null!;
 
     public virtual Task Task { get; set; } = null!;
 }
