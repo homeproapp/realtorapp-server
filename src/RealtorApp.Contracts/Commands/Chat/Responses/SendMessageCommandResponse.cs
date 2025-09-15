@@ -1,4 +1,4 @@
-namespace RealtorApp.Contracts.Commands.Chat;
+namespace RealtorApp.Contracts.Commands.Chat.Responses;
 
 public class SendMessageCommandResponse
 {

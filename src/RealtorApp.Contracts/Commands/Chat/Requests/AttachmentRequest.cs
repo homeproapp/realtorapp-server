@@ -1,6 +1,6 @@
 using RealtorApp.Contracts.Enums;
 
-namespace RealtorApp.Contracts.Commands.Chat;
+namespace RealtorApp.Contracts.Commands.Chat.Requests;
 
 public class AttachmentRequest
 {

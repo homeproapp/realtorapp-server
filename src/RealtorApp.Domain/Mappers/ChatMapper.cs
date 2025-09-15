@@ -1,4 +1,5 @@
-using RealtorApp.Contracts.Commands.Chat;
+using RealtorApp.Contracts.Commands.Chat.Requests;
+using RealtorApp.Contracts.Commands.Chat.Responses;
 using RealtorApp.Domain.Models;
 
 namespace RealtorApp.Domain.Mappers;
