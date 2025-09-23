@@ -97,6 +97,23 @@ SignalR `ChatHub` provides:
 - Nullable reference types are enabled
 - Implicit usings are enabled
 
+### Error Messages
+- **ALWAYS keep error messages vague** for security
+- Use unique error codes for internal debugging (documented in `docs/error-codes.md`)
+- Never expose specific validation failures or internal system details to API consumers
+
+### Dependency Injection
+- **ALWAYS initialize DI services from constructor into private readonly fields with `_` prefix**
+- Use primary constructor pattern when possible
+- Example: `private readonly IService _service = service;`
+
+### JWT Claims Access
+- **ALWAYS use `ClaimTypes` constants instead of raw string claim names**
+- Use `ClaimTypes.NameIdentifier` for "sub" claim (user UUID)
+- Use `ClaimTypes.Role` for "role" claim (user role)
+- This handles Microsoft's claim URI mapping automatically
+- Example: `User.FindFirst(ClaimTypes.NameIdentifier)?.Value` instead of `User.FindFirst("sub")?.Value`
+
 ### Entity Framework
 - Database-first approach with scaffolded DbContext
 - Foreign key constraints with restrict delete behavior

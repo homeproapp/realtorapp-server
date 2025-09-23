@@ -13,6 +13,10 @@ public partial class Link
 
     public string? Url { get; set; }
 
+    public bool? IsReferral { get; set; }
+
+    public int? TimesUsed { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

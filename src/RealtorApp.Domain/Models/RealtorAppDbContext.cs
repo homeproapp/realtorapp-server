@@ -39,11 +39,17 @@ public partial class RealtorAppDbContext : DbContext
 
     public virtual DbSet<Message> Messages { get; set; }
 
+    public virtual DbSet<Notification> Notifications { get; set; }
+
     public virtual DbSet<Property> Properties { get; set; }
+
+    public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
     public virtual DbSet<Task> Tasks { get; set; }
 
     public virtual DbSet<TaskAttachment> TaskAttachments { get; set; }
+
+    public virtual DbSet<TaskTitle> TaskTitles { get; set; }
 
     public virtual DbSet<ThirdPartyContact> ThirdPartyContacts { get; set; }
 
@@ -117,10 +123,10 @@ public partial class RealtorAppDbContext : DbContext
             entity.Property(e => e.UserId)
                 .ValueGeneratedNever()
                 .HasColumnName("user_id");
-            entity.Property(e => e.Age).HasColumnName("age");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
+            entity.Property(e => e.DateOfBirth).HasColumnName("date_of_birth");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
             entity.Property(e => e.MaritalStatus).HasColumnName("marital_status");
             entity.Property(e => e.UpdatedAt)
@@ -237,7 +243,13 @@ public partial class RealtorAppDbContext : DbContext
 
             entity.ToTable("conversations_properties");
 
+            entity.HasIndex(e => e.ConversationId, "ix_conversations_properties_conversation_id");
+
             entity.HasIndex(e => e.PropertyId, "ix_conversations_properties_property_id");
+
+            entity.HasIndex(e => new { e.ConversationId, e.PropertyId }, "ux_conversations_properties_conversation_property_active")
+                .IsUnique()
+                .HasFilter("(deleted_at IS NULL)");
 
             entity.Property(e => e.ClientConversationId).HasColumnName("client_conversation_id");
             entity.Property(e => e.ConversationId).HasColumnName("conversation_id");
@@ -347,8 +359,10 @@ public partial class RealtorAppDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.IsReferral).HasColumnName("is_referral");
             entity.Property(e => e.Name).HasColumnName("name");
             entity.Property(e => e.TaskId).HasColumnName("task_id");
+            entity.Property(e => e.TimesUsed).HasColumnName("times_used");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
@@ -392,6 +406,34 @@ public partial class RealtorAppDbContext : DbContext
                 .HasForeignKey(d => d.SenderId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("messages_sender_id_fkey");
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(e => e.NotificationId).HasName("notifications_pkey");
+
+            entity.ToTable("notifications");
+
+            entity.Property(e => e.NotificationId).HasColumnName("notification_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.IsRead)
+                .HasDefaultValue(false)
+                .HasColumnName("is_read");
+            entity.Property(e => e.NotificationText).HasColumnName("notification_text");
+            entity.Property(e => e.NotificationType).HasColumnName("notification_type");
+            entity.Property(e => e.ReferencingObjectId).HasColumnName("referencing_object_id");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.User).WithMany(p => p.Notifications)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("notifications_user_id_fkey");
         });
 
         modelBuilder.Entity<Property>(entity =>
@@ -444,6 +486,35 @@ public partial class RealtorAppDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
             entity.Property(e => e.YearBuilt).HasColumnName("year_built");
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(e => e.RefreshTokenId).HasName("refresh_tokens_pkey");
+
+            entity.ToTable("refresh_tokens");
+
+            entity.HasIndex(e => e.ExpiresAt, "ix_refresh_tokens_expires_at");
+
+            entity.HasIndex(e => e.TokenHash, "ix_refresh_tokens_token_hash").HasFilter("(revoked_at IS NULL)");
+
+            entity.HasIndex(e => e.UserId, "ix_refresh_tokens_user_id");
+
+            entity.Property(e => e.RefreshTokenId).HasColumnName("refresh_token_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.RevokedAt).HasColumnName("revoked_at");
+            entity.Property(e => e.TokenHash).HasColumnName("token_hash");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.User).WithMany(p => p.RefreshTokens)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("refresh_tokens_user_id_fkey");
         });
 
         modelBuilder.Entity<Task>(entity =>
@@ -505,6 +576,23 @@ public partial class RealtorAppDbContext : DbContext
                 .HasForeignKey(d => d.TaskId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("task_attachments_task_id_fkey");
+        });
+
+        modelBuilder.Entity<TaskTitle>(entity =>
+        {
+            entity.HasKey(e => e.TaskTitleId).HasName("task_titles_pkey");
+
+            entity.ToTable("task_titles");
+
+            entity.HasIndex(e => e.TaskTitle1, "task_titles_task_title_key").IsUnique();
+
+            entity.Property(e => e.TaskTitleId).HasColumnName("task_title_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.TaskTitle1)
+                .HasColumnType("citext")
+                .HasColumnName("task_title");
         });
 
         modelBuilder.Entity<ThirdPartyContact>(entity =>
