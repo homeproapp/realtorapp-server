@@ -21,6 +21,10 @@ public partial class RealtorAppDbContext : DbContext
 
     public virtual DbSet<Client> Clients { get; set; }
 
+    public virtual DbSet<ClientInvitation> ClientInvitations { get; set; }
+
+    public virtual DbSet<ClientInvitationsProperty> ClientInvitationsProperties { get; set; }
+
     public virtual DbSet<ClientsProperty> ClientsProperties { get; set; }
 
     public virtual DbSet<ContactAttachment> ContactAttachments { get; set; }
@@ -42,6 +46,8 @@ public partial class RealtorAppDbContext : DbContext
     public virtual DbSet<Notification> Notifications { get; set; }
 
     public virtual DbSet<Property> Properties { get; set; }
+
+    public virtual DbSet<PropertyInvitation> PropertyInvitations { get; set; }
 
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
@@ -138,6 +144,87 @@ public partial class RealtorAppDbContext : DbContext
                 .HasForeignKey<Client>(d => d.UserId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("clients_user_id_fkey");
+        });
+
+        modelBuilder.Entity<ClientInvitation>(entity =>
+        {
+            entity.HasKey(e => e.ClientInvitationId).HasName("client_invitations_pkey");
+
+            entity.ToTable("client_invitations");
+
+            entity.HasIndex(e => e.InvitationToken, "client_invitations_invitation_token_key").IsUnique();
+
+            entity.HasIndex(e => e.ExpiresAt, "ix_client_invitations_expires_at").HasFilter("((deleted_at IS NULL) AND (accepted_at IS NULL))");
+
+            entity.HasIndex(e => e.InvitationToken, "ix_client_invitations_token_active").HasFilter("((deleted_at IS NULL) AND (accepted_at IS NULL))");
+
+            entity.HasIndex(e => e.ClientEmail, "ux_client_invitations_email_active")
+                .IsUnique()
+                .HasFilter("((deleted_at IS NULL) AND (accepted_at IS NULL))");
+
+            entity.Property(e => e.ClientInvitationId).HasColumnName("client_invitation_id");
+            entity.Property(e => e.AcceptedAt).HasColumnName("accepted_at");
+            entity.Property(e => e.ClientEmail)
+                .HasColumnType("citext")
+                .HasColumnName("client_email");
+            entity.Property(e => e.ClientFirstName).HasColumnName("client_first_name");
+            entity.Property(e => e.ClientLastName).HasColumnName("client_last_name");
+            entity.Property(e => e.ClientPhone).HasColumnName("client_phone");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedUserId).HasColumnName("created_user_id");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.InvitationToken)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("invitation_token");
+            entity.Property(e => e.InvitedBy).HasColumnName("invited_by");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.CreatedUser).WithMany(p => p.ClientInvitations)
+                .HasForeignKey(d => d.CreatedUserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("client_invitations_created_user_id_fkey");
+
+            entity.HasOne(d => d.InvitedByNavigation).WithMany(p => p.ClientInvitations)
+                .HasForeignKey(d => d.InvitedBy)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("client_invitations_invited_by_fkey");
+        });
+
+        modelBuilder.Entity<ClientInvitationsProperty>(entity =>
+        {
+            entity.HasKey(e => e.ClientInvitationPropertyId).HasName("client_invitations_properties_pkey");
+
+            entity.ToTable("client_invitations_properties");
+
+            entity.HasIndex(e => new { e.ClientInvitationId, e.PropertyInvitationId }, "ux_client_invitations_properties_active")
+                .IsUnique()
+                .HasFilter("(deleted_at IS NULL)");
+
+            entity.Property(e => e.ClientInvitationPropertyId).HasColumnName("client_invitation_property_id");
+            entity.Property(e => e.ClientInvitationId).HasColumnName("client_invitation_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.PropertyInvitationId).HasColumnName("property_invitation_id");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.ClientInvitation).WithMany(p => p.ClientInvitationsProperties)
+                .HasForeignKey(d => d.ClientInvitationId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("client_invitations_properties_client_invitation_id_fkey");
+
+            entity.HasOne(d => d.PropertyInvitation).WithMany(p => p.ClientInvitationsProperties)
+                .HasForeignKey(d => d.PropertyInvitationId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("client_invitations_properties_property_invitation_id_fkey");
         });
 
         modelBuilder.Entity<ClientsProperty>(entity =>
@@ -486,6 +573,37 @@ public partial class RealtorAppDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
             entity.Property(e => e.YearBuilt).HasColumnName("year_built");
+        });
+
+        modelBuilder.Entity<PropertyInvitation>(entity =>
+        {
+            entity.HasKey(e => e.PropertyInvitationId).HasName("property_invitations_pkey");
+
+            entity.ToTable("property_invitations");
+
+            entity.Property(e => e.PropertyInvitationId).HasColumnName("property_invitation_id");
+            entity.Property(e => e.AddressLine1).HasColumnName("address_line1");
+            entity.Property(e => e.AddressLine2).HasColumnName("address_line2");
+            entity.Property(e => e.City).HasColumnName("city");
+            entity.Property(e => e.CountryCode)
+                .HasMaxLength(2)
+                .IsFixedLength()
+                .HasColumnName("country_code");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.InvitedBy).HasColumnName("invited_by");
+            entity.Property(e => e.PostalCode).HasColumnName("postal_code");
+            entity.Property(e => e.Region).HasColumnName("region");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.InvitedByNavigation).WithMany(p => p.PropertyInvitations)
+                .HasForeignKey(d => d.InvitedBy)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("property_invitations_invited_by_fkey");
         });
 
         modelBuilder.Entity<RefreshToken>(entity =>

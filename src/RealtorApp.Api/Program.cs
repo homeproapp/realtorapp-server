@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -9,6 +10,7 @@ using RealtorApp.Domain.Interfaces;
 using RealtorAppDbContext = RealtorApp.Domain.Models.RealtorAppDbContext;
 using RealtorApp.Domain.Services;
 using RealtorApp.Domain.Settings;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +26,35 @@ builder.Services.AddScoped<IUserAuthService, UserAuthService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<IAuthProviderService, FirebaseAuthProviderService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IInvitationService, InvitationService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<ICryptoService, CryptoService>();
+
+// Add rate limiting
+builder.Services.AddRateLimiter(options =>
+{
+    // Anonymous endpoints - more restrictive
+    options.AddFixedWindowLimiter("Anonymous", limiterOptions =>
+    {
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.PermitLimit = 10;
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 5;
+    });
+
+    // Authenticated endpoints - more permissive
+    options.AddFixedWindowLimiter("Authenticated", limiterOptions =>
+    {
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.PermitLimit = 100;
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 10;
+    });
+
+    // Global rejection response
+    options.RejectionStatusCode = 429;
+});
 
 builder.Services.AddDbContext<RealtorAppDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
@@ -40,23 +71,13 @@ builder.Services
             // Signature validation
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(appSettings.Jwt.SecretKey)),
-
-            // Issuer validation
             ValidateIssuer = true,
             ValidIssuer = appSettings.Jwt.Issuer,
-
-            // Audience validation
             ValidateAudience = true,
             ValidAudience = appSettings.Jwt.Audience,
-
-            // Expiry validation
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(5),
-
-            // Require expiry
             RequireExpirationTime = true,
-
-            // Custom claims validation
             NameClaimType = "sub",
             RoleClaimType = "role"
         };
@@ -75,8 +96,7 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
-builder.Services.AddSignalR()
-    .AddJsonProtocol(o =>
+builder.Services.AddSignalR().AddJsonProtocol(o =>
     {
         o.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     });
@@ -90,6 +110,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -40,8 +40,7 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
 
                 var user = await _context.Users
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(u => u.Uuid == uuid)
-                    .ConfigureAwait(false);
+                    .FirstOrDefaultAsync(u => u.Uuid == uuid);
 
                 return user?.UserId;
             });
@@ -60,8 +59,7 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
                     .AsNoTracking()
                     .SelectMany(i => new long[] { i.Conversation.AgentId }
                         .Concat(i.Property.ClientsProperties.Select(cpp => cpp.ClientId)))
-                    .ToArrayAsync()
-                    .ConfigureAwait(false);
+                    .ToArrayAsync();
 
                 return new HashSet<long>(participantIds ?? []);
             });
@@ -81,8 +79,7 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
                     .Where(i => i.PropertyId == propertyId)
                     .AsNoTracking()
                     .SelectMany(i => new long[] { i.AgentId, i.ClientId })
-                    .ToArrayAsync()
-                    .ConfigureAwait(false);
+                    .ToArrayAsync();
 
                 return new HashSet<long>(propertyUserIds ?? []);
             });
@@ -92,7 +89,7 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
 
     public async Task<bool> IsAgentEmailValidated(long userId)
     {
-        var user = await _context.Agents.FindAsync(userId).ConfigureAwait(false);
+        var user = await _context.Agents.FindAsync(userId);
 
         return user?.EmailValidated ?? false;
     }

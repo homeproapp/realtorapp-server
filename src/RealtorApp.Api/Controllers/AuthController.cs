@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RealtorApp.Contracts.Commands.Auth;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Settings;
@@ -14,16 +15,19 @@ public class AuthController(
     IRefreshTokenService refreshTokenService,
     IUserAuthService userAuthService,
     IAuthProviderService authProviderService,
+    IUserService userService,
     AppSettings appSettings) : BaseController
 {
     private readonly IJwtService _jwtService = jwtService;
     private readonly IRefreshTokenService _refreshTokenService = refreshTokenService;
     private readonly IUserAuthService _userAuthService = userAuthService;
     private readonly IAuthProviderService _authProviderService = authProviderService;
+    private readonly IUserService _userService = userService;
     private readonly AppSettings _appSettings = appSettings;
 
     [AllowAnonymous]
     [HttpPost("v1/login")]
+    [EnableRateLimiting("Anonymous")]
     public async Task<ActionResult<LoginCommandResponse>> LoginAsync([FromBody] LoginCommand command)
     {
         // Validate Firebase token
@@ -33,14 +37,18 @@ public class AuthController(
             return Unauthorized(new { error = "Authentication failed", code = "AUTH_E009" });
         }
 
-        // TODO: Find existing user by Firebase UID or create new agent user
-        // For now, use placeholder values
-        var userUuid = Guid.Parse(firebaseUser.Uid); // Use Firebase UID as user UUID
-        var role = "agent"; // This should be determined from user lookup/creation
-        var userId = 1L; // This should come from database lookup/creation
+        // Get or create agent user (idempotent)
+        var user = await _userService.GetOrCreateAgentUserAsync(firebaseUser.Uid, firebaseUser.Email, firebaseUser.DisplayName);
+        var role = user.Agent == null ? "client" : "agent";
 
-        var accessToken = _jwtService.GenerateAccessToken(userUuid, role);
-        var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(userId);
+        if (!user.Uuid.HasValue)
+        {
+            return BadRequest();
+        }
+
+
+        var accessToken = _jwtService.GenerateAccessToken(user.Uuid.Value, role);
+        var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(user.UserId);
 
         return Ok(new LoginCommandResponse
         {
@@ -52,6 +60,7 @@ public class AuthController(
 
     [HttpPost("v1/refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting("Anonymous")]
     public async Task<ActionResult<RefreshTokenCommandResponse>> RefreshTokenAsync([FromBody] RefreshTokenCommand command)
     {
         // Get user by refresh token (validates token and gets user data in one call)
@@ -79,6 +88,7 @@ public class AuthController(
     }
 
     [HttpPost("v1/logout")]
+    [EnableRateLimiting("Authenticated")]
     public async Task<ActionResult> LogoutAsync([FromBody] LogoutCommand command)
     {
         // Revoke the specific refresh token
@@ -88,6 +98,7 @@ public class AuthController(
     }
 
     [HttpPost("v1/logout-all")]
+    [EnableRateLimiting("Authenticated")]
     public async Task<ActionResult> LogoutAllAsync()
     {
         // Get user ID from middleware (already validated and cached)

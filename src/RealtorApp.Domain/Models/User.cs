@@ -7,7 +7,7 @@ public partial class User
 {
     public long UserId { get; set; }
 
-    public Guid Uuid { get; set; }
+    public Guid? Uuid { get; set; }
 
     public string Email { get; set; } = null!;
 
@@ -26,6 +26,8 @@ public partial class User
     public virtual Agent? Agent { get; set; }
 
     public virtual Client? Client { get; set; }
+
+    public virtual ICollection<ClientInvitation> ClientInvitations { get; set; } = new List<ClientInvitation>();
 
     public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
 
