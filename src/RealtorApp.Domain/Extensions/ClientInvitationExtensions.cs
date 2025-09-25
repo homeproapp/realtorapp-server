@@ -16,4 +16,32 @@ public static class ClientInvitationExtensions
             IsExistingUser = isExistingUser
         };
     }
+
+    public static bool IsValid(this ClientInvitation? invitation)
+    {
+        if (invitation == null ||
+            invitation.AcceptedAt.HasValue ||
+            invitation.DeletedAt.HasValue ||
+            invitation.ExpiresAt < DateTime.UtcNow)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    public static Client ToClientUser(this ClientInvitation invitation, string uuidString)
+    {
+        return new Client()
+        {
+            User = new()
+            {
+                Uuid = Guid.Parse(uuidString),
+                Email = invitation.ClientEmail,
+                FirstName = invitation.ClientFirstName,
+                LastName = invitation.ClientLastName,
+                Phone = invitation.ClientPhone
+            }
+        };
+    }
 }

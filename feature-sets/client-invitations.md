@@ -9,6 +9,7 @@ This document defines the client invitation system where agents can invite clien
 - ✅ Email service with MailKit integration and encrypted invitation links
 - ✅ Rate limiting and validation implemented
 - 🔄 **Phase 2 Pending**: Invitation acceptance and user record creation
+- 🔄 **Phase 3 Pending**: Re-invite functionality for failed invitations or client detail updates
 
 ## Requirements
 
@@ -55,6 +56,15 @@ This document defines the client invitation system where agents can invite clien
 - 🔄 Mark invitation as accepted and link to created User record
 - 🔄 Generate JWT tokens for immediate login
 
+**Processing Logic (Re-Invite):**
+- 🔄 Validate existing ClientInvitation record exists and is not accepted
+- 🔄 Generate new invitation token (UUID) to replace existing token
+- 🔄 Update invitation expiry date to extend validity period
+- 🔄 Update any changed client details (email, firstName, lastName, phone)
+- 🔄 Preserve existing property assignments and relationships
+- 🔄 Send new invitation email with updated token and client information
+- 🔄 Log re-invite action for audit purposes
+
 ### Key Challenge: UUID/Firebase UID Handling
 **Problem**: Users table requires `uuid` field, but clients don't have Firebase UID until they register.
 
@@ -75,6 +85,7 @@ This document defines the client invitation system where agents can invite clien
 - POST `/invitations/send` - Agent invites multiple clients to multiple properties
 - GET `/invitations/{token}` - Validate invitation token
 - POST `/invitations/accept` - Complete client registration with Firebase token
+- PUT `/invitations/{clientInvitationId}/resend` - Re-send invitation with updated details and new token
 
 ### POST /invitations/send Request Structure
 ```json
@@ -125,6 +136,24 @@ This document defines the client invitation system where agents can invite clien
 - Client2 ↔ Property(123 Main St), Property(456 Oak Ave)
 - Total: 4 ClientsProperties records + 2 Invitations sent
 
+### PUT /invitations/{clientInvitationId}/resend Request Structure
+```json
+{
+  "clientDetails": {
+    "email": "updated_client@example.com",
+    "firstName": "UpdatedJohn",
+    "lastName": "UpdatedDoe",
+    "phone": "+1234567891"
+  }
+}
+```
+
+**Processing**:
+- Updates ClientInvitation record with new client details
+- Generates new invitation_token and extends expires_at
+- Preserves all existing property relationships
+- Sends new invitation email with updated information
+
 ## Database Changes
 - ✅ Made `uuid` field nullable in Users table
 - ✅ Added `ClientInvitations` table:
@@ -165,3 +194,10 @@ This document defines the client invitation system where agents can invite clien
 - Invitation expires before client registers
 - Client tries to register without invitation
 - Multiple agents try to invite same client simultaneously
+- **Re-invite Scenarios**:
+  - 🔄 **Email Delivery Failure**: Re-invite with same details but new token when original email bounces
+  - 🔄 **Client Detail Corrections**: Re-invite when agent discovers typos in client information
+  - 🔄 **Email Change Requests**: Re-invite to different email address before client accepts
+  - 🔄 **Expired Invitations**: Re-invite with extended expiry when client attempts to use expired token
+  - 🔄 **Multiple Re-invites**: Handle multiple re-invite requests for same client invitation
+  - 🔄 **Re-invite After Acceptance**: Prevent re-invite of already accepted invitations

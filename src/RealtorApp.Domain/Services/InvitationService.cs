@@ -8,11 +8,20 @@ using Task = System.Threading.Tasks.Task;
 
 namespace RealtorApp.Domain.Services;
 
-public class InvitationService(RealtorAppDbContext dbContext, IEmailService emailService, IUserService userService) : IInvitationService
+public class InvitationService(
+    RealtorAppDbContext dbContext,
+    IEmailService emailService,
+    IUserService userService,
+    IAuthProviderService authProviderService,
+    IJwtService jwtService,
+    IRefreshTokenService refreshTokenService) : IInvitationService
 {
     private readonly RealtorAppDbContext _dbContext = dbContext;
     private readonly IEmailService _emailService = emailService;
     private readonly IUserService _userService = userService;
+    private readonly IAuthProviderService _authProviderService = authProviderService;
+    private readonly IJwtService _jwtService = jwtService;
+    private readonly IRefreshTokenService _refreshTokenService = refreshTokenService;
 
     public async Task<SendInvitationCommandResponse> SendInvitationsAsync(SendInvitationCommand command, long agentUserId)
     {
@@ -51,7 +60,7 @@ public class InvitationService(RealtorAppDbContext dbContext, IEmailService emai
             foreach (var clientRequest in command.Clients)
             {
                 var existingUser = await _dbContext.Users
-                    .FirstOrDefaultAsync(u => u.Email == clientRequest.Email && u.DeletedAt == null);
+                    .FirstOrDefaultAsync(u => u.Email == clientRequest.Email);
 
                 var clientInvitation = new ClientInvitation
                 {
@@ -96,7 +105,6 @@ public class InvitationService(RealtorAppDbContext dbContext, IEmailService emai
     {
         var invitation = await _dbContext.ClientInvitations
             .FirstOrDefaultAsync(i => i.InvitationToken == invitationToken &&
-                                      i.DeletedAt == null &&
                                       i.AcceptedAt == null);
 
         if (invitation == null)
@@ -145,7 +153,42 @@ public class InvitationService(RealtorAppDbContext dbContext, IEmailService emai
         // property already exists
         // // if the client doesnt exist on the property, create the relationship
         // // if they do, reassign the client
-        await Task.CompletedTask;
-        throw new NotImplementedException("AcceptInvitationAsync will be implemented after email service");
-    }
+        var clientInvitation = await _dbContext.ClientInvitations
+                    .Include(i => i.ClientInvitationsProperties)
+                    .ThenInclude(cip => cip.PropertyInvitation)
+                    .FirstOrDefaultAsync(i => i.InvitationToken == command.InvitationToken &&
+                                                i.AcceptedAt == null);
+
+        if (!clientInvitation.IsValid())
+        {
+            return new()
+            {
+                ErrorMessage = "Invalid invite"
+            };
+        }
+
+        var authUserDto = await _authProviderService.ValidateTokenAsync(command.FirebaseToken);
+
+        if (authUserDto == null || authUserDto.Email != clientInvitation!.ClientEmail) // second case should never happen, but just incase...
+        {
+            return new()
+            {
+                ErrorMessage = "Invalid invite"
+            };
+        }
+
+        var clientUser = await _dbContext.Clients
+            .Include(i => i.User)
+            .FirstOrDefaultAsync(i => i.User.Uuid == Guid.Parse(authUserDto.Uid));
+
+        if (clientUser == null) // create client if htey dont exist
+        {
+            clientUser = clientInvitation.ToClientUser(authUserDto.Uid);
+            _dbContext.Clients.Add(clientUser);
+        }
+
+        //TODO: check each property in invite, if it exists, delete original records, and assign this agent
+
+        return new();
+    }   
 }
