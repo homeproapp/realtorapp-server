@@ -12,10 +12,17 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
     {
         var userUuid = new Guid(firebaseUid);
 
-        var existingUser = await _dbContext.Users
-            .Include(u => u.Agent)
-            .Include(u => u.Client)
-            .FirstOrDefaultAsync(u => u.Uuid == userUuid);
+      var existingUser = await _dbContext.Users
+          .Where(u => u.Uuid == userUuid)
+          .Select(u => new User
+          {
+              UserId = u.UserId,
+              Uuid = u.Uuid,
+              Agent = u.Agent != null ? new Agent { UserId = u.UserId } : null,
+              Client = u.Client != null ? new Client { UserId = u.UserId } : null
+          })
+          .FirstOrDefaultAsync();
+
 
         if (existingUser != null)
             return existingUser;

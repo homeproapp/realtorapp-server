@@ -17,9 +17,8 @@ public class CryptoService(IOptions<AppSettings> appSettings) : ICryptoService
 
         using var aes = Aes.Create();
 
-        // Use the JWT secret key as the encryption key (first 32 bytes for AES-256)
         var key = Encoding.UTF8.GetBytes(_appSettings.Jwt.SecretKey);
-        Array.Resize(ref key, 32); // Ensure 32 bytes for AES-256
+        Array.Resize(ref key, 32);
 
         aes.Key = key;
         aes.GenerateIV();
@@ -27,7 +26,6 @@ public class CryptoService(IOptions<AppSettings> appSettings) : ICryptoService
         using var encryptor = aes.CreateEncryptor();
         using var msEncrypt = new MemoryStream();
 
-        // Prepend IV to the encrypted data
         msEncrypt.Write(aes.IV, 0, aes.IV.Length);
 
         using (var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
@@ -50,13 +48,11 @@ public class CryptoService(IOptions<AppSettings> appSettings) : ICryptoService
 
             using var aes = Aes.Create();
 
-            // Use the JWT secret key as the encryption key
             var key = Encoding.UTF8.GetBytes(_appSettings.Jwt.SecretKey);
             Array.Resize(ref key, 32); // Ensure 32 bytes for AES-256
 
             aes.Key = key;
 
-            // Extract IV from the beginning of the encrypted data
             var iv = new byte[aes.BlockSize / 8];
             var cipher = new byte[fullCipher.Length - iv.Length];
 

@@ -9,4 +9,7 @@
     <Project Path="src/RealtorApp.Contracts/RealtorApp.Contracts.csproj" />
     <Project Path="src/RealtorApp.Domain/RealtorApp.Domain.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RealtorApp.UnitTests/RealtorApp.UnitTests.csproj" />
+  </Folder>
 </Solution>

@@ -11,6 +11,8 @@ using RealtorAppDbContext = RealtorApp.Domain.Models.RealtorAppDbContext;
 using RealtorApp.Domain.Services;
 using RealtorApp.Domain.Settings;
 using System.Threading.RateLimiting;
+using FluentValidation.AspNetCore;
+using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +32,11 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IInvitationService, InvitationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICryptoService, CryptoService>();
+
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddFluentValidationClientsideAdapters();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
 
 // Add rate limiting
 builder.Services.AddRateLimiter(options =>

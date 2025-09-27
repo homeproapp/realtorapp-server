@@ -26,6 +26,33 @@ public class AuthController(
     private readonly AppSettings _appSettings = appSettings;
 
     [AllowAnonymous]
+    [HttpGet("v1/createuser")]
+    public async Task<IActionResult> CreateTestUser()
+    {
+        var user = await _userService.GetOrCreateAgentUserAsync(Guid.NewGuid().ToString(), "stew@anoya.ca", "Stew Anoya");
+
+        return Ok(user.Uuid);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("v1/testlogin")]
+    public async Task<IActionResult> LoginTest()
+    {
+        var user = await _userService.GetOrCreateAgentUserAsync("b45b4948-9cd5-438d-989d-e488192ee613", "stew@anoya.ca", "Stew Anoya");
+
+        var accessToken = _jwtService.GenerateAccessToken(user.Uuid!.Value, "agent");
+        var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(user.UserId);
+
+        return Ok(new LoginCommandResponse
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresIn = _appSettings.Jwt.AccessTokenExpirationMinutes * 60
+        });
+    }
+    
+
+    [AllowAnonymous]
     [HttpPost("v1/login")]
     [EnableRateLimiting("Anonymous")]
     public async Task<ActionResult<LoginCommandResponse>> LoginAsync([FromBody] LoginCommand command)
@@ -70,13 +97,11 @@ public class AuthController(
             return Unauthorized(new { error = "Authentication failed", code = "AUTH_E004" });
         }
 
-        // Generate new access token using data from DTO
         var accessToken = _jwtService.GenerateAccessToken(userDto.UserUuid, userDto.Role);
 
-        // Generate new refresh token (token rotation)
+        //TODO: do we need a new refresh if the refresh token isnt expired?
         var newRefreshToken = await _refreshTokenService.CreateRefreshTokenAsync(userDto.UserId);
 
-        // Revoke old refresh token
         await _refreshTokenService.RevokeRefreshTokenAsync(command.RefreshToken);
 
         return Ok(new RefreshTokenCommandResponse

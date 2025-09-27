@@ -13,6 +13,7 @@ public class InvitationService(
     IEmailService emailService,
     IUserService userService,
     IAuthProviderService authProviderService,
+    ICryptoService crypto,
     IJwtService jwtService,
     IRefreshTokenService refreshTokenService) : IInvitationService
 {
@@ -20,6 +21,7 @@ public class InvitationService(
     private readonly IEmailService _emailService = emailService;
     private readonly IUserService _userService = userService;
     private readonly IAuthProviderService _authProviderService = authProviderService;
+    private readonly ICryptoService _crypto = crypto;
     private readonly IJwtService _jwtService = jwtService;
     private readonly IRefreshTokenService _refreshTokenService = refreshTokenService;
 
@@ -60,6 +62,7 @@ public class InvitationService(
             foreach (var clientRequest in command.Clients)
             {
                 var existingUser = await _dbContext.Users
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(u => u.Email == clientRequest.Email);
 
                 var clientInvitation = new ClientInvitation
@@ -68,6 +71,7 @@ public class InvitationService(
                     ClientFirstName = clientRequest.FirstName,
                     ClientLastName = clientRequest.LastName,
                     ClientPhone = clientRequest.Phone,
+                    InvitationToken = Guid.NewGuid(),
                     InvitedBy = agentUserId,
                     ExpiresAt = DateTime.UtcNow.AddDays(7),
                     ClientInvitationsProperties = [.. propertyInvites.Select(i => new ClientInvitationsProperty()
@@ -76,7 +80,9 @@ public class InvitationService(
                     })]
                 };
 
-                invitesToSend.Add(clientInvitation.ToEmailDto(agentName, existingUser is not null));
+                var encryptedData = _getEncryptedInviteData(clientInvitation.InvitationToken, existingUser is not null);
+
+                invitesToSend.Add(clientInvitation.ToEmailDto(agentName, encryptedData));
 
                 _dbContext.ClientInvitations.Add(clientInvitation);
             }
@@ -103,11 +109,12 @@ public class InvitationService(
 
     public async Task<ValidateInvitationResponse> ValidateInvitationAsync(Guid invitationToken)
     {
-        var invitation = await _dbContext.ClientInvitations
-            .FirstOrDefaultAsync(i => i.InvitationToken == invitationToken &&
-                                      i.AcceptedAt == null);
+        var invitation = await _clientInvitationWithPropertiesQuery(invitationToken)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
 
-        if (invitation == null)
+
+        if (!invitation.IsValid())
         {
             return new ValidateInvitationResponse
             {
@@ -116,46 +123,12 @@ public class InvitationService(
             };
         }
 
-        if (invitation.ExpiresAt < DateTime.UtcNow)
-        {
-            return new ValidateInvitationResponse
-            {
-                IsValid = false,
-                ErrorMessage = "Invitation has expired"
-            };
-        }
-
-        return new ValidateInvitationResponse
-        {
-            IsValid = true,
-            ClientEmail = invitation.ClientEmail,
-            ClientFirstName = invitation.ClientFirstName,
-            ClientLastName = invitation.ClientLastName,
-            ClientPhone = invitation.ClientPhone,
-            ExpiresAt = invitation.ExpiresAt
-        };
+        return invitation!.ToValidateInvitationResponse();
     }
 
     public async Task<AcceptInvitationCommandResponse> AcceptInvitationAsync(AcceptInvitationCommand command)
     {
-        // TODO: Implement invitation acceptance logic
-        // This will involve:
-        // 1. Validating the invitation token
-        // 2. Validating the Firebase token
-        // 3. Updating the user record with the Firebase UID
-        // 4. Marking the invitation as accepted
-        // 5. Generating JWT tokens for the user
-
-        //TODO:
-        // client already exists
-        // // dont create user,
-        // // send a different type of invite
-        // property already exists
-        // // if the client doesnt exist on the property, create the relationship
-        // // if they do, reassign the client
-        var clientInvitation = await _dbContext.ClientInvitations
-                    .Include(i => i.ClientInvitationsProperties)
-                    .ThenInclude(cip => cip.PropertyInvitation)
+        var clientInvitation = await _clientInvitationWithPropertiesQuery(command.InvitationToken)
                     .FirstOrDefaultAsync(i => i.InvitationToken == command.InvitationToken &&
                                                 i.AcceptedAt == null);
 
@@ -181,14 +154,87 @@ public class InvitationService(
             .Include(i => i.User)
             .FirstOrDefaultAsync(i => i.User.Uuid == Guid.Parse(authUserDto.Uid));
 
+        var propertiesToAdd = clientInvitation.ClientInvitationsProperties.Select(i => i.PropertyInvitation);
+
         if (clientUser == null) // create client if htey dont exist
         {
             clientUser = clientInvitation.ToClientUser(authUserDto.Uid);
             _dbContext.Clients.Add(clientUser);
         }
+        else
+        {
+            var propertyAddressesMap = clientInvitation.ClientInvitationsProperties
+                .ToDictionary(i => i.PropertyInvitation.AddressLine1.ToLower(), i => i.PropertyInvitation);
+            propertiesToAdd = await _checkIfPropertiesExistOnExistingUser(clientUser, clientInvitation.InvitedBy, propertyAddressesMap);
+        }
 
-        //TODO: check each property in invite, if it exists, delete original records, and assign this agent
+        foreach (var propertyToAdd in propertiesToAdd)
+        {
+            var clientProperty = new ClientsProperty()
+            {
+                Client = clientUser,
+                Property = propertyToAdd.ToProperty(),
+                AgentId = clientInvitation.InvitedBy
+            };
 
-        return new();
-    }   
+            await _dbContext.ClientsProperties.AddAsync(clientProperty);
+        }
+
+        clientInvitation.AcceptedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        var accessToken = _jwtService.GenerateAccessToken(Guid.Parse(authUserDto.Uid), "Client");
+        var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(clientUser.UserId);
+
+        return new()
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken
+        };
+    }
+
+    private string _getEncryptedInviteData(Guid inviteToken, bool isExistingUser)
+    {
+        return _crypto.Encrypt($"token={inviteToken}&isExistingUser={isExistingUser}");
+    }
+
+    private async Task<List<PropertyInvitation>> _checkIfPropertiesExistOnExistingUser(Client client, long agentId, Dictionary<string, PropertyInvitation> invitedPropertyAddressesMap)
+    {
+        var propertyInvitationsRemapped = new Dictionary<string, PropertyInvitation>();
+
+        var existingProperties = await _dbContext.ClientsProperties
+            .Include(i => i.Property)
+            .Where(i => i.ClientId == client.UserId)
+            .ToListAsync();
+
+        foreach (var clientProperty in existingProperties)
+        {
+            var normalizedAddress = clientProperty.Property.AddressLine1.ToLower();
+            if (invitedPropertyAddressesMap.TryGetValue(normalizedAddress, out var propertyInvitation))
+            {
+                clientProperty.DeletedAt = DateTime.UtcNow; // soft delete
+
+                client.ClientsProperties.Add(new()
+                {
+                    PropertyId = clientProperty.PropertyId,
+                    AgentId = agentId,
+                    ClientId = client.UserId  
+                });
+
+                propertyInvitationsRemapped.Add(normalizedAddress, propertyInvitation);
+            }
+        }
+
+        return [.. invitedPropertyAddressesMap.Except(propertyInvitationsRemapped).Select(i => i.Value)];
+    }
+
+    private IQueryable<ClientInvitation> _clientInvitationWithPropertiesQuery(Guid invitationToken)
+    {
+        return _dbContext.ClientInvitations
+            .Include(i => i.ClientInvitationsProperties)
+                .ThenInclude(cip => cip.PropertyInvitation)
+            .Where(i => i.InvitationToken == invitationToken &&
+                    i.AcceptedAt == null);
+    }
 }

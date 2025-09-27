@@ -19,7 +19,6 @@ public class UserValidationMiddleware(RequestDelegate next)
             return;
         }
 
-        // Validate user UUID exists in database
         var userUuidClaim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userUuidClaim) || !Guid.TryParse(userUuidClaim, out var userUuid))
         {
@@ -27,15 +26,13 @@ public class UserValidationMiddleware(RequestDelegate next)
             return;
         }
 
-        // Check if user exists in database via UserAuthService cache
-        // var userId = await userAuthService.GetUserIdByUuid(userUuid);
-        // if (userId == null)
-        // {
-        //     await WriteErrorResponseAsync(context, "AUTH_E002");
-        //     return;
-        // }
+        var userId = await userAuthService.GetUserIdByUuid(userUuid);
+        if (userId == null)
+        {
+            await WriteErrorResponseAsync(context, "AUTH_E002");
+            return;
+        }
 
-        // Validate role claim
         var roleClaim = context.User.FindFirst(ClaimTypes.Role)?.Value;
         if (string.IsNullOrEmpty(roleClaim) || (roleClaim != "agent" && roleClaim != "client"))
         {
@@ -43,8 +40,7 @@ public class UserValidationMiddleware(RequestDelegate next)
             return;
         }
 
-        // Store userId in HttpContext for controllers to use
-        // context.Items["UserId"] = userId.Value;
+        context.Items["UserId"] = userId.Value;
 
         await next(context);
     }

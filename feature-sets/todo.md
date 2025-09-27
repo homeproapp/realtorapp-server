@@ -1,0 +1,4 @@
+- update tables to account for subscriptions
+- limit agents to 1 active property if on free plan
+- add partial indexes for deleted_at column.
+    - might come in handy for some tables..

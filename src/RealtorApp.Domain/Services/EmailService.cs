@@ -1,3 +1,4 @@
+using System.Web;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Logging;
@@ -9,13 +10,11 @@ using RealtorApp.Domain.Settings;
 
 namespace RealtorApp.Domain.Services;
 
-public class EmailService(IOptions<AppSettings> appSettings, ILogger<EmailService> logger, ICryptoService crypto) : IEmailService
+public class EmailService(IOptions<AppSettings> appSettings, ILogger<EmailService> logger) : IEmailService
 {
     private readonly AppSettings _appSettings = appSettings.Value;
     private readonly ILogger<EmailService> _logger = logger;
-    private readonly ICryptoService _crypto = crypto;
-
-    public async Task<bool> SendInvitationEmailAsync(string clientEmail, string? clientFirstName, Guid invitationToken, string agentName, bool isExistingUser)
+    public async Task<bool> SendInvitationEmailAsync(string clientEmail, string? clientFirstName, string agentName, string encryptedData)
     {
         try
         {
@@ -24,7 +23,7 @@ public class EmailService(IOptions<AppSettings> appSettings, ILogger<EmailServic
             message.To.Add(new MailboxAddress(clientFirstName ?? clientEmail, clientEmail));
             message.Subject = $"You've been invited to {_appSettings.ApplicationName} by {agentName}";
 
-            var invitationLink = GenerateInvitationLink(invitationToken, isExistingUser);
+            var invitationLink = GenerateInvitationLink(encryptedData);
             var emailBody = GenerateNewClientInvitationEmailBody(clientFirstName, agentName, invitationLink, _appSettings.ApplicationName);
 
             //TODO: change this to html
@@ -45,6 +44,10 @@ public class EmailService(IOptions<AppSettings> appSettings, ILogger<EmailServic
             await client.SendAsync(message);
             await client.DisconnectAsync(true);
 
+            // await Task.CompletedTask;
+            // var invitationLink = GenerateInvitationLink(encryptedData);
+            // Console.WriteLine($"INVITE ENDPOINT -> {invitationLink}");
+
             _logger.LogInformation("Successfully sent invitation email to {ClientEmail} from {AgentName}", clientEmail, agentName);
             return true;
         }
@@ -64,9 +67,8 @@ public class EmailService(IOptions<AppSettings> appSettings, ILogger<EmailServic
             var success = await SendInvitationEmailAsync(
                 invitation.ClientEmail,
                 invitation.ClientFirstName,
-                invitation.InvitationToken,
                 invitation.AgentName,
-                invitation.IsExistingUser
+                invitation.EncryptedData
             );
 
             if (!success)
@@ -78,10 +80,9 @@ public class EmailService(IOptions<AppSettings> appSettings, ILogger<EmailServic
         return failedInvites;
     }
 
-    private string GenerateInvitationLink(Guid invitationToken, bool isExistingUser)
+    private string GenerateInvitationLink(string encryptedData)
     {
-        var encryptedData = _crypto.Encrypt($"token={invitationToken}&isExistingUser={isExistingUser}");
-        return $"{_appSettings.FrontendBaseUrl}/invitations/accept?data={encryptedData}";
+        return $"{_appSettings.FrontendBaseUrl}/invitations/accept?data={HttpUtility.UrlEncode(encryptedData)}";
     }
 
     private static string GenerateNewClientInvitationEmailBody(string? clientFirstName, string agentName, string invitationLink, string applicationName)
