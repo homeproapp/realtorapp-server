@@ -9,7 +9,7 @@ This document defines the client invitation system where agents can invite clien
 - ✅ Email service with MailKit integration and encrypted invitation links
 - ✅ Rate limiting and validation implemented
 - ✅ **Phase 2 Complete**: Invitation acceptance and user record creation fully implemented
-- 🔄 **Phase 3 Pending**: Re-invite functionality for failed invitations or client detail updates
+- ✅ **Phase 3 Complete**: Re-invite functionality for failed invitations or client detail updates fully implemented
 
 ## Requirements
 
@@ -57,13 +57,13 @@ This document defines the client invitation system where agents can invite clien
 - ✅ Generate JWT access and refresh tokens for immediate login
 
 **Processing Logic (Re-Invite):**
-- 🔄 Validate existing ClientInvitation record exists and is not accepted
-- 🔄 Generate new invitation token (UUID) to replace existing token
-- 🔄 Update invitation expiry date to extend validity period
-- 🔄 Update any changed client details (email, firstName, lastName, phone)
-- 🔄 Preserve existing property assignments and relationships
-- 🔄 Send new invitation email with updated token and client information
-- 🔄 Log re-invite action for audit purposes
+- ✅ Validate existing ClientInvitation record exists and is not accepted
+- ✅ Generate new invitation token (UUID) to replace existing token
+- ✅ Update invitation expiry date to extend validity period (7 days from re-invite)
+- ✅ Update any changed client details (email, firstName, lastName, phone)
+- ✅ Preserve existing property assignments and relationships
+- ✅ Send new invitation email with updated token and client information
+- ✅ Handle email delivery failures and report success/failure to agent
 
 ### Key Challenge: UUID/Firebase UID Handling
 **Problem**: Users table requires `uuid` field, but clients don't have Firebase UID until they register.
@@ -82,10 +82,10 @@ This document defines the client invitation system where agents can invite clien
 - **Registration Completion**: Link Firebase UID to existing user record
 
 ## API Endpoints
-- POST `/invitations/send` - Agent invites multiple clients to multiple properties
-- GET `/invitations/{token}` - Validate invitation token
-- POST `/invitations/accept` - Complete client registration with Firebase token
-- PUT `/invitations/{clientInvitationId}/resend` - Re-send invitation with updated details and new token
+- POST `/api/invitations/v1/send` - Agent invites multiple clients to multiple properties
+- GET `/api/invitations/v1/validate` - Validate invitation token
+- POST `/api/invitations/v1/accept` - Complete client registration with Firebase token
+- PUT `/api/invitations/v1/resend` - Re-send invitation with updated details and new token
 
 ### POST /invitations/send Request Structure
 ```json
@@ -136,9 +136,10 @@ This document defines the client invitation system where agents can invite clien
 - Client2 ↔ Property(123 Main St), Property(456 Oak Ave)
 - Total: 4 ClientsProperties records + 2 Invitations sent
 
-### PUT /invitations/{clientInvitationId}/resend Request Structure
+### PUT /api/invitations/v1/resend Request Structure
 ```json
 {
+  "clientInvitationId": 123,
   "clientDetails": {
     "email": "updated_client@example.com",
     "firstName": "UpdatedJohn",
@@ -148,11 +149,22 @@ This document defines the client invitation system where agents can invite clien
 }
 ```
 
+**Response Structure**:
+```json
+{
+  "success": true,
+  "errorMessage": null
+}
+```
+
 **Processing**:
-- Updates ClientInvitation record with new client details
-- Generates new invitation_token and extends expires_at
-- Preserves all existing property relationships
-- Sends new invitation email with updated information
+- ✅ Validates agent owns the invitation and invitation is not yet accepted
+- ✅ Updates ClientInvitation record with new client details
+- ✅ Generates new invitation_token and extends expires_at (7 days from re-invite)
+- ✅ Preserves all existing property relationships
+- ✅ Determines existing user status for proper email template
+- ✅ Sends new invitation email with updated information and new encrypted token
+- ✅ Returns success/failure status with error details if applicable
 
 ## Database Changes
 - ✅ Made `uuid` field nullable in Users table
@@ -195,9 +207,22 @@ This document defines the client invitation system where agents can invite clien
 - Client tries to register without invitation
 - Multiple agents try to invite same client simultaneously
 - **Re-invite Scenarios**:
-  - 🔄 **Email Delivery Failure**: Re-invite with same details but new token when original email bounces
-  - 🔄 **Client Detail Corrections**: Re-invite when agent discovers typos in client information
-  - 🔄 **Email Change Requests**: Re-invite to different email address before client accepts
-  - 🔄 **Expired Invitations**: Re-invite with extended expiry when client attempts to use expired token
-  - 🔄 **Multiple Re-invites**: Handle multiple re-invite requests for same client invitation
-  - 🔄 **Re-invite After Acceptance**: Prevent re-invite of already accepted invitations
+  - ✅ **Email Delivery Failure**: Re-invite with same details but new token when original email bounces
+  - ✅ **Client Detail Corrections**: Re-invite when agent discovers typos in client information
+  - ✅ **Email Change Requests**: Re-invite to different email address before client accepts
+  - ✅ **Expired Invitations**: Re-invite with extended expiry when client attempts to use expired token
+  - ✅ **Multiple Re-invites**: Handle multiple re-invite requests for same client invitation
+  - ✅ **Re-invite After Acceptance**: Prevent re-invite of already accepted invitations
+  - ✅ **Wrong Agent Re-invite**: Prevent agents from re-inviting clients they didn't originally invite
+  - ✅ **Deleted Invitations**: Prevent re-invite of soft-deleted invitation records
+
+## Implementation Details
+
+### Phase 3 Components Added
+- ✅ **DTOs**: `ResendInvitationCommand`, `ClientInvitationUpdateRequest`, `ResendInvitationCommandResponse`
+- ✅ **Service Methods**: `ResendInvitationAsync` in `IInvitationService` and `InvitationService`
+- ✅ **User Service**: `GetUserByEmailAsync` method for existing user detection
+- ✅ **Controller**: PUT endpoint `/api/invitations/v1/resend` with authentication and rate limiting
+- ✅ **Validation**: `ResendInvitationCommandValidator` and `ClientInvitationUpdateRequestValidator`
+- ✅ **Unit Tests**: Comprehensive test coverage with 6 test scenarios including success, error, and edge cases
+- ✅ **Security**: Agent ownership validation, accepted invitation prevention, proper error handling

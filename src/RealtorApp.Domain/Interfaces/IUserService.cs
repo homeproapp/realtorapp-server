@@ -6,4 +6,5 @@ public interface IUserService
 {
     Task<User> GetOrCreateAgentUserAsync(string firebaseUid, string email, string? displayName);
     Task<string?> GetAgentName(long agentId);
+    Task<User?> GetUserByEmailAsync(string email);
 }

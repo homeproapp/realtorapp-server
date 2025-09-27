@@ -229,6 +229,77 @@ public class InvitationService(
         return [.. invitedPropertyAddressesMap.Except(propertyInvitationsRemapped).Select(i => i.Value)];
     }
 
+    public async Task<ResendInvitationCommandResponse> ResendInvitationAsync(ResendInvitationCommand command, long agentUserId)
+    {
+        try
+        {
+            var clientInvitation = await _dbContext.ClientInvitations
+                .Include(i => i.InvitedByNavigation)
+                .ThenInclude(a => a.User)
+                .FirstOrDefaultAsync(i => i.ClientInvitationId == command.ClientInvitationId &&
+                                        i.AcceptedAt == null &&
+                                        i.DeletedAt == null &&
+                                        i.InvitedBy == agentUserId);
+
+            if (clientInvitation == null)
+            {
+                return new ResendInvitationCommandResponse
+                {
+                    Success = false,
+                    ErrorMessage = "Invitation not found or already accepted"
+                };
+            }
+
+            // Update client details
+            clientInvitation.ClientEmail = command.ClientDetails.Email;
+            clientInvitation.ClientFirstName = command.ClientDetails.FirstName;
+            clientInvitation.ClientLastName = command.ClientDetails.LastName;
+            clientInvitation.ClientPhone = command.ClientDetails.Phone;
+
+            // Generate new token and extend expiry
+            clientInvitation.InvitationToken = Guid.NewGuid();
+            clientInvitation.ExpiresAt = DateTime.UtcNow.AddDays(7);
+            clientInvitation.UpdatedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync();
+
+            // Check if user already exists for email type determination
+            var existingUser = await _userService.GetUserByEmailAsync(command.ClientDetails.Email);
+
+            // Get agent name for email
+            var agentName = $"{clientInvitation.InvitedByNavigation.User.FirstName} {clientInvitation.InvitedByNavigation.User.LastName}".Trim();
+
+            // Generate encrypted invitation data
+            var encryptedData = _getEncryptedInviteData(clientInvitation.InvitationToken, existingUser != null);
+
+            // Create email DTO and send
+            var emailDto = clientInvitation.ToEmailDto(agentName, encryptedData);
+            var failedInvites = await _emailService.SendBulkInvitationEmailsAsync([emailDto]);
+
+            if (failedInvites.Count > 0)
+            {
+                return new ResendInvitationCommandResponse
+                {
+                    Success = false,
+                    ErrorMessage = "Failed to send invitation email"
+                };
+            }
+
+            return new ResendInvitationCommandResponse
+            {
+                Success = true
+            };
+        }
+        catch (Exception)
+        {
+            return new ResendInvitationCommandResponse
+            {
+                Success = false,
+                ErrorMessage = "An unexpected error occurred"
+            };
+        }
+    }
+
     private IQueryable<ClientInvitation> _clientInvitationWithPropertiesQuery(Guid invitationToken)
     {
         return _dbContext.ClientInvitations

@@ -2,3 +2,4 @@
 - limit agents to 1 active property if on free plan
 - add partial indexes for deleted_at column.
     - might come in handy for some tables..
+- make uuid required again, doesnt need to be nullable anymore

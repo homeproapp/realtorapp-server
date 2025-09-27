@@ -68,4 +68,19 @@ public class InvitationsController(IInvitationService invitationService, ICrypto
         var response = await _invitationService.AcceptInvitationAsync(command);
         return Ok(response);
     }
+
+    [HttpPut("v1/resend")]
+    [EnableRateLimiting("Authenticated")]
+    public async Task<ActionResult<ResendInvitationCommandResponse>> ResendInvitationAsync([FromBody] ResendInvitationCommand command)
+    {
+        var agentUserId = RequiredCurrentUserId;
+        var response = await _invitationService.ResendInvitationAsync(command, agentUserId);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
 }

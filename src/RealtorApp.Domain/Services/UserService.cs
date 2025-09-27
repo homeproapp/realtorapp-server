@@ -53,4 +53,11 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
             .Select(i => i.User.FirstName + " " + i.User.LastName)
             .FirstOrDefaultAsync();
     }
+
+    public async Task<User?> GetUserByEmailAsync(string email)
+    {
+        return await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Email == email);
+    }
 }
