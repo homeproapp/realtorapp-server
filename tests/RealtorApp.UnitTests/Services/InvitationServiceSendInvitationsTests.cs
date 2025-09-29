@@ -12,12 +12,14 @@ public class InvitationServiceSendInvitationsTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
+        var client1Email = $"client1{Guid.NewGuid():N}@example.com";
+        var client2Email = $"client2{Guid.NewGuid():N}@example.com";
         var command = new SendInvitationCommand
         {
             Clients = new List<ClientInvitationRequest>
             {
-                new ClientInvitationRequest { Email = "client1@example.com", FirstName = "John", LastName = "Doe", Phone = "+1234567890" },
-                new ClientInvitationRequest { Email = "client2@example.com", FirstName = "Jane", LastName = "Smith" }
+                new ClientInvitationRequest { Email = client1Email, FirstName = "John", LastName = "Doe", Phone = "+1234567890" },
+                new ClientInvitationRequest { Email = client2Email, FirstName = "Jane", LastName = "Smith" }
             },
             Properties = new List<PropertyInvitationRequest>
             {
@@ -35,17 +37,23 @@ public class InvitationServiceSendInvitationsTests : TestBase
         Assert.Empty(result.Errors);
 
         // Verify database records
-        var clientInvitations = await DbContext.ClientInvitations.ToListAsync();
+        var clientInvitations = await DbContext.ClientInvitations
+            .Where(ci => ci.InvitedBy == agent.UserId)
+            .ToListAsync();
         Assert.Equal(2, clientInvitations.Count);
 
-        var propertyInvitations = await DbContext.PropertyInvitations.ToListAsync();
+        var propertyInvitations = await DbContext.PropertyInvitations
+            .Where(pi => pi.InvitedBy == agent.UserId)
+            .ToListAsync();
         Assert.Equal(2, propertyInvitations.Count);
 
-        var clientInvitationProperties = await DbContext.ClientInvitationsProperties.ToListAsync();
+        var clientInvitationProperties = await DbContext.ClientInvitationsProperties
+            .Where(cip => clientInvitations.Select(ci => ci.ClientInvitationId).Contains(cip.ClientInvitationId))
+            .ToListAsync();
         Assert.Equal(4, clientInvitationProperties.Count); // 2 clients × 2 properties
 
         // Verify client invitation details
-        var client1Invitation = clientInvitations.First(c => c.ClientEmail == "client1@example.com");
+        var client1Invitation = clientInvitations.First(c => c.ClientEmail == client1Email);
         Assert.Equal("John", client1Invitation.ClientFirstName);
         Assert.Equal("Doe", client1Invitation.ClientLastName);
         Assert.Equal("+1234567890", client1Invitation.ClientPhone);
@@ -77,7 +85,7 @@ public class InvitationServiceSendInvitationsTests : TestBase
         {
             Clients = new List<ClientInvitationRequest>
             {
-                new ClientInvitationRequest { Email = "client@example.com", FirstName = "John", LastName = "Doe" }
+                new ClientInvitationRequest { Email = $"client{Guid.NewGuid():N}@example.com", FirstName = "John", LastName = "Doe" }
             },
             Properties = new List<PropertyInvitationRequest>
             {
@@ -93,8 +101,10 @@ public class InvitationServiceSendInvitationsTests : TestBase
         Assert.Contains("agent not found", result.Errors);
         Assert.Equal(0, result.InvitationsSent);
 
-        // Verify no database records created
-        var clientInvitations = await DbContext.ClientInvitations.ToListAsync();
+        // Verify no database records created for this agent
+        var clientInvitations = await DbContext.ClientInvitations
+            .Where(ci => ci.InvitedBy == 999)
+            .ToListAsync();
         Assert.Empty(clientInvitations);
     }
 
@@ -138,7 +148,7 @@ public class InvitationServiceSendInvitationsTests : TestBase
         {
             Clients = new List<ClientInvitationRequest>
             {
-                new ClientInvitationRequest { Email = "client1@example.com", FirstName = "John", LastName = "Doe" },
+                new ClientInvitationRequest { Email = $"client1{Guid.NewGuid():N}@example.com", FirstName = "John", LastName = "Doe" },
                 new ClientInvitationRequest { Email = "client2@example.com", FirstName = "Jane", LastName = "Smith" }
             },
             Properties = new List<PropertyInvitationRequest>
@@ -149,7 +159,7 @@ public class InvitationServiceSendInvitationsTests : TestBase
 
         // Setup email service to return one failed email
         var failedEmail = new InvitationEmailDto {
-            ClientEmail = "failed@example.com",
+            ClientEmail = $"failed{Guid.NewGuid():N}@example.com",
             AgentName = "Test Agent",
             EncryptedData = "encrypted_data",
             ClientFirstName = "John"
@@ -179,9 +189,9 @@ public class InvitationServiceSendInvitationsTests : TestBase
         {
             Clients = new List<ClientInvitationRequest>
             {
-                new ClientInvitationRequest { Email = "client1@example.com", FirstName = "John", LastName = "Doe" },
-                new ClientInvitationRequest { Email = "client2@example.com", FirstName = "Jane", LastName = "Smith" },
-                new ClientInvitationRequest { Email = "client3@example.com", FirstName = "Bob", LastName = "Wilson" }
+                new ClientInvitationRequest { Email = $"client1{Guid.NewGuid():N}@example.com", FirstName = "John", LastName = "Doe" },
+                new ClientInvitationRequest { Email = $"client2{Guid.NewGuid():N}@example.com", FirstName = "Jane", LastName = "Smith" },
+                new ClientInvitationRequest { Email = $"client3{Guid.NewGuid():N}@example.com", FirstName = "Bob", LastName = "Wilson" }
             },
             Properties = new List<PropertyInvitationRequest>
             {
@@ -230,7 +240,7 @@ public class InvitationServiceSendInvitationsTests : TestBase
         {
             Clients = new List<ClientInvitationRequest>
             {
-                new ClientInvitationRequest { Email = "client@example.com" } // Only email provided
+                new ClientInvitationRequest { Email = $"client{Guid.NewGuid():N}@example.com" } // Only email provided
             },
             Properties = new List<PropertyInvitationRequest>
             {
@@ -272,9 +282,9 @@ public class InvitationServiceSendInvitationsTests : TestBase
         {
             Clients = new List<ClientInvitationRequest>
             {
-                new ClientInvitationRequest { Email = "client1@example.com", FirstName = "John" },
-                new ClientInvitationRequest { Email = "client2@example.com", FirstName = "Jane" },
-                new ClientInvitationRequest { Email = "client3@example.com", FirstName = "Bob" }
+                new ClientInvitationRequest { Email = $"client1{Guid.NewGuid():N}@example.com", FirstName = "John" },
+                new ClientInvitationRequest { Email = $"client2{Guid.NewGuid():N}@example.com", FirstName = "Jane" },
+                new ClientInvitationRequest { Email = $"client3{Guid.NewGuid():N}@example.com", FirstName = "Bob" }
             },
             Properties = new List<PropertyInvitationRequest>
             {
@@ -305,7 +315,7 @@ public class InvitationServiceSendInvitationsTests : TestBase
         {
             Clients = new List<ClientInvitationRequest>
             {
-                new ClientInvitationRequest { Email = "client@example.com", FirstName = "John" }
+                new ClientInvitationRequest { Email = $"client{Guid.NewGuid():N}@example.com", FirstName = "John" }
             },
             Properties = new List<PropertyInvitationRequest>
             {

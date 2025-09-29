@@ -6,6 +6,7 @@ using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Models;
 using RealtorApp.Domain.Services;
+using RealtorApp.UnitTests.Helpers;
 
 namespace RealtorApp.UnitTests.Services;
 
@@ -18,7 +19,9 @@ public abstract class TestBase : IDisposable
     protected readonly Mock<ICryptoService> MockCryptoService;
     protected readonly Mock<IJwtService> MockJwtService;
     protected readonly Mock<IRefreshTokenService> MockRefreshTokenService;
+    protected readonly Mock<ISqlQueryService> MockSqlQueryService;
     protected readonly InvitationService InvitationService;
+    protected readonly TestDataManager TestDataManager;
 
     protected TestBase()
     {
@@ -42,6 +45,10 @@ public abstract class TestBase : IDisposable
         MockCryptoService = new Mock<ICryptoService>();
         MockJwtService = new Mock<IJwtService>();
         MockRefreshTokenService = new Mock<IRefreshTokenService>();
+        MockSqlQueryService = new Mock<ISqlQueryService>();
+
+        // Initialize test data manager
+        TestDataManager = new TestDataManager(DbContext);
 
         // Create service under test
         InvitationService = new InvitationService(
@@ -78,80 +85,28 @@ public abstract class TestBase : IDisposable
             .ReturnsAsync("test_refresh_token");
     }
 
-    protected Agent CreateTestAgent(long userId = 1)
+    protected Agent CreateTestAgent(long? userId = null)
     {
-        var user = new User
-        {
-            UserId = userId,
-            Uuid = Guid.NewGuid(),
-            Email = "agent@example.com",
-            FirstName = "Test",
-            LastName = "Agent",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var agent = new Agent
-        {
-            UserId = userId,
-            User = user,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        DbContext.Users.Add(user);
-        DbContext.Agents.Add(agent);
-        DbContext.SaveChanges();
-
-        return agent;
+        var userEmail = $"agent{Guid.NewGuid():N}@example.com";
+        var user = TestDataManager.CreateUser(userEmail, "Test", "Agent");
+        return TestDataManager.CreateAgent(user);
     }
 
-    protected Client CreateTestClient(long userId = 2, string? uuid = null)
+    protected Client CreateTestClient(long? userId = null, string? uuid = null)
     {
-        var user = new User
-        {
-            UserId = userId,
-            Uuid = uuid != null ? Guid.Parse(uuid) : Guid.NewGuid(),
-            Email = "client@example.com",
-            FirstName = "Test",
-            LastName = "Client",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var client = new Client
-        {
-            UserId = userId,
-            User = user,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        DbContext.Users.Add(user);
-        DbContext.Clients.Add(client);
-        DbContext.SaveChanges();
-
-        return client;
+        var userEmail = $"client{Guid.NewGuid():N}@example.com";
+        var user = TestDataManager.CreateUser(userEmail, "Test", "Client");
+        return TestDataManager.CreateClient(user);
     }
 
-    protected ClientInvitation CreateTestClientInvitation(long agentUserId = 1, DateTime? expiresAt = null)
+    protected ClientInvitation CreateTestClientInvitation(long agentUserId, DateTime? expiresAt = null)
     {
-        var invitation = new ClientInvitation
-        {
-            ClientEmail = "test@example.com",
-            ClientFirstName = "John",
-            ClientLastName = "Doe",
-            ClientPhone = "+1234567890",
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agentUserId,
-            ExpiresAt = expiresAt ?? DateTime.UtcNow.AddDays(7),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        DbContext.ClientInvitations.Add(invitation);
-        DbContext.SaveChanges();
-
-        return invitation;
+        return TestDataManager.CreateClientInvitation(agentUserId, null, "John", "Doe", "+1234567890");
     }
 
-    public void Dispose()
+    public virtual void Dispose()
     {
+        TestDataManager?.Dispose();
         DbContext.Dispose();
         GC.SuppressFinalize(this);
     }

@@ -4,11 +4,42 @@
 This document defines the real-time chat functionality between agents and clients for property-related conversations.
 
 ## Current State
-- SignalR ChatHub exists with basic structure
-- JWT authentication configured for SignalR
-- Database has Conversations, Messages, and Attachments tables
-- UserAuthService has conversation participant validation
-- SendMessage method is commented out and needs implementation
+
+### ✅ Completed Implementation
+- **SignalR ChatHub**: Basic structure with JWT authentication configured
+- **Database Schema**: Conversations, Messages, and Attachments tables exist
+  - **Schema Simplification**: Removed conversations_properties table, added property_id directly to conversations table
+- **UserAuthService**: Conversation participant validation exists
+- **Contract Classes**: All required CQRS command/query contracts implemented
+  - `SendMessageCommand` and `SendMessageCommandResponse` (exists)
+  - `MarkMessagesAsReadCommand` and `MarkMessagesAsReadCommandResponse` (created)
+  - `GetMessageHistoryQuery` and `GetMessageHistoryQueryResponse` (created)
+  - `GetConversationListQuery` and `GetConversationListQueryResponse` (created)
+  - Supporting models: `MessageResponse`, `ConversationResponse`, `ClientConversationResponse`
+- **ChatService**: Business logic layer implemented with PostgreSQL raw SQL queries
+  - `SendMessageAsync` method implemented
+  - `GetAgentConversationListAsync` with sophisticated client grouping logic
+  - `MarkMessagesAsReadAsync` method implemented
+- **SQL Query Infrastructure**: Embedded resources system for complex queries
+  - Raw SQL queries stored in `src/RealtorApp.Domain/SqlQueries/Chat/`
+  - `ISqlQueryService` and `SqlQueryService` for managing SQL resources
+- **Extension Methods**: `ChatExtensions.cs` with mapping helpers
+  - `ToClientConversationResponses()` for client list mapping
+- **Test Infrastructure**: PostgreSQL-based testing with TestDataManager
+  - Automatic cleanup and unique data generation
+  - Support for real database testing instead of in-memory limitations
+
+### 🚧 In Progress
+- **Test Fixes**: Updating remaining test files to use TestDataManager approach
+  - ✅ ResendInvitation tests fixed
+  - ✅ SendInvitations tests fixed
+  - ⏳ AcceptInvitation, ValidateInvitation, and EdgeCase tests pending
+
+### ⏳ Pending Implementation
+- **SendMessage method in ChatHub**: Integration with IChatService
+- **Chat API Controllers**: CQRS pattern with proper validation
+- **SignalR Hub Methods**: Message history, read receipts, typing indicators
+- **End-to-end Testing**: Complete chat workflow validation
 
 ## Requirements
 
@@ -118,8 +149,38 @@ This document defines the real-time chat functionality between agents and client
 ## Database Schema
 - **Messages Table**: Existing structure with `is_read` column
 - **Attachments Table**: Existing structure for message attachments
-- **Conversations Table**: Existing structure
-- **ConversationsProperties Table**: Links conversations to properties
+- **Conversations Table**: Existing structure with `property_id` field (simplified from bridge table)
+- **ClientsProperties Table**: Links clients to properties and agents (manages conversation membership)
+
+## Technical Implementation Notes
+
+### Agent Conversation Grouping
+The `GetAgentConversationListAsync` method implements sophisticated grouping logic:
+- **Client Set Grouping**: Conversations with identical client sets are grouped together
+- **Property Separation**: Same clients on different properties create separate conversation groups
+- **Raw SQL Performance**: Uses PostgreSQL-specific features for efficient grouping and aggregation
+- **Unread Count**: Counts conversations (not messages) with unread content per group
+
+### Database Design Decision
+**Simplified Schema**: Removed `conversations_properties` bridge table in favor of direct `property_id` on conversations table:
+- **Benefit**: Simpler queries and reduced joins
+- **Assumption**: Each conversation belongs to exactly one property (validated by business requirements)
+- **Migration**: Existing bridge table logic can be migrated to direct property relationship
+
+### SQL Query Management
+**Embedded Resources Pattern**:
+- Complex queries stored as `.sql` files in `SqlQueries/Chat/` directory
+- `ISqlQueryService` provides clean abstraction for loading SQL from resources
+- Enables version control, syntax highlighting, and maintainability for complex PostgreSQL queries
+- Alternative to fragile string concatenation or ORM limitations for advanced queries
+
+### Test Infrastructure Innovations
+**TestDataManager Approach**:
+- Dynamic ID generation using timestamps to avoid conflicts
+- Automatic cleanup tracking - only removes data that tests created
+- Real PostgreSQL database instead of in-memory providers (supports raw SQL)
+- Unique email generation to prevent constraint violations
+- Backward compatibility with existing test helper methods
 
 ## Security Considerations
 - **Participant Validation**: Verify user is conversation participant before any action

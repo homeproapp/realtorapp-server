@@ -3,6 +3,7 @@ using Moq;
 using RealtorApp.Contracts.Commands.Invitations;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Models;
+using RealtorApp.UnitTests.Helpers;
 using Task = System.Threading.Tasks.Task;
 
 namespace RealtorApp.UnitTests.Services;
@@ -13,7 +14,7 @@ public class InvitationServiceResendInvitationTests : TestBase
     public async Task ResendInvitationAsync_ValidRequest_ShouldUpdateInvitationAndSendEmail()
     {
         // Arrange
-        var agent = CreateTestAgent(1);
+        var agent = CreateTestAgent();
         var clientInvitation = CreateTestClientInvitation(agent.UserId);
 
         var command = new ResendInvitationCommand
@@ -71,10 +72,10 @@ public class InvitationServiceResendInvitationTests : TestBase
     public async Task ResendInvitationAsync_InvitationNotFound_ShouldReturnError()
     {
         // Arrange
-        var agent = CreateTestAgent(1);
+        var agent = CreateTestAgent();
         var command = new ResendInvitationCommand
         {
-            ClientInvitationId = 999,
+            ClientInvitationId = 9999,
             ClientDetails = new ClientInvitationUpdateRequest
             {
                 Email = "test@example.com",
@@ -95,8 +96,8 @@ public class InvitationServiceResendInvitationTests : TestBase
     public async Task ResendInvitationAsync_WrongAgent_ShouldReturnError()
     {
         // Arrange
-        var agent1 = CreateTestAgent(1);
-        var agent2 = CreateTestAgent(2);
+        var agent1 = CreateTestAgent();
+        var agent2 = CreateTestAgent();
         var clientInvitation = CreateTestClientInvitation(agent1.UserId);
 
         var command = new ResendInvitationCommand
