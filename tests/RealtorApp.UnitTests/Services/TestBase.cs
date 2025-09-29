@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using RealtorApp.Domain.DTOs;
@@ -21,9 +22,15 @@ public abstract class TestBase : IDisposable
 
     protected TestBase()
     {
-        // Setup in-memory database
+        // Setup PostgreSQL database using appsettings.json
+        var configuration = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json")
+            .Build();
+
+        var connectionString = configuration.GetConnectionString("Default");
+
         var options = new DbContextOptionsBuilder<RealtorAppDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .UseNpgsql(connectionString)
             .Options;
 
         DbContext = new RealtorAppDbContext(options);

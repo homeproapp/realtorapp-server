@@ -48,7 +48,7 @@ public sealed class ChatHub(IUserAuthService userAuthService) : Hub
         await base.OnDisconnectedAsync(ex);
     }
 
-    public async Task JoinConversation(long conversationId, long propertyId)
+    public async Task JoinConversation(long conversationId)
     {
         var userId = await _userAuthService.GetUserIdByUuid(_uuid);
 
@@ -58,7 +58,7 @@ public sealed class ChatHub(IUserAuthService userAuthService) : Hub
         }
 
         // Optional: verify participant before joining
-        if (!await _userAuthService.IsConversationParticipant(conversationId, (long)userId, propertyId))
+        if (!await _userAuthService.IsConversationParticipant(conversationId, (long)userId))
             throw new HubException("Not a participant.");
 
         await Groups.AddToGroupAsync(Context.ConnectionId, conversationId.ToString());
@@ -85,8 +85,7 @@ public sealed class ChatHub(IUserAuthService userAuthService) : Hub
     //         .SendAsync("onMessage", saved);
     // }
 
-    // Optional: typing indicator example (broadcast to others in the conversation)
-    public async Task SetTyping(long conversationId, long propertyId, bool isTyping)
+    public async Task SetTyping(long conversationId, bool isTyping)
     {
         var userId = await _userAuthService.GetUserIdByUuid(_uuid);
 
@@ -95,7 +94,7 @@ public sealed class ChatHub(IUserAuthService userAuthService) : Hub
             return;
         }
 
-        if (!await _userAuthService.IsConversationParticipant(conversationId, (long)userId, propertyId))
+        if (!await _userAuthService.IsConversationParticipant(conversationId, (long)userId))
             throw new HubException("Not a participant.");
 
         await Clients.OthersInGroup(conversationId.ToString())

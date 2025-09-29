@@ -1,6 +1,8 @@
+using RealtorApp.Contracts.Common;
+
 namespace RealtorApp.Contracts.Commands.Chat.Responses;
 
-public class SendMessageCommandResponse
+public class SendMessageCommandResponse : ResponseWithError
 {
     public long MessageId { get; set; }
     public long ConversationId { get; set; }

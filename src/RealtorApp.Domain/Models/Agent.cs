@@ -27,8 +27,6 @@ public partial class Agent
 
     public virtual ICollection<ClientsProperty> ClientsProperties { get; set; } = new List<ClientsProperty>();
 
-    public virtual ICollection<Conversation> Conversations { get; set; } = new List<Conversation>();
-
     public virtual ICollection<PropertyInvitation> PropertyInvitations { get; set; } = new List<PropertyInvitation>();
 
     public virtual ICollection<ThirdPartyContact> ThirdPartyContacts { get; set; } = new List<ThirdPartyContact>();

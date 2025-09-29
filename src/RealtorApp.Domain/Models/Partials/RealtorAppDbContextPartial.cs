@@ -15,7 +15,6 @@ public partial class RealtorAppDbContext
         modelBuilder.Entity<ClientsProperty>().HasQueryFilter(e => e.DeletedAt == null);
         modelBuilder.Entity<ContactAttachment>().HasQueryFilter(e => e.DeletedAt == null);
         modelBuilder.Entity<Conversation>().HasQueryFilter(e => e.DeletedAt == null);
-        modelBuilder.Entity<ConversationsProperty>().HasQueryFilter(e => e.DeletedAt == null);
         modelBuilder.Entity<File>().HasQueryFilter(e => e.DeletedAt == null);
         modelBuilder.Entity<FileType>().HasQueryFilter(e => e.DeletedAt == null);
         modelBuilder.Entity<FilesTask>().HasQueryFilter(e => e.DeletedAt == null);

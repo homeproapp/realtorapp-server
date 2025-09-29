@@ -27,10 +27,10 @@ This document defines the real-time chat functionality between agents and client
 - **Message Ordering**: Newest messages first, reverse chronological order
 - **Pagination Response**: Include `hasMore` flag and `nextBefore` cursor
 
-### File Attachments
+### Message Attachments
 - **Object References**: Attach references to other app objects (not traditional files)
 - **Task References**: Attach task objects to messages
-- **Future Extensions**: Support for other object types (properties, contacts, etc.)
+- **Future Extensions**: Support for other object types (properties, contacts, files, etc.)
 - **Attachment Metadata**: Store attachment type and reference ID
 
 ### Read Receipts
@@ -60,7 +60,9 @@ This document defines the real-time chat functionality between agents and client
 
 ### Queries
 - GET `/conversations/{conversationId}/messages?limit=50&before={timestamp}` - GetMessageHistoryQuery
-- GET `/conversations?limit=20&offset=0` - GetConversationListQuery
+- GET `/conversations?limit=20&offset=0` - GetConversationListQuery (Agent-specific grouping)
+
+**NOTE**: Client conversation list implementation needs to be designed and addressed separately from agent conversation list.
 
 ## Contract Structure (RealtorApp.Contracts)
 
