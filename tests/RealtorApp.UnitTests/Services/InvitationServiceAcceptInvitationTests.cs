@@ -16,32 +16,11 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var agent = CreateTestAgent();
         var invitation = CreateTestClientInvitation(agent.UserId);
 
-        var property1 = new PropertyInvitation
-        {
-            AddressLine1 = "123 Main St",
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
+        var property1 = CreateTestPropertyInvitation("123 Main St", "Toronto", "ON", "M5V3A8", "CA", agent.UserId);
+        var property2 = CreateTestPropertyInvitation("456 Oak Ave", "Vancouver", "BC", "V6B1A1", "CA", agent.UserId);
 
-        var property2 = new PropertyInvitation
-        {
-            AddressLine1 = "456 Oak Ave",
-            City = "Vancouver",
-            Region = "BC",
-            PostalCode = "V6B1A1",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
-
-        DbContext.PropertyInvitations.AddRange(property1, property2);
-        DbContext.ClientInvitationsProperties.AddRange(
-            new ClientInvitationsProperty { ClientInvitationId = invitation.ClientInvitationId, PropertyInvitation = property1 },
-            new ClientInvitationsProperty { ClientInvitationId = invitation.ClientInvitationId, PropertyInvitation = property2 }
-        );
-        await DbContext.SaveChangesAsync();
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property1.PropertyInvitationId);
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property2.PropertyInvitationId);
 
         var firebaseUid = Guid.NewGuid().ToString();
         var authUserDto = new AuthProviderUserDto { Uid = firebaseUid, Email = invitation.ClientEmail };
@@ -104,39 +83,22 @@ public class InvitationServiceAcceptInvitationTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var firebaseUid = Guid.NewGuid().ToString();
+        var firebaseUid = Guid.NewGuid();
         var existingClient = CreateTestClient(2, firebaseUid);
 
-        var invitation = new ClientInvitation
-        {
-            ClientEmail = existingClient.User.Email,
-            ClientFirstName = "Updated First",
-            ClientLastName = "Updated Last",
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent.UserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(7)
-        };
+        var property = CreateTestPropertyInvitation("789 Pine Rd", "Calgary", "AB", "T2P1A1", "CA", agent.UserId);
 
-        var property = new PropertyInvitation
-        {
-            AddressLine1 = "789 Pine Rd",
-            City = "Calgary",
-            Region = "AB",
-            PostalCode = "T2P1A1",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
+        var invitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent.UserId,
+            email: existingClient.User.Email,
+            firstName: "Updated First",
+            lastName: "Updated Last",
+            phone: null,
+            expiresAt: DateTime.UtcNow.AddDays(7)
+        );
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property.PropertyInvitationId);
 
-        DbContext.ClientInvitations.Add(invitation);
-        DbContext.PropertyInvitations.Add(property);
-        DbContext.ClientInvitationsProperties.Add(new ClientInvitationsProperty
-        {
-            ClientInvitationId = invitation.ClientInvitationId,
-            PropertyInvitation = property
-        });
-        await DbContext.SaveChangesAsync();
-
-        var authUserDto = new AuthProviderUserDto { Uid = firebaseUid, Email = existingClient.User.Email };
+        var authUserDto = new AuthProviderUserDto { Uid = firebaseUid.ToString(), Email = existingClient.User.Email };
         MockAuthProviderService.Setup(x => x.ValidateTokenAsync("valid_firebase_token"))
             .ReturnsAsync(authUserDto);
 
@@ -179,60 +141,28 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         // Arrange
         var agent1 = CreateTestAgent(1);
         var agent2 = CreateTestAgent(3);
-        var firebaseUid = Guid.NewGuid().ToString();
+        var firebaseUid = Guid.NewGuid();
         var existingClient = CreateTestClient(2, firebaseUid);
 
         // Create existing property with agent1
-        var existingProperty = new Property
-        {
-            AddressLine1 = "123 Existing St",
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA"
-        };
-        DbContext.Properties.Add(existingProperty);
-
-        var existingClientProperty = new ClientsProperty
-        {
-            ClientId = existingClient.UserId,
-            Property = existingProperty,
-            AgentId = agent1.UserId
-        };
-        DbContext.ClientsProperties.Add(existingClientProperty);
-        await DbContext.SaveChangesAsync();
+        var existingProperty = CreateTestProperty("123 Existing St", "Toronto", "ON", "M5V3A8", "CA");
+        var existingConversation = CreateTestConversation();
+        var existingClientProperty = CreateTestClientProperty(existingProperty.PropertyId, existingClient.UserId, agent1.UserId, existingConversation.ConversationId);
 
         // Create invitation from agent2 for the same property
-        var invitation = new ClientInvitation
-        {
-            ClientEmail = existingClient.User.Email,
-            ClientFirstName = "Test",
-            ClientLastName = "Client",
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent2.UserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(7)
-        };
+        var propertyInvitation = CreateTestPropertyInvitation("123 Existing St", "Toronto", "ON", "M5V3A8", "CA", agent2.UserId);
 
-        var propertyInvitation = new PropertyInvitation
-        {
-            AddressLine1 = "123 Existing St", // Same address as existing property
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA",
-            InvitedBy = agent2.UserId
-        };
+        var invitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent2.UserId,
+            email: existingClient.User.Email,
+            firstName: "Test",
+            lastName: "Client",
+            phone: null,
+            expiresAt: DateTime.UtcNow.AddDays(7)
+        );
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, propertyInvitation.PropertyInvitationId);
 
-        DbContext.ClientInvitations.Add(invitation);
-        DbContext.PropertyInvitations.Add(propertyInvitation);
-        DbContext.ClientInvitationsProperties.Add(new ClientInvitationsProperty
-        {
-            ClientInvitationId = invitation.ClientInvitationId,
-            PropertyInvitation = propertyInvitation
-        });
-        await DbContext.SaveChangesAsync();
-
-        var authUserDto = new AuthProviderUserDto { Uid = firebaseUid, Email = existingClient.User.Email };
+        var authUserDto = new AuthProviderUserDto { Uid = firebaseUid.ToString(), Email = existingClient.User.Email };
         MockAuthProviderService.Setup(x => x.ValidateTokenAsync("valid_firebase_token"))
             .ReturnsAsync(authUserDto);
 
@@ -287,17 +217,14 @@ public class InvitationServiceAcceptInvitationTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var expiredInvitation = new ClientInvitation
-        {
-            ClientEmail = "test@example.com",
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent.UserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(-1), // Expired
-            CreatedAt = DateTime.UtcNow.AddDays(-8)
-        };
-
-        DbContext.ClientInvitations.Add(expiredInvitation);
-        await DbContext.SaveChangesAsync();
+        var expiredInvitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent.UserId,
+            email: "test@example.com",
+            firstName: null,
+            lastName: null,
+            phone: null,
+            expiresAt: DateTime.UtcNow.AddDays(-1) // Expired
+        );
 
         var command = new AcceptInvitationCommand
         {
@@ -318,18 +245,15 @@ public class InvitationServiceAcceptInvitationTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var acceptedInvitation = new ClientInvitation
-        {
-            ClientEmail = "test@example.com",
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent.UserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            AcceptedAt = DateTime.UtcNow.AddDays(-1), // Already accepted
-            CreatedAt = DateTime.UtcNow.AddDays(-2)
-        };
-
-        DbContext.ClientInvitations.Add(acceptedInvitation);
-        await DbContext.SaveChangesAsync();
+        var acceptedInvitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent.UserId,
+            email: "test@example.com",
+            firstName: null,
+            lastName: null,
+            phone: null,
+            expiresAt: DateTime.UtcNow.AddDays(7),
+            acceptedAt: DateTime.UtcNow.AddDays(-1) // Already accepted
+        );
 
         var command = new AcceptInvitationCommand
         {
@@ -410,34 +334,17 @@ public class InvitationServiceAcceptInvitationTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var invitation = new ClientInvitation
-        {
-            ClientEmail = "minimal@example.com",
-            // No first name, last name, or phone
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent.UserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            CreatedAt = DateTime.UtcNow
-        };
+        var property = CreateTestPropertyInvitation("123 Main St", "Toronto", "ON", "M5V3A8", "CA", agent.UserId);
 
-        var property = new PropertyInvitation
-        {
-            AddressLine1 = "123 Main St",
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
-
-        DbContext.ClientInvitations.Add(invitation);
-        DbContext.PropertyInvitations.Add(property);
-        DbContext.ClientInvitationsProperties.Add(new ClientInvitationsProperty
-        {
-            ClientInvitationId = invitation.ClientInvitationId,
-            PropertyInvitation = property
-        });
-        await DbContext.SaveChangesAsync();
+        var invitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent.UserId,
+            email: "minimal@example.com",
+            firstName: null, // No first name, last name, or phone
+            lastName: null,
+            phone: null,
+            expiresAt: DateTime.UtcNow.AddDays(7)
+        );
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property.PropertyInvitationId);
 
         var firebaseUid = Guid.NewGuid().ToString();
         var authUserDto = new AuthProviderUserDto { Uid = firebaseUid, Email = invitation.ClientEmail };
@@ -505,18 +412,15 @@ public class InvitationServiceAcceptInvitationTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var invitation = new ClientInvitation
-        {
-            ClientEmail = "test@example.com",
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent.UserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            DeletedAt = DateTime.UtcNow.AddMinutes(-5), // Soft deleted
-            CreatedAt = DateTime.UtcNow.AddDays(-1)
-        };
-
-        DbContext.ClientInvitations.Add(invitation);
-        await DbContext.SaveChangesAsync();
+        var invitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent.UserId,
+            email: "test@example.com",
+            firstName: null,
+            lastName: null,
+            phone: null,
+            expiresAt: DateTime.UtcNow.AddDays(7),
+            deletedAt: DateTime.UtcNow.AddMinutes(-5) // Soft deleted
+        );
 
         var command = new AcceptInvitationCommand
         {

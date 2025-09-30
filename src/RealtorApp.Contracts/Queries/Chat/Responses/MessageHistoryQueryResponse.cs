@@ -3,7 +3,7 @@ using RealtorApp.Contracts.Commands.Chat.Responses;
 
 namespace RealtorApp.Contracts.Queries.Chat.Responses;
 
-public class GetMessageHistoryQueryResponse : ResponseWithError
+public class MessageHistoryQueryResponse : ResponseWithError
 {
     public MessageResponse[] Messages { get; set; } = [];
     public bool HasMore { get; set; }

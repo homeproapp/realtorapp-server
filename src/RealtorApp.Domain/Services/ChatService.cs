@@ -91,14 +91,14 @@ public class ChatService(RealtorAppDbContext context, IMemoryCache cache, IUserA
         }
     }
 
-    public async Task<GetMessageHistoryQueryResponse> GetMessageHistoryAsync(GetMessageHistoryQuery query, long userId)
+    public async Task<MessageHistoryQueryResponse> GetMessageHistoryAsync(MessageHistoryQuery query, long userId)
     {
         try
         {
             // Validate conversation participant
             if (!await _userAuthService.IsConversationParticipant(query.ConversationId, userId))
             {
-                return new GetMessageHistoryQueryResponse { ErrorMessage = "Access denied" };
+                return new MessageHistoryQueryResponse { ErrorMessage = "Access denied" };
             }
 
             var messagesQuery = _context.Messages
@@ -129,7 +129,7 @@ public class ChatService(RealtorAppDbContext context, IMemoryCache cache, IUserA
             var messageResponses = messages.Select(m => m.ToMessageResponse()).ToArray();
             var nextBefore = hasMore && messages.Count > 0 ? messages.Last().CreatedAt : (DateTime?)null;
 
-            return new GetMessageHistoryQueryResponse
+            return new MessageHistoryQueryResponse
             {
                 Messages = messageResponses,
                 HasMore = hasMore,
@@ -138,77 +138,115 @@ public class ChatService(RealtorAppDbContext context, IMemoryCache cache, IUserA
         }
         catch (Exception)
         {
-            return new GetMessageHistoryQueryResponse { ErrorMessage = "Failed to retrieve message history" };
+            return new MessageHistoryQueryResponse { ErrorMessage = "Failed to retrieve message history" };
         }
     }
 
-    // the conversation data presented to a client and an agent is different
-    // we need separate functionality to handle these cases
-
-
-    public async Task<GetConversationListQueryResponse> GetAgentConversationListAsync(GetConversationListQuery query, long agentId)
+    public async Task<ClientConversationListQueryResponse> GetClientConversationList(ConversationListQuery query, long clientId)
     {
         try
         {
-            var limit = Math.Min(query.Limit, 50);
-            var sql = _sqlQueryService.GetChatQuery("GetAgentConversationList");
-
-            var results = await _context.Database
-                .SqlQueryRaw<ConversationQueryResult>(sql, agentId, query.Offset, limit)
-                .AsNoTracking()
-                .ToListAsync();
-
-            var conversations = results.Select(r => new ConversationResponse
-            {
-                ClickThroughConversationId = r.ClickThroughConversationId,
-                AgentId = r.AgentId,
-                Clients = ParseClientNamesData(r.ClientNamesData),
-                LastMessage = r.MessageId.HasValue ? new MessageResponse
+            var clientPropertiesQuery = await _context.ClientsProperties.Where(i => i.ClientId == clientId)
+                .Select(i => new
                 {
-                    MessageId = r.MessageId.Value,
-                    ConversationId = r.ClickThroughConversationId,
-                    SenderId = r.SenderId ?? 0,
-                    MessageText = r.MessageText ?? "",
-                    CreatedAt = r.CreatedAt ?? DateTime.UtcNow,
-                    UpdatedAt = r.CreatedAt ?? DateTime.UtcNow,
-                    AttachmentResponses = []
-                } : null,
-                UnreadConversationCount = r.UnreadConversationCount
-            }).ToList();
+                    i.AgentId,
+                    AgentFirstName = i.Agent.User.FirstName,
+                    AgentLastName = i.Agent.User.LastName,
+                    i.Conversation,
+                    LastMessage = i.Conversation.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault()
+                }).ToListAsync();
 
-            var totalCount = results.FirstOrDefault()?.TotalCount ?? 0;
-            var hasMore = query.Offset + conversations.Count < totalCount;
+            var clientPropertiesGroupedByAgent = clientPropertiesQuery.GroupBy(i => i.AgentId);
+            var groupedAgentConvosCount = clientPropertiesGroupedByAgent.Count();
+            var conversations = new List<ClientConversationResponse>();
 
-            return new GetConversationListQueryResponse
+            foreach (var group in clientPropertiesGroupedByAgent.Skip(query.Offset).Take(query.Limit))
             {
-                Conversations = conversations,
-                TotalCount = totalCount,
-                HasMore = hasMore
+                var latestConversationGroup = group.OrderByDescending(i => i.Conversation.UpdatedAt).FirstOrDefault();
+                var unreadConvoCount = group.Where(i => i.Conversation.Messages?.Any(i => !i.IsRead ?? false) ?? false).Count();
+
+                if (latestConversationGroup == null || latestConversationGroup.Conversation == null) continue;
+
+                var conversation = new ClientConversationResponse()
+                {
+                    AgentName = latestConversationGroup.AgentFirstName + " " + latestConversationGroup.AgentLastName,
+                    ConversationUpdatedAt = latestConversationGroup.Conversation.UpdatedAt,
+                    ClickThroughConversationId = latestConversationGroup.Conversation.ConversationId,
+                    LastMessage = latestConversationGroup.LastMessage?.ToMessageResponse(),
+                    UnreadConversationCount = (byte)unreadConvoCount
+                };
+
+                conversations.Add(conversation);
+            }
+
+            return new ClientConversationListQueryResponse()
+            {
+                HasMore = query.Offset + conversations.Count < groupedAgentConvosCount,
+                Conversations = [.. conversations.OrderByDescending(i => i.ConversationUpdatedAt) ],
+                TotalCount = groupedAgentConvosCount
             };
         }
         catch (Exception ex)
         {
             Console.WriteLine(ex.Message);
-            return new GetConversationListQueryResponse { ErrorMessage = "Failed to retrieve conversations" };
+            return new ClientConversationListQueryResponse { ErrorMessage = "Failed to retrieve conversations" };
         }
     }
 
-    private static ClientConversationResponse[] ParseClientNamesData(string? clientNamesData)
+    public async Task<AgentConversationListQueryResponse> GetAgentConversationListAsync(ConversationListQuery query, long agentId)
     {
-        if (string.IsNullOrEmpty(clientNamesData))
-            return [];
-
-        return clientNamesData
-            .Split('|', StringSplitOptions.RemoveEmptyEntries)
-            .Select(entry =>
-            {
-                var parts = entry.Split(':', 2);
-                return new ClientConversationResponse
+        try
+        {
+            var convosList = await _context.Conversations
+                .Where(i => i.ClientsProperties.Any(i => i.AgentId == agentId && i.DeletedAt == null))
+                .Select(i => new
                 {
-                    ClientId = long.Parse(parts[0]),
-                    ClientName = parts.Length > 1 ? parts[1] : ""
+                    ClientIds = i.ClientsProperties.Select(i => i.ClientId).OrderByDescending(i => i).ToList(),
+                    ClientData = i.ClientsProperties.Select(x => new { x.ClientId, ClientName = x.Client.User.FirstName + " " + x.Client.User.LastName }).ToList(),
+                    Conversation = i,
+                    LastMessage = i.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault()
+                })
+                .ToListAsync();
+
+            var convosGrouped = convosList.GroupBy(i => string.Join(",", i.ClientIds.OrderByDescending(i => i)), x => x);
+
+            var count = convosGrouped.Count();
+
+            var convosGroupedByClients = new List<AgentConversationResponse>();
+
+            foreach (var group in convosGrouped.Skip(query.Offset).Take(query.Limit))
+            {
+                var latestConversation = group.OrderByDescending(i => i.Conversation.UpdatedAt).FirstOrDefault();
+                var unreadConvoCount = group.Where(i => i.Conversation.Messages?.Any(i => !i.IsRead ?? false) ?? false).Count();
+
+                if (latestConversation == null || latestConversation.Conversation == null) continue;
+
+                var conversation = new AgentConversationResponse()
+                {
+                    ConversationUpdatedAt = latestConversation.Conversation.UpdatedAt,
+                    ClickThroughConversationId = latestConversation.Conversation.ConversationId,
+                    Clients = group.FirstOrDefault()?.ClientData?
+                        .Select(i => new ClientDetailsConversationResponse() { ClientId = i.ClientId, ClientName = i.ClientName })
+                        .ToArray() ?? [],
+                    LastMessage = latestConversation.LastMessage?.ToMessageResponse(),
+                    UnreadConversationCount = (byte)unreadConvoCount
                 };
-            })
-            .ToArray();
+
+                convosGroupedByClients.Add(conversation);
+            }
+
+            var hasMore = query.Offset + convosGroupedByClients.Count < count;
+
+            return new AgentConversationListQueryResponse
+            {
+                Conversations = [.. convosGroupedByClients.OrderByDescending(i => i.ConversationUpdatedAt)],
+                TotalCount = count,
+                HasMore = hasMore
+            };
+        }
+        catch (Exception)
+        {
+            return new AgentConversationListQueryResponse { ErrorMessage = "Failed to retrieve conversations" };
+        }
     }
 }

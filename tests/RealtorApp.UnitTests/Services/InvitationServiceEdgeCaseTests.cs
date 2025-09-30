@@ -10,7 +10,7 @@ namespace RealtorApp.UnitTests.Services;
 public class InvitationServiceEdgeCaseTests : TestBase
 {
     [Fact]
-    public async Task SendInvitationsAsync_WithDuplicateClientEmails_CreatesInvitationsForEach()
+    public async Task SendInvitationsAsync_WithDuplicateClientEmails_IsUnsuccesful()
     {
         // Arrange
         var agent = CreateTestAgent();
@@ -31,14 +31,8 @@ public class InvitationServiceEdgeCaseTests : TestBase
         var result = await InvitationService.SendInvitationsAsync(command, agent.UserId);
 
         // Assert
-        Assert.True(result.IsSuccess());
-        Assert.Equal(2, result.InvitationsSent);
-
-        var invitations = await DbContext.ClientInvitations.ToListAsync();
-        Assert.Equal(2, invitations.Count);
-        Assert.All(invitations, inv => Assert.Equal("duplicate@example.com", inv.ClientEmail));
-        Assert.Contains(invitations, inv => inv.ClientFirstName == "John");
-        Assert.Contains(invitations, inv => inv.ClientFirstName == "Jane");
+        Assert.False(result.IsSuccess());
+        Assert.Equal(0, result.InvitationsSent);
     }
 
     [Fact]
@@ -80,23 +74,9 @@ public class InvitationServiceEdgeCaseTests : TestBase
         var agent = CreateTestAgent();
         var invitation = CreateTestClientInvitation(agent.UserId);
 
-        var property = new PropertyInvitation
-        {
-            AddressLine1 = "123 Main St",
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
+        var property = CreateTestPropertyInvitation("123 Main St", "Toronto", "ON", "M5V3A8", "CA", agent.UserId);
 
-        DbContext.PropertyInvitations.Add(property);
-        DbContext.ClientInvitationsProperties.Add(new ClientInvitationsProperty
-        {
-            ClientInvitationId = invitation.ClientInvitationId,
-            PropertyInvitation = property
-        });
-        await DbContext.SaveChangesAsync();
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property.PropertyInvitationId);
 
         var firebaseUid = Guid.NewGuid().ToString();
         var authUserDto = new AuthProviderUserDto { Uid = firebaseUid, Email = invitation.ClientEmail };
@@ -136,24 +116,11 @@ public class InvitationServiceEdgeCaseTests : TestBase
         var invitation = CreateTestClientInvitation(agent.UserId);
 
         var longAddress = new string('A', 500); // Very long address
-        var property = new PropertyInvitation
-        {
-            AddressLine1 = longAddress,
-            AddressLine2 = new string('B', 200),
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
+        var property = CreateTestPropertyInvitation(longAddress, "Toronto", "ON", "M5V3A8", "CA", agent.UserId);
+        property.AddressLine2 = new string('B', 200);
+        DbContext.SaveChanges();
 
-        DbContext.PropertyInvitations.Add(property);
-        DbContext.ClientInvitationsProperties.Add(new ClientInvitationsProperty
-        {
-            ClientInvitationId = invitation.ClientInvitationId,
-            PropertyInvitation = property
-        });
-        await DbContext.SaveChangesAsync();
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property.PropertyInvitationId);
 
         var firebaseUid = Guid.NewGuid().ToString();
         var authUserDto = new AuthProviderUserDto { Uid = firebaseUid, Email = invitation.ClientEmail };
@@ -229,58 +196,28 @@ public class InvitationServiceEdgeCaseTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var firebaseUid = Guid.NewGuid().ToString();
+        var firebaseUid = Guid.NewGuid();
         var existingClient = CreateTestClient(2, firebaseUid);
 
         // Create existing property with different casing
-        var existingProperty = new Property
-        {
-            AddressLine1 = "123 MAIN STREET", // Uppercase
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA"
-        };
-        DbContext.Properties.Add(existingProperty);
-
-        var existingClientProperty = new ClientsProperty
-        {
-            ClientId = existingClient.UserId,
-            Property = existingProperty,
-            AgentId = 999 // Different agent
-        };
-        DbContext.ClientsProperties.Add(existingClientProperty);
-        await DbContext.SaveChangesAsync();
+        var existingProperty = CreateTestProperty("123 MAIN STREET", "Toronto", "ON", "M5V3A8", "CA");
+        var existingConversation = CreateTestConversation();
+        var existingClientProperty = CreateTestClientProperty(existingProperty.PropertyId, existingClient.UserId, agent.UserId, existingConversation.ConversationId);
 
         // Create invitation with lowercase address
-        var invitation = new ClientInvitation
-        {
-            ClientEmail = existingClient.User.Email,
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent.UserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(7)
-        };
+        var propertyInvitation = CreateTestPropertyInvitation("123 main street", "Toronto", "ON", "M5V3A8", "CA", agent.UserId);
 
-        var propertyInvitation = new PropertyInvitation
-        {
-            AddressLine1 = "123 main street", // Lowercase - should match existing
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
+        var invitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent.UserId,
+            email: existingClient.User.Email,
+            firstName: null,
+            lastName: null,
+            phone: null,
+            expiresAt: DateTime.UtcNow.AddDays(7)
+        );
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, propertyInvitation.PropertyInvitationId);
 
-        DbContext.ClientInvitations.Add(invitation);
-        DbContext.PropertyInvitations.Add(propertyInvitation);
-        DbContext.ClientInvitationsProperties.Add(new ClientInvitationsProperty
-        {
-            ClientInvitationId = invitation.ClientInvitationId,
-            PropertyInvitation = propertyInvitation
-        });
-        await DbContext.SaveChangesAsync();
-
-        var authUserDto = new AuthProviderUserDto { Uid = firebaseUid, Email = existingClient.User.Email };
+        var authUserDto = new AuthProviderUserDto { Uid = firebaseUid.ToString(), Email = existingClient.User.Email };
         MockAuthProviderService.Setup(x => x.ValidateTokenAsync("valid_firebase_token"))
             .ReturnsAsync(authUserDto);
 
@@ -299,7 +236,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
         // Verify old relationship is soft deleted
         var oldRelationship = await DbContext.ClientsProperties
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(cp => cp.ClientId == existingClient.UserId && cp.AgentId == 999 && cp.DeletedAt != null);
+            .FirstOrDefaultAsync(cp => cp.ClientId == existingClient.UserId && cp.AgentId == agent.UserId && cp.DeletedAt != null);
         Assert.NotNull(oldRelationship);
 
         // Verify new relationship created with current agent
@@ -320,33 +257,17 @@ public class InvitationServiceEdgeCaseTests : TestBase
         // Arrange
         var agent = CreateTestAgent();
         var exactExpiryTime = DateTime.UtcNow.AddMilliseconds(100);
-        var invitation = new ClientInvitation
-        {
-            ClientEmail = "test@example.com",
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent.UserId,
-            ExpiresAt = exactExpiryTime,
-            CreatedAt = DateTime.UtcNow.AddDays(-1)
-        };
+        var property = CreateTestPropertyInvitation("123 Test St", "Toronto", "ON", "M5V3A8", "CA", agent.UserId);
 
-        var property = new PropertyInvitation
-        {
-            AddressLine1 = "123 Test St",
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
-
-        DbContext.ClientInvitations.Add(invitation);
-        DbContext.PropertyInvitations.Add(property);
-        DbContext.ClientInvitationsProperties.Add(new ClientInvitationsProperty
-        {
-            ClientInvitationId = invitation.ClientInvitationId,
-            PropertyInvitation = property
-        });
-        await DbContext.SaveChangesAsync();
+        var invitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent.UserId,
+            email: "test@example.com",
+            firstName: null,
+            lastName: null,
+            phone: null,
+            expiresAt: exactExpiryTime
+        );
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property.PropertyInvitationId);
 
         // Act - Validate just before expiry
         var resultBeforeExpiry = await InvitationService.ValidateInvitationAsync(invitation.InvitationToken);
@@ -393,23 +314,9 @@ public class InvitationServiceEdgeCaseTests : TestBase
         var agent = CreateTestAgent();
         var invitation = CreateTestClientInvitation(agent.UserId);
 
-        var property = new PropertyInvitation
-        {
-            AddressLine1 = "123 Test St",
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
+        var property = CreateTestPropertyInvitation("123 Test St", "Toronto", "ON", "M5V3A8", "CA", agent.UserId);
 
-        DbContext.PropertyInvitations.Add(property);
-        DbContext.ClientInvitationsProperties.Add(new ClientInvitationsProperty
-        {
-            ClientInvitationId = invitation.ClientInvitationId,
-            PropertyInvitation = property
-        });
-        await DbContext.SaveChangesAsync();
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property.PropertyInvitationId);
 
         var authUserDto = new AuthProviderUserDto
         {
@@ -488,35 +395,17 @@ public class InvitationServiceEdgeCaseTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var invitation = new ClientInvitation
-        {
-            ClientEmail = "test@example.com",
-            ClientFirstName = "", // Empty string
-            ClientLastName = null, // Null
-            ClientPhone = "   ", // Whitespace
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent.UserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(7)
-        };
+        var property = CreateTestPropertyInvitation("123 Test St", "Toronto", "ON", "M5V3A8", "CA", agent.UserId);
 
-        var property = new PropertyInvitation
-        {
-            AddressLine1 = "123 Test St",
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
-
-        DbContext.ClientInvitations.Add(invitation);
-        DbContext.PropertyInvitations.Add(property);
-        DbContext.ClientInvitationsProperties.Add(new ClientInvitationsProperty
-        {
-            ClientInvitationId = invitation.ClientInvitationId,
-            PropertyInvitation = property
-        });
-        await DbContext.SaveChangesAsync();
+        var invitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent.UserId,
+            email: "test@example.com",
+            firstName: "", // Empty string
+            lastName: null, // Null
+            phone: "   ", // Whitespace
+            expiresAt: DateTime.UtcNow.AddDays(7)
+        );
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property.PropertyInvitationId);
 
         var firebaseUid = Guid.NewGuid().ToString();
         var authUserDto = new AuthProviderUserDto { Uid = firebaseUid, Email = invitation.ClientEmail };

@@ -38,6 +38,9 @@ public abstract class TestBase : IDisposable
 
         DbContext = new RealtorAppDbContext(options);
 
+        // Clear all test data before each test
+        CleanupAllTestData();
+
         // Setup mocks
         MockEmailService = new Mock<IEmailService>();
         MockUserService = new Mock<IUserService>();
@@ -92,16 +95,66 @@ public abstract class TestBase : IDisposable
         return TestDataManager.CreateAgent(user);
     }
 
-    protected Client CreateTestClient(long? userId = null, string? uuid = null)
+    protected Client CreateTestClient(long? userId = null, Guid? uuid = null)
     {
         var userEmail = $"client{Guid.NewGuid():N}@example.com";
-        var user = TestDataManager.CreateUser(userEmail, "Test", "Client");
+        var user = TestDataManager.CreateUser(userEmail, "Test", "Client", uuid);
         return TestDataManager.CreateClient(user);
     }
 
     protected ClientInvitation CreateTestClientInvitation(long agentUserId, DateTime? expiresAt = null)
     {
         return TestDataManager.CreateClientInvitation(agentUserId, null, "John", "Doe", "+1234567890");
+    }
+
+    protected Property CreateTestProperty(string addressLine1, string city, string region, string postalCode, string countryCode)
+    {
+        return TestDataManager.CreateProperty(addressLine1, city, region, postalCode, countryCode);
+    }
+
+    protected ClientsProperty CreateTestClientProperty(long propertyId, long clientId, long agentId, long conversationId)
+    {
+        return TestDataManager.CreateClientProperty(propertyId, clientId, agentId, conversationId);
+    }
+
+    protected PropertyInvitation CreateTestPropertyInvitation(string addressLine1, string city, string region, string postalCode, string countryCode, long invitedBy)
+    {
+        return TestDataManager.CreatePropertyInvitation(addressLine1, city, region, postalCode, countryCode, invitedBy);
+    }
+
+    protected Conversation CreateTestConversation()
+    {
+        return TestDataManager.CreateConversation();
+    }
+
+    private void CleanupAllTestData()
+    {
+        // Delete in correct order to avoid foreign key constraints
+        // This is safer than TRUNCATE for avoiding deadlocks
+        DbContext.Database.ExecuteSqlRaw(@"
+            DELETE FROM contact_attachments;
+            DELETE FROM task_attachments;
+            DELETE FROM attachments;
+            DELETE FROM files_tasks;
+            DELETE FROM messages;
+            DELETE FROM notifications;
+            DELETE FROM tasks;
+            DELETE FROM files;
+            DELETE FROM links;
+            DELETE FROM third_party_contacts;
+            DELETE FROM client_invitations_properties;
+            DELETE FROM clients_properties;
+            DELETE FROM property_invitations;
+            DELETE FROM client_invitations;
+            DELETE FROM conversations;
+            DELETE FROM properties;
+            DELETE FROM refresh_tokens;
+            DELETE FROM clients;
+            DELETE FROM agents;
+            DELETE FROM users;
+            DELETE FROM task_titles;
+            DELETE FROM file_types;
+        ");
     }
 
     public virtual void Dispose()

@@ -13,22 +13,24 @@ public class TestDataManager : IDisposable
     private readonly List<long> _createdConversationIds = new();
     private readonly List<long> _createdMessageIds = new();
     private readonly List<long> _createdClientPropertyIds = new();
+    private readonly List<long> _createdPropertyInvitationIds = new();
+    private readonly List<long> _createdClientInvitationsPropertyIds = new();
 
-    private long _nextUserId = DateTime.UtcNow.Ticks % 100000 + 10000; // Start from a unique base
+    private long _nextUserId = new Random().Next(999, 999999); // Start from a unique base
 
     public TestDataManager(RealtorAppDbContext dbContext)
     {
         _dbContext = dbContext;
     }
 
-    public User CreateUser(string email, string firstName, string lastName)
+    public User CreateUser(string email, string firstName, string lastName, Guid? uuid = null)
     {
         var userId = _nextUserId++;
         var user = new User
         {
             UserId = userId,
-            Uuid = Guid.NewGuid(),
-            Email = email,
+            Uuid = uuid ?? Guid.NewGuid(),
+            Email = Guid.NewGuid().ToString() + email,
             FirstName = firstName,
             LastName = lastName,
             CreatedAt = DateTime.UtcNow,
@@ -71,7 +73,8 @@ public class TestDataManager : IDisposable
     }
 
     public ClientInvitation CreateClientInvitation(long agentUserId, string? email = null,
-        string firstName = "John", string lastName = "Doe", string phone = "+1234567890")
+        string? firstName = "John", string? lastName = "Doe", string? phone = "+1234567890",
+        DateTime? expiresAt = null, DateTime? acceptedAt = null, DateTime? deletedAt = null)
     {
         var invitation = new ClientInvitation
         {
@@ -81,7 +84,9 @@ public class TestDataManager : IDisposable
             ClientPhone = phone,
             InvitationToken = Guid.NewGuid(),
             InvitedBy = agentUserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            ExpiresAt = expiresAt ?? DateTime.UtcNow.AddDays(7),
+            AcceptedAt = acceptedAt,
+            DeletedAt = deletedAt,
             CreatedAt = DateTime.UtcNow
         };
         _dbContext.ClientInvitations.Add(invitation);
@@ -90,7 +95,8 @@ public class TestDataManager : IDisposable
         return invitation;
     }
 
-    public Property CreateProperty(string addressLine1 = "123 Test Street", string city = "Test City")
+    public Property CreateProperty(string addressLine1 = "123 Test Street", string city = "Test City",
+        string region = "Test Region", string postalCode = "12345", string countryCode = "US")
     {
         var propertyId = _nextUserId++; // Reuse the ID generator
         var property = new Property
@@ -98,9 +104,9 @@ public class TestDataManager : IDisposable
             PropertyId = propertyId,
             AddressLine1 = addressLine1,
             City = city,
-            Region = "Test Region",
-            PostalCode = "12345",
-            CountryCode = "US",
+            Region = region,
+            PostalCode = postalCode,
+            CountryCode = countryCode,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -110,14 +116,14 @@ public class TestDataManager : IDisposable
         return property;
     }
 
-    public Conversation CreateConversation()
+    public Conversation CreateConversation(DateTime? createdAt = null, DateTime? updatedAt = null)
     {
         var conversationId = _nextUserId++;
         var conversation = new Conversation
         {
             ConversationId = conversationId,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CreatedAt = createdAt ?? DateTime.UtcNow,
+            UpdatedAt = updatedAt ?? DateTime.UtcNow
         };
         _dbContext.Conversations.Add(conversation);
         _dbContext.SaveChanges();
@@ -165,6 +171,45 @@ public class TestDataManager : IDisposable
         return clientProperty;
     }
 
+    public PropertyInvitation CreatePropertyInvitation(string addressLine1, string city, string region,
+        string postalCode, string countryCode, long invitedBy)
+    {
+        var propertyInvitationId = _nextUserId++;
+        var propertyInvitation = new PropertyInvitation
+        {
+            PropertyInvitationId = propertyInvitationId,
+            AddressLine1 = addressLine1,
+            City = city,
+            Region = region,
+            PostalCode = postalCode,
+            CountryCode = countryCode,
+            InvitedBy = invitedBy,
+            CreatedAt = DateTime.UtcNow
+        };
+        _dbContext.PropertyInvitations.Add(propertyInvitation);
+        _dbContext.SaveChanges();
+        _createdPropertyInvitationIds.Add(propertyInvitationId);
+        return propertyInvitation;
+    }
+
+    public ClientInvitationsProperty CreateClientInvitationsProperty(long clientInvitationId, long propertyInvitationId)
+    {
+        var id = _nextUserId++;
+        var clientInvitationsProperty = new ClientInvitationsProperty
+        {
+            ClientInvitationPropertyId = id,
+            PropertyInvitationId = propertyInvitationId,
+            ClientInvitationId = clientInvitationId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.ClientInvitationsProperties.Add(clientInvitationsProperty);
+        _dbContext.SaveChanges();
+        _createdClientInvitationsPropertyIds.Add(id);
+        return clientInvitationsProperty;
+    }
+
     public void Dispose()
     {
         try
@@ -177,6 +222,14 @@ public class TestDataManager : IDisposable
             if (_createdClientPropertyIds.Any())
             {
                 _dbContext.ClientsProperties.RemoveRange(_dbContext.ClientsProperties.Where(cp => _createdClientPropertyIds.Contains(cp.ClientPropertyId)));
+            }
+            if (_createdClientInvitationsPropertyIds.Any())
+            {
+                _dbContext.ClientInvitationsProperties.RemoveRange(_dbContext.ClientInvitationsProperties.Where(cip => _createdClientInvitationsPropertyIds.Contains(cip.ClientInvitationPropertyId)));
+            }
+            if (_createdPropertyInvitationIds.Any())
+            {
+                _dbContext.PropertyInvitations.RemoveRange(_dbContext.PropertyInvitations.Where(pi => _createdPropertyInvitationIds.Contains(pi.PropertyInvitationId)));
             }
             if (_createdConversationIds.Any())
             {

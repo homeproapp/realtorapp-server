@@ -14,47 +14,13 @@ public class InvitationServiceValidateInvitationTests : TestBase
         var invitation = CreateTestClientInvitation(agent.UserId);
 
         // Add properties to the invitation
-        var property1 = new PropertyInvitation
-        {
-            AddressLine1 = "123 Main St",
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId,
-            CreatedAt = DateTime.UtcNow
-        };
+        var property1 = CreateTestPropertyInvitation("123 Main St", "Toronto", "ON", "M5V3A8", "CA", agent.UserId);
+        var property2 = CreateTestPropertyInvitation("456 Oak Ave", "Vancouver", "BC", "V6B1A1", "CA", agent.UserId);
+        property2.AddressLine2 = "Suite 100";
+        DbContext.SaveChanges();
 
-        var property2 = new PropertyInvitation
-        {
-            AddressLine1 = "456 Oak Ave",
-            AddressLine2 = "Suite 100",
-            City = "Vancouver",
-            Region = "BC",
-            PostalCode = "V6B1A1",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        DbContext.PropertyInvitations.AddRange(property1, property2);
-
-        var clientInvitationProperty1 = new ClientInvitationsProperty
-        {
-            ClientInvitationId = invitation.ClientInvitationId,
-            PropertyInvitation = property1,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var clientInvitationProperty2 = new ClientInvitationsProperty
-        {
-            ClientInvitationId = invitation.ClientInvitationId,
-            PropertyInvitation = property2,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        DbContext.ClientInvitationsProperties.AddRange(clientInvitationProperty1, clientInvitationProperty2);
-        await DbContext.SaveChangesAsync();
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property1.PropertyInvitationId);
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property2.PropertyInvitationId);
 
         // Act
         var result = await InvitationService.ValidateInvitationAsync(invitation.InvitationToken);
@@ -101,19 +67,14 @@ public class InvitationServiceValidateInvitationTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var expiredInvitation = new ClientInvitation
-        {
-            ClientEmail = "test@example.com",
-            ClientFirstName = "John",
-            ClientLastName = "Doe",
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent.UserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(-1), // Expired yesterday
-            CreatedAt = DateTime.UtcNow.AddDays(-8)
-        };
-
-        DbContext.ClientInvitations.Add(expiredInvitation);
-        await DbContext.SaveChangesAsync();
+        var expiredInvitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent.UserId,
+            email: "test@example.com",
+            firstName: "John",
+            lastName: "Doe",
+            phone: null,
+            expiresAt: DateTime.UtcNow.AddDays(-1) // Expired yesterday
+        );
 
         // Act
         var result = await InvitationService.ValidateInvitationAsync(expiredInvitation.InvitationToken);
@@ -128,20 +89,15 @@ public class InvitationServiceValidateInvitationTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var acceptedInvitation = new ClientInvitation
-        {
-            ClientEmail = "test@example.com",
-            ClientFirstName = "John",
-            ClientLastName = "Doe",
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent.UserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            AcceptedAt = DateTime.UtcNow.AddDays(-1), // Already accepted
-            CreatedAt = DateTime.UtcNow.AddDays(-2)
-        };
-
-        DbContext.ClientInvitations.Add(acceptedInvitation);
-        await DbContext.SaveChangesAsync();
+        var acceptedInvitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent.UserId,
+            email: "test@example.com",
+            firstName: "John",
+            lastName: "Doe",
+            phone: null,
+            expiresAt: DateTime.UtcNow.AddDays(7),
+            acceptedAt: DateTime.UtcNow.AddDays(-1) // Already accepted
+        );
 
         // Act
         var result = await InvitationService.ValidateInvitationAsync(acceptedInvitation.InvitationToken);
@@ -172,34 +128,17 @@ public class InvitationServiceValidateInvitationTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var invitation = new ClientInvitation
-        {
-            ClientEmail = "minimal@example.com",
-            // No first name, last name, or phone
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent.UserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            CreatedAt = DateTime.UtcNow
-        };
+        var property = CreateTestPropertyInvitation("123 Test St", "Toronto", "ON", "M5V3A8", "CA", agent.UserId);
 
-        var property = new PropertyInvitation
-        {
-            AddressLine1 = "123 Test St",
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
-
-        DbContext.ClientInvitations.Add(invitation);
-        DbContext.PropertyInvitations.Add(property);
-        DbContext.ClientInvitationsProperties.Add(new ClientInvitationsProperty
-        {
-            ClientInvitationId = invitation.ClientInvitationId,
-            PropertyInvitation = property
-        });
-        await DbContext.SaveChangesAsync();
+        var invitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent.UserId,
+            email: "minimal@example.com",
+            firstName: null, // No first name, last name, or phone
+            lastName: null,
+            phone: null,
+            expiresAt: DateTime.UtcNow.AddDays(7)
+        );
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property.PropertyInvitationId);
 
         // Act
         var result = await InvitationService.ValidateInvitationAsync(invitation.InvitationToken);
@@ -218,18 +157,14 @@ public class InvitationServiceValidateInvitationTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var invitation = new ClientInvitation
-        {
-            ClientEmail = "test@example.com",
-            ClientFirstName = "John",
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent.UserId,
-            ExpiresAt = DateTime.UtcNow, // Expires exactly now
-            CreatedAt = DateTime.UtcNow.AddDays(-1)
-        };
-
-        DbContext.ClientInvitations.Add(invitation);
-        await DbContext.SaveChangesAsync();
+        var invitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent.UserId,
+            email: "test@example.com",
+            firstName: "John",
+            lastName: null,
+            phone: null,
+            expiresAt: DateTime.UtcNow // Expires exactly now
+        );
 
         // Small delay to ensure we're past the expiry time
         await Task.Delay(10);
@@ -247,19 +182,15 @@ public class InvitationServiceValidateInvitationTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var invitation = new ClientInvitation
-        {
-            ClientEmail = "test@example.com",
-            ClientFirstName = "John",
-            InvitationToken = Guid.NewGuid(),
-            InvitedBy = agent.UserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            DeletedAt = DateTime.UtcNow.AddMinutes(-5), // Soft deleted
-            CreatedAt = DateTime.UtcNow.AddDays(-1)
-        };
-
-        DbContext.ClientInvitations.Add(invitation);
-        await DbContext.SaveChangesAsync();
+        var invitation = TestDataManager.CreateClientInvitation(
+            agentUserId: agent.UserId,
+            email: "test@example.com",
+            firstName: "John",
+            lastName: null,
+            phone: null,
+            expiresAt: DateTime.UtcNow.AddDays(7),
+            deletedAt: DateTime.UtcNow.AddMinutes(-5) // Soft deleted
+        );
 
         // Act
         var result = await InvitationService.ValidateInvitationAsync(invitation.InvitationToken);
@@ -276,46 +207,15 @@ public class InvitationServiceValidateInvitationTests : TestBase
         var agent = CreateTestAgent();
         var invitation = CreateTestClientInvitation(agent.UserId);
 
-        var property1 = new PropertyInvitation
-        {
-            AddressLine1 = "123 Main St",
-            City = "Toronto",
-            Region = "ON",
-            PostalCode = "M5V3A8",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
+        var property1 = CreateTestPropertyInvitation("123 Main St", "Toronto", "ON", "M5V3A8", "CA", agent.UserId);
+        var property2 = CreateTestPropertyInvitation("456 Oak Ave", "Vancouver", "BC", "V6B1A1", "CA", agent.UserId);
+        property2.AddressLine2 = "Unit 5B";
+        var property3 = CreateTestPropertyInvitation("789 Pine Rd", "Calgary", "AB", "T2P1A1", "CA", agent.UserId);
+        DbContext.SaveChanges();
 
-        var property2 = new PropertyInvitation
-        {
-            AddressLine1 = "456 Oak Ave",
-            AddressLine2 = "Unit 5B",
-            City = "Vancouver",
-            Region = "BC",
-            PostalCode = "V6B1A1",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
-
-        var property3 = new PropertyInvitation
-        {
-            AddressLine1 = "789 Pine Rd",
-            City = "Calgary",
-            Region = "AB",
-            PostalCode = "T2P1A1",
-            CountryCode = "CA",
-            InvitedBy = agent.UserId
-        };
-
-        DbContext.PropertyInvitations.AddRange(property1, property2, property3);
-
-        DbContext.ClientInvitationsProperties.AddRange(
-            new ClientInvitationsProperty { ClientInvitationId = invitation.ClientInvitationId, PropertyInvitation = property1 },
-            new ClientInvitationsProperty { ClientInvitationId = invitation.ClientInvitationId, PropertyInvitation = property2 },
-            new ClientInvitationsProperty { ClientInvitationId = invitation.ClientInvitationId, PropertyInvitation = property3 }
-        );
-
-        await DbContext.SaveChangesAsync();
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property1.PropertyInvitationId);
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property2.PropertyInvitationId);
+        TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property3.PropertyInvitationId);
 
         // Act
         var result = await InvitationService.ValidateInvitationAsync(invitation.InvitationToken);

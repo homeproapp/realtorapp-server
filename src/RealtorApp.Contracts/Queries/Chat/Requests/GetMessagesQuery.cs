@@ -1,6 +1,6 @@
 namespace RealtorApp.Contracts.Queries.Chat.Requests;
 
-public class GetMessageHistoryQuery
+public class MessageHistoryQuery
 {
     public long ConversationId { get; set; }
     public int Limit { get; set; } = 50;

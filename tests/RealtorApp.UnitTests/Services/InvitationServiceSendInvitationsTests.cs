@@ -184,12 +184,13 @@ public class InvitationServiceSendInvitationsTests : TestBase
     public async Task SendInvitationsAsync_WithMultiplePropertiesAndClients_CreatesAllCombinations()
     {
         // Arrange
+        var client1Guid = Guid.NewGuid();
         var agent = CreateTestAgent();
         var command = new SendInvitationCommand
         {
             Clients = new List<ClientInvitationRequest>
             {
-                new ClientInvitationRequest { Email = $"client1{Guid.NewGuid():N}@example.com", FirstName = "John", LastName = "Doe" },
+                new ClientInvitationRequest { Email = $"client1{client1Guid:N}@example.com", FirstName = "John", LastName = "Doe" },
                 new ClientInvitationRequest { Email = $"client2{Guid.NewGuid():N}@example.com", FirstName = "Jane", LastName = "Smith" },
                 new ClientInvitationRequest { Email = $"client3{Guid.NewGuid():N}@example.com", FirstName = "Bob", LastName = "Wilson" }
             },
@@ -220,7 +221,7 @@ public class InvitationServiceSendInvitationsTests : TestBase
         var johnInvitation = await DbContext.ClientInvitations
             .Include(ci => ci.ClientInvitationsProperties)
             .ThenInclude(cip => cip.PropertyInvitation)
-            .FirstAsync(ci => ci.ClientEmail == "client1@example.com");
+            .FirstAsync(ci => ci.ClientEmail == $"client1{client1Guid:N}@example.com");
 
         Assert.Equal(3, johnInvitation.ClientInvitationsProperties.Count);
         Assert.Contains(johnInvitation.ClientInvitationsProperties,
@@ -236,11 +237,12 @@ public class InvitationServiceSendInvitationsTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
+        var expectedEmail = $"client{Guid.NewGuid():N}@example.com";
         var command = new SendInvitationCommand
         {
             Clients = new List<ClientInvitationRequest>
             {
-                new ClientInvitationRequest { Email = $"client{Guid.NewGuid():N}@example.com" } // Only email provided
+                new ClientInvitationRequest { Email = expectedEmail} // Only email provided
             },
             Properties = new List<PropertyInvitationRequest>
             {
@@ -263,7 +265,7 @@ public class InvitationServiceSendInvitationsTests : TestBase
         Assert.Equal(1, result.InvitationsSent);
 
         var clientInvitation = await DbContext.ClientInvitations.FirstAsync();
-        Assert.Equal("client@example.com", clientInvitation.ClientEmail);
+        Assert.Equal(expectedEmail, clientInvitation.ClientEmail);
         Assert.Null(clientInvitation.ClientFirstName);
         Assert.Null(clientInvitation.ClientLastName);
         Assert.Null(clientInvitation.ClientPhone);

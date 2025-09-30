@@ -174,7 +174,8 @@ public class InvitationService(
             {
                 Client = clientUser,
                 Property = propertyToAdd.ToProperty(),
-                AgentId = clientInvitation.InvitedBy
+                AgentId = clientInvitation.InvitedBy,
+                Conversation = new(),
             };
 
             await _dbContext.ClientsProperties.AddAsync(clientProperty);
@@ -214,10 +215,12 @@ public class InvitationService(
             if (invitedPropertyAddressesMap.TryGetValue(normalizedAddress, out var propertyInvitation))
             {
                 clientProperty.DeletedAt = DateTime.UtcNow; // soft delete
+                clientProperty.Conversation.DeletedAt = DateTime.UtcNow;
 
                 client.ClientsProperties.Add(new()
                 {
                     PropertyId = clientProperty.PropertyId,
+                    Conversation = new(),
                     AgentId = agentId,
                     ClientId = client.UserId  
                 });
