@@ -12,12 +12,10 @@ using RealtorApp.Domain.DTOs;
 
 namespace RealtorApp.Domain.Services;
 
-public class ChatService(RealtorAppDbContext context, IMemoryCache cache, IUserAuthService userAuthService, ISqlQueryService sqlQueryService) : IChatService
+public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthService) : IChatService
 {
     private readonly RealtorAppDbContext _context = context;
-    private readonly IMemoryCache _cache = cache;
     private readonly IUserAuthService _userAuthService = userAuthService;
-    private readonly ISqlQueryService _sqlQueryService = sqlQueryService;
 
     public async Task<SendMessageCommandResponse> SendMessageAsync(SendMessageCommand command)
     {
@@ -91,18 +89,18 @@ public class ChatService(RealtorAppDbContext context, IMemoryCache cache, IUserA
         }
     }
 
-    public async Task<MessageHistoryQueryResponse> GetMessageHistoryAsync(MessageHistoryQuery query, long userId)
+    public async Task<MessageHistoryQueryResponse> GetMessageHistoryAsync(MessageHistoryQuery query, long userId, long conversationId)
     {
         try
         {
             // Validate conversation participant
-            if (!await _userAuthService.IsConversationParticipant(query.ConversationId, userId))
+            if (!await _userAuthService.IsConversationParticipant(conversationId, userId))
             {
                 return new MessageHistoryQueryResponse { ErrorMessage = "Access denied" };
             }
 
             var messagesQuery = _context.Messages
-                .Where(m => m.ConversationId == query.ConversationId)
+                .Where(m => m.ConversationId == conversationId)
                 .AsNoTracking();
 
             if (query.Before.HasValue)

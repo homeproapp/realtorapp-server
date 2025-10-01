@@ -9,6 +9,7 @@ public interface IChatService
 {
     Task<SendMessageCommandResponse> SendMessageAsync(SendMessageCommand command);
     Task<MarkMessagesAsReadCommandResponse> MarkMessagesAsReadAsync(MarkMessagesAsReadCommand command, long userId);
-    Task<MessageHistoryQueryResponse> GetMessageHistoryAsync(MessageHistoryQuery query, long userId);
+    Task<MessageHistoryQueryResponse> GetMessageHistoryAsync(MessageHistoryQuery query, long userId, long conversationId);
     Task<AgentConversationListQueryResponse> GetAgentConversationListAsync(ConversationListQuery query, long userId);
+    Task<ClientConversationListQueryResponse> GetClientConversationList(ConversationListQuery query, long clientId);
 }

@@ -16,7 +16,7 @@ public class AuthController(
     IUserAuthService userAuthService,
     IAuthProviderService authProviderService,
     IUserService userService,
-    AppSettings appSettings) : BaseController
+    AppSettings appSettings) : RealtorApiBaseController
 {
     private readonly IJwtService _jwtService = jwtService;
     private readonly IRefreshTokenService _refreshTokenService = refreshTokenService;

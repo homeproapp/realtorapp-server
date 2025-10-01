@@ -6,4 +6,10 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Queries/Tasks/" />
+    <Folder Include="Queries/Tasks/Requests/" />
+    <Folder Include="Queries/Tasks/Responses/" />
+  </ItemGroup>
 </Project>

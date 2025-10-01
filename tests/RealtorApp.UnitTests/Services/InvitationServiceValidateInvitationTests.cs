@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-using RealtorApp.Domain.Models;
 using Task = System.Threading.Tasks.Task;
 
 namespace RealtorApp.UnitTests.Services;

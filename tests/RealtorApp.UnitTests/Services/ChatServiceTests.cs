@@ -44,7 +44,7 @@ public class ChatServiceTests : IDisposable
         _mockUserAuthService = new Mock<IUserAuthService>();
         _mockSqlQueryService = new Mock<ISqlQueryService>();
 
-        _chatService = new ChatService(_dbContext, _mockCache.Object, _mockUserAuthService.Object, _mockSqlQueryService.Object);
+        _chatService = new ChatService(_dbContext, _mockUserAuthService.Object);
     }
 
     private void CleanupAllTestData()

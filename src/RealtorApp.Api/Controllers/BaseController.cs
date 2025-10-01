@@ -1,9 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using RealtorApp.Domain.Constants;
 
 namespace RealtorApp.Api.Controllers;
 
-public abstract class BaseController : ControllerBase
+public abstract class RealtorApiBaseController : ControllerBase
 {
     protected Guid? CurrentUserUuid
     {
@@ -15,6 +16,21 @@ public abstract class BaseController : ControllerBase
                 return null;
             }
             return userUuid;
+        }
+    }
+
+    protected string? CurrentUserRole
+    {
+        get
+        {
+            var roleClaim = User.FindFirst(RoleConstants.Claim)?.Value;
+            
+            if (string.IsNullOrEmpty(roleClaim))
+            {
+                return null;
+            }
+
+            return roleClaim;
         }
     }
 

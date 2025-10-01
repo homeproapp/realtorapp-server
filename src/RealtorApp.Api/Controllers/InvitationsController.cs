@@ -11,7 +11,7 @@ namespace RealtorApp.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class InvitationsController(IInvitationService invitationService, ICryptoService crypto) : BaseController
+public class InvitationsController(IInvitationService invitationService, ICryptoService crypto) : RealtorApiBaseController
 {
     private readonly IInvitationService _invitationService = invitationService;
     private readonly ICryptoService _crypto = crypto;
