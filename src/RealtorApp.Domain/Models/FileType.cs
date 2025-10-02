@@ -5,7 +5,7 @@ namespace RealtorApp.Domain.Models;
 
 public partial class FileType
 {
-    public long Id { get; set; }
+    public long FileTypeId { get; set; }
 
     public string Name { get; set; } = null!;
 

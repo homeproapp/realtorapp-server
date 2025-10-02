@@ -19,7 +19,9 @@ public partial class Client
 
     public DateTime? DeletedAt { get; set; }
 
-    public virtual ICollection<ClientsProperty> ClientsProperties { get; set; } = new List<ClientsProperty>();
+    public virtual ICollection<ClientInvitation> ClientInvitations { get; set; } = new List<ClientInvitation>();
+
+    public virtual ICollection<ClientsListing> ClientsListings { get; set; } = new List<ClientsListing>();
 
     public virtual User User { get; set; } = null!;
 }

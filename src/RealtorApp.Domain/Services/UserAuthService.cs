@@ -1,3 +1,4 @@
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using RealtorApp.Domain.Interfaces;
@@ -12,7 +13,7 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
     private readonly RealtorAppDbContext _context = context;
     private readonly AppSettings _appSettings = appSettings;
     private const string _userIdByUuIdCachePrefix = "uuid:";
-    private const string _userPropertyAssignmentCachePrefix = "property:";
+    private const string _userListingAssignmentCachePrefix = "listing:";
     private const string _conversationParticipantsCachePrefix = "participants:";
     private readonly MemoryCacheEntryOptions _userUuidEntryOptions = new()
     {
@@ -54,20 +55,14 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
             {
                 entry.SetOptions(_conversationParticipantsEntryOptions);
 
-                var clientsPropertiesInConversation = await _context.Conversations
-                    .Where(i => i.ConversationId == conversationId)
+                var ids = await _context.Conversations
+                    .Where(i => i.ListingId == conversationId)
                     .AsNoTracking()
-                    .SelectMany(i => i.ClientsProperties.Select(x => new { x.AgentId, x.ClientId }))
+                    .SelectMany(i => i.Listing.AgentsListings
+                        .Select(al => al.AgentId)
+                        .Union(i.Listing.ClientsListings
+                            .Select(cl => cl.ClientId)))
                     .ToArrayAsync();
-
-                long[]? ids = null;
-
-                if (clientsPropertiesInConversation.Length > 0)
-                {
-                    var agentId = clientsPropertiesInConversation.FirstOrDefault()!.AgentId;
-                    var clientIds = clientsPropertiesInConversation.Select(i => i.ClientId);
-                    ids = [agentId, .. clientIds];
-                }
 
                 return new HashSet<long>(ids ?? []);
             });
@@ -75,21 +70,24 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
         return participants?.Contains(userId) ?? false;
     }
 
-    public async Task<bool> UserIsAssignedToProperty(long userId, long propertyId)
+    public async Task<bool> UserIsConnectedToListing(long userId, long listingId)
     {
         var assignedUserIds = await _cache.GetOrCreateAsync(
-            $"{_userPropertyAssignmentCachePrefix}{propertyId}",
+            $"{_userListingAssignmentCachePrefix}{listingId}",
             async entry =>
             {
                 entry.SetOptions(_userPropertyAssignmentEntryOptions);
 
-                var propertyUserIds = await _context.ClientsProperties
-                    .Where(i => i.PropertyId == propertyId)
+                var listingUserIds = await _context.Conversations
+                    .Where(i => i.ListingId == listingId)
                     .AsNoTracking()
-                    .SelectMany(i => new long[] { i.AgentId, i.ClientId })
+                    .SelectMany(i => i.Listing.AgentsListings
+                        .Select(al => al.AgentId)
+                        .Union(i.Listing.ClientsListings
+                            .Select(cl => cl.ClientId)))
                     .ToArrayAsync();
 
-                return new HashSet<long>(propertyUserIds ?? []);
+                return new HashSet<long>(listingUserIds ?? []);
             });
 
         return assignedUserIds?.Contains(userId) ?? false;

@@ -25,5 +25,7 @@ public partial class Message
 
     public virtual Conversation Conversation { get; set; } = null!;
 
+    public virtual ICollection<MessageRead> MessageReads { get; set; } = new List<MessageRead>();
+
     public virtual User Sender { get; set; } = null!;
 }

@@ -170,15 +170,32 @@ public class InvitationService(
 
         foreach (var propertyToAdd in propertiesToAdd)
         {
-            var clientProperty = new ClientsProperty()
+            var listing = new Listing()
             {
-                Client = clientUser,
                 Property = propertyToAdd.ToProperty(),
-                AgentId = clientInvitation.InvitedBy,
                 Conversation = new(),
             };
 
-            await _dbContext.ClientsProperties.AddAsync(clientProperty);
+            var agentListing = new AgentsListing()
+            {
+                AgentId = clientInvitation.InvitedBy,
+            };
+
+            var clientListing = new ClientsListing();
+
+            if (clientUser.UserId == 0)
+            {
+                clientListing.Client = clientUser;
+            }
+            else
+            {
+                clientListing.ClientId = clientUser.UserId;
+            }
+
+            listing.AgentsListings.Add(agentListing);
+            listing.ClientsListings.Add(clientListing);
+
+            await _dbContext.Listings.AddAsync(listing);
         }
 
         clientInvitation.AcceptedAt = DateTime.UtcNow;
@@ -204,26 +221,45 @@ public class InvitationService(
     {
         var propertyInvitationsRemapped = new Dictionary<string, PropertyInvitation>();
 
-        var existingProperties = await _dbContext.ClientsProperties
-            .Include(i => i.Property)
+        // if even 1 user from a group accepts a new invite, hte other users lose their listing
+        var existingProperties = await _dbContext.ClientsListings
+            .Include(i => i.Listing)
+                .ThenInclude(i => i.Property)
             .Where(i => i.ClientId == client.UserId)
             .ToListAsync();
 
-        foreach (var clientProperty in existingProperties)
+        foreach (var clientListing in existingProperties)
         {
-            var normalizedAddress = clientProperty.Property.AddressLine1.ToLower();
+            var normalizedAddress = clientListing.Listing.Property.AddressLine1.ToLower();
             if (invitedPropertyAddressesMap.TryGetValue(normalizedAddress, out var propertyInvitation))
             {
-                clientProperty.DeletedAt = DateTime.UtcNow; // soft delete
-                clientProperty.Conversation.DeletedAt = DateTime.UtcNow;
+                var allPeopleAssociatedToListing = await _dbContext.Listings
+                    .Include(i => i.AgentsListings)
+                    .Include(i => i.ClientsListings)
+                    .FirstAsync(i => i.ListingId == clientListing.ListingId);
 
-                client.ClientsProperties.Add(new()
+                _markAllAssociatedListingsAsDeleted(allPeopleAssociatedToListing);
+
+                var listing = new Listing()
                 {
-                    PropertyId = clientProperty.PropertyId,
                     Conversation = new(),
+                    PropertyId = clientListing.Listing.PropertyId
+                };
+
+                var newClientListing = new ClientsListing()
+                {
+                    ClientId = client.UserId,
+                };
+
+                var agentListing = new AgentsListing()
+                {
                     AgentId = agentId,
-                    ClientId = client.UserId  
-                });
+                };
+                
+                listing.ClientsListings.Add(newClientListing);
+                listing.AgentsListings.Add(agentListing);
+
+                await _dbContext.Listings.AddAsync(listing);
 
                 propertyInvitationsRemapped.Add(normalizedAddress, propertyInvitation);
             }
@@ -300,6 +336,26 @@ public class InvitationService(
                 Success = false,
                 ErrorMessage = "An unexpected error occurred"
             };
+        }
+    }
+
+    private void _markAllAssociatedListingsAsDeleted(Listing listing)
+    {
+        listing.DeletedAt = DateTime.UtcNow;
+
+        if (listing.Conversation != null)
+        {
+            listing.Conversation.DeletedAt = DateTime.UtcNow;
+        }
+
+        foreach (var agentListing in listing.AgentsListings)
+        {
+            agentListing.DeletedAt = DateTime.UtcNow;
+        }
+
+        foreach (var clientListing in listing.ClientsListings)
+        {
+            clientListing.DeletedAt = DateTime.UtcNow;
         }
     }
 

@@ -33,7 +33,7 @@ public partial class ClientInvitation
 
     public virtual ICollection<ClientInvitationsProperty> ClientInvitationsProperties { get; set; } = new List<ClientInvitationsProperty>();
 
-    public virtual User? CreatedUser { get; set; }
+    public virtual Client? CreatedUser { get; set; }
 
     public virtual Agent InvitedByNavigation { get; set; } = null!;
 }

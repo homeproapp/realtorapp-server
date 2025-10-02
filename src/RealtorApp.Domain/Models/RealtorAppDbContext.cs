@@ -17,6 +17,8 @@ public partial class RealtorAppDbContext : DbContext
 
     public virtual DbSet<Agent> Agents { get; set; }
 
+    public virtual DbSet<AgentsListing> AgentsListings { get; set; }
+
     public virtual DbSet<Attachment> Attachments { get; set; }
 
     public virtual DbSet<Client> Clients { get; set; }
@@ -25,7 +27,7 @@ public partial class RealtorAppDbContext : DbContext
 
     public virtual DbSet<ClientInvitationsProperty> ClientInvitationsProperties { get; set; }
 
-    public virtual DbSet<ClientsProperty> ClientsProperties { get; set; }
+    public virtual DbSet<ClientsListing> ClientsListings { get; set; }
 
     public virtual DbSet<ContactAttachment> ContactAttachments { get; set; }
 
@@ -39,7 +41,11 @@ public partial class RealtorAppDbContext : DbContext
 
     public virtual DbSet<Link> Links { get; set; }
 
+    public virtual DbSet<Listing> Listings { get; set; }
+
     public virtual DbSet<Message> Messages { get; set; }
+
+    public virtual DbSet<MessageRead> MessageReads { get; set; }
 
     public virtual DbSet<Notification> Notifications { get; set; }
 
@@ -93,6 +99,34 @@ public partial class RealtorAppDbContext : DbContext
                 .HasForeignKey<Agent>(d => d.UserId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("agents_user_id_fkey");
+        });
+
+        modelBuilder.Entity<AgentsListing>(entity =>
+        {
+            entity.HasKey(e => e.AgentListingId).HasName("agents_listings_pkey");
+
+            entity.ToTable("agents_listings");
+
+            entity.Property(e => e.AgentListingId).HasColumnName("agent_listing_id");
+            entity.Property(e => e.AgentId).HasColumnName("agent_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.ListingId).HasColumnName("listing_id");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Agent).WithMany(p => p.AgentsListings)
+                .HasForeignKey(d => d.AgentId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("agents_listings_agent_id_fkey");
+
+            entity.HasOne(d => d.Listing).WithMany(p => p.AgentsListings)
+                .HasForeignKey(d => d.ListingId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("agents_listings_listing_id_fkey");
         });
 
         modelBuilder.Entity<Attachment>(entity =>
@@ -226,74 +260,32 @@ public partial class RealtorAppDbContext : DbContext
                 .HasConstraintName("client_invitations_properties_property_invitation_id_fkey");
         });
 
-        modelBuilder.Entity<ClientsProperty>(entity =>
+        modelBuilder.Entity<ClientsListing>(entity =>
         {
-            entity.HasKey(e => e.ClientPropertyId).HasName("clients_properties_pkey");
+            entity.HasKey(e => e.ClientListingId).HasName("clients_listings_pkey");
 
-            entity.ToTable("clients_properties");
+            entity.ToTable("clients_listings");
 
-            entity.HasIndex(e => e.AgentId, "ix_cp_agent_active").HasFilter("(deleted_at IS NULL)");
-
-            entity.HasIndex(e => e.ClientId, "ix_cp_client_active").HasFilter("(deleted_at IS NULL)");
-
-            entity.HasIndex(e => e.PropertyId, "ix_cp_property_active").HasFilter("(deleted_at IS NULL)");
-
-            entity.HasIndex(e => new { e.PropertyId, e.ClientId }, "ux_cp_active_property_client")
-                .IsUnique()
-                .HasFilter("(deleted_at IS NULL)");
-
-            entity.Property(e => e.ClientPropertyId).HasColumnName("client_property_id");
-            entity.Property(e => e.AgentId).HasColumnName("agent_id");
-            entity.Property(e => e.Bathrooms).HasColumnName("bathrooms");
-            entity.Property(e => e.Bedrooms).HasColumnName("bedrooms");
+            entity.Property(e => e.ClientListingId).HasColumnName("client_listing_id");
             entity.Property(e => e.ClientId).HasColumnName("client_id");
-            entity.Property(e => e.ClosingAt).HasColumnName("closing_at");
-            entity.Property(e => e.ConversationId).HasColumnName("conversation_id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
-            entity.Property(e => e.CurrencyCode)
-                .HasMaxLength(3)
-                .IsFixedLength()
-                .HasColumnName("currency_code");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
-            entity.Property(e => e.ExternalId).HasColumnName("external_id");
-            entity.Property(e => e.ExternalSource).HasColumnName("external_source");
-            entity.Property(e => e.ListPrice)
-                .HasPrecision(12, 2)
-                .HasColumnName("list_price");
-            entity.Property(e => e.ListedAt).HasColumnName("listed_at");
-            entity.Property(e => e.PropertyId).HasColumnName("property_id");
-            entity.Property(e => e.PropertyType).HasColumnName("property_type");
-            entity.Property(e => e.SalePrice)
-                .HasPrecision(12, 2)
-                .HasColumnName("sale_price");
-            entity.Property(e => e.SquareFeet).HasColumnName("square_feet");
-            entity.Property(e => e.Title).HasColumnName("title");
+            entity.Property(e => e.ListingId).HasColumnName("listing_id");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
-            entity.Property(e => e.YearBuilt).HasColumnName("year_built");
 
-            entity.HasOne(d => d.Agent).WithMany(p => p.ClientsProperties)
-                .HasForeignKey(d => d.AgentId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("clients_properties_agent_id_fkey");
-
-            entity.HasOne(d => d.Client).WithMany(p => p.ClientsProperties)
+            entity.HasOne(d => d.Client).WithMany(p => p.ClientsListings)
                 .HasForeignKey(d => d.ClientId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("clients_properties_client_id_fkey");
+                .HasConstraintName("clients_listings_client_id_fkey");
 
-            entity.HasOne(d => d.Conversation).WithMany(p => p.ClientsProperties)
-                .HasForeignKey(d => d.ConversationId)
+            entity.HasOne(d => d.Listing).WithMany(p => p.ClientsListings)
+                .HasForeignKey(d => d.ListingId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("clients_properties_conversation_id_fkey");
-
-            entity.HasOne(d => d.Property).WithMany(p => p.ClientsProperties)
-                .HasForeignKey(d => d.PropertyId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("clients_properties_property_id_fkey");
+                .HasConstraintName("clients_listings_listing_id_fkey");
         });
 
         modelBuilder.Entity<ContactAttachment>(entity =>
@@ -327,18 +319,32 @@ public partial class RealtorAppDbContext : DbContext
 
         modelBuilder.Entity<Conversation>(entity =>
         {
-            entity.HasKey(e => e.ConversationId).HasName("conversations_pkey");
+            entity.HasKey(e => e.ListingId).HasName("conversations_pkey");
 
             entity.ToTable("conversations");
 
-            entity.Property(e => e.ConversationId).HasColumnName("conversation_id");
+            entity.Property(e => e.ListingId)
+                .ValueGeneratedNever()
+                .HasColumnName("listing_id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.ImageId).HasColumnName("image_id");
+            entity.Property(e => e.Nickname).HasColumnName("nickname");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Image).WithMany(p => p.Conversations)
+                .HasForeignKey(d => d.ImageId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("conversations_image_id_fkey");
+
+            entity.HasOne(d => d.Listing).WithOne(p => p.Conversation)
+                .HasForeignKey<Conversation>(d => d.ListingId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("conversations_listing_id_fkey");
         });
 
         modelBuilder.Entity<File>(entity =>
@@ -367,13 +373,13 @@ public partial class RealtorAppDbContext : DbContext
 
         modelBuilder.Entity<FileType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("file_types_pkey");
+            entity.HasKey(e => e.FileTypeId).HasName("file_types_pkey");
 
             entity.ToTable("file_types");
 
             entity.HasIndex(e => e.Name, "file_types_name_key").IsUnique();
 
-            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.FileTypeId).HasColumnName("file_type_id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
@@ -442,6 +448,48 @@ public partial class RealtorAppDbContext : DbContext
                 .HasConstraintName("links_task_id_fkey");
         });
 
+        modelBuilder.Entity<Listing>(entity =>
+        {
+            entity.HasKey(e => e.ListingId).HasName("listings_pkey");
+
+            entity.ToTable("listings");
+
+            entity.Property(e => e.ListingId).HasColumnName("listing_id");
+            entity.Property(e => e.Bathrooms).HasColumnName("bathrooms");
+            entity.Property(e => e.Bedrooms).HasColumnName("bedrooms");
+            entity.Property(e => e.ClosedAt).HasColumnName("closed_at");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.CurrencyCode)
+                .HasMaxLength(3)
+                .IsFixedLength()
+                .HasColumnName("currency_code");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.ExternalId).HasColumnName("external_id");
+            entity.Property(e => e.ExternalSource).HasColumnName("external_source");
+            entity.Property(e => e.ListPrice)
+                .HasPrecision(12, 2)
+                .HasColumnName("list_price");
+            entity.Property(e => e.ListedAt).HasColumnName("listed_at");
+            entity.Property(e => e.PropertyId).HasColumnName("property_id");
+            entity.Property(e => e.PropertyType).HasColumnName("property_type");
+            entity.Property(e => e.SalePrice)
+                .HasPrecision(12, 2)
+                .HasColumnName("sale_price");
+            entity.Property(e => e.SquareFeet).HasColumnName("square_feet");
+            entity.Property(e => e.Title).HasColumnName("title");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.YearBuilt).HasColumnName("year_built");
+
+            entity.HasOne(d => d.Property).WithMany(p => p.Listings)
+                .HasForeignKey(d => d.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("listings_property_id_fkey");
+        });
+
         modelBuilder.Entity<Message>(entity =>
         {
             entity.HasKey(e => e.MessageId).HasName("messages_pkey");
@@ -474,6 +522,32 @@ public partial class RealtorAppDbContext : DbContext
                 .HasForeignKey(d => d.SenderId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("messages_sender_id_fkey");
+        });
+
+        modelBuilder.Entity<MessageRead>(entity =>
+        {
+            entity.HasKey(e => e.MessageReadId).HasName("message_reads_pkey");
+
+            entity.ToTable("message_reads");
+
+            entity.Property(e => e.MessageReadId).HasColumnName("message_read_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.MessageId).HasColumnName("message_id");
+            entity.Property(e => e.ReaderId).HasColumnName("reader_id");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Message).WithMany(p => p.MessageReads)
+                .HasForeignKey(d => d.MessageId)
+                .HasConstraintName("message_reads_message_id_fkey");
+
+            entity.HasOne(d => d.Reader).WithMany(p => p.MessageReads)
+                .HasForeignKey(d => d.ReaderId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("message_reads_reader_id_fkey");
         });
 
         modelBuilder.Entity<Notification>(entity =>
@@ -603,7 +677,7 @@ public partial class RealtorAppDbContext : DbContext
 
             entity.HasIndex(e => e.FollowUpDate, "ix_tasks_follow_up_date");
 
-            entity.HasIndex(e => e.PropertyId, "ix_tasks_property_id");
+            entity.HasIndex(e => e.ListingId, "ix_tasks_listing_id");
 
             entity.Property(e => e.TaskId).HasColumnName("task_id");
             entity.Property(e => e.CreatedAt)
@@ -612,8 +686,8 @@ public partial class RealtorAppDbContext : DbContext
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
             entity.Property(e => e.EstimatedCost).HasColumnName("estimated_cost");
             entity.Property(e => e.FollowUpDate).HasColumnName("follow_up_date");
+            entity.Property(e => e.ListingId).HasColumnName("listing_id");
             entity.Property(e => e.Priority).HasColumnName("priority");
-            entity.Property(e => e.PropertyId).HasColumnName("property_id");
             entity.Property(e => e.Room).HasColumnName("room");
             entity.Property(e => e.Status).HasColumnName("status");
             entity.Property(e => e.Title).HasColumnName("title");
@@ -621,10 +695,10 @@ public partial class RealtorAppDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
 
-            entity.HasOne(d => d.Property).WithMany(p => p.Tasks)
-                .HasForeignKey(d => d.PropertyId)
+            entity.HasOne(d => d.Listing).WithMany(p => p.Tasks)
+                .HasForeignKey(d => d.ListingId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("tasks_property_id_fkey");
+                .HasConstraintName("tasks_listing_id_fkey");
         });
 
         modelBuilder.Entity<TaskAttachment>(entity =>
@@ -724,10 +798,16 @@ public partial class RealtorAppDbContext : DbContext
             entity.Property(e => e.FirstName).HasColumnName("first_name");
             entity.Property(e => e.LastName).HasColumnName("last_name");
             entity.Property(e => e.Phone).HasColumnName("phone");
+            entity.Property(e => e.ProfileImageId).HasColumnName("profile_image_id");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
             entity.Property(e => e.Uuid).HasColumnName("uuid");
+
+            entity.HasOne(d => d.ProfileImage).WithMany(p => p.Users)
+                .HasForeignKey(d => d.ProfileImageId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("users_profile_image_id_fkey");
         });
 
         OnModelCreatingPartial(modelBuilder);

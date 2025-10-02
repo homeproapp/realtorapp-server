@@ -10,9 +10,11 @@ public class TestDataManager : IDisposable
     private readonly List<long> _createdClientIds = new();
     private readonly List<long> _createdInvitationIds = new();
     private readonly List<long> _createdPropertyIds = new();
-    private readonly List<long> _createdConversationIds = new();
+    private readonly List<long> _createdListingIds = new();
     private readonly List<long> _createdMessageIds = new();
-    private readonly List<long> _createdClientPropertyIds = new();
+    private readonly List<long> _createdMessageReadIds = new();
+    private readonly List<long> _createdClientListingIds = new();
+    private readonly List<long> _createdAgentListingIds = new();
     private readonly List<long> _createdPropertyInvitationIds = new();
     private readonly List<long> _createdClientInvitationsPropertyIds = new();
 
@@ -116,32 +118,46 @@ public class TestDataManager : IDisposable
         return property;
     }
 
-    public Conversation CreateConversation(DateTime? createdAt = null, DateTime? updatedAt = null)
+    public Listing CreateListing(long propertyId, string? title = "Test Listing", DateTime? createdAt = null, DateTime? updatedAt = null)
     {
-        var conversationId = _nextUserId++;
+        var listingId = _nextUserId++;
+        var listing = new Listing
+        {
+            ListingId = listingId,
+            PropertyId = propertyId,
+            Title = title,
+            CreatedAt = createdAt ?? DateTime.UtcNow,
+            UpdatedAt = updatedAt ?? DateTime.UtcNow
+        };
+        _dbContext.Listings.Add(listing);
+        _dbContext.SaveChanges();
+        _createdListingIds.Add(listingId);
+        return listing;
+    }
+
+    public Conversation CreateConversation(long listingId, DateTime? createdAt = null, DateTime? updatedAt = null)
+    {
         var conversation = new Conversation
         {
-            ConversationId = conversationId,
+            ListingId = listingId,
             CreatedAt = createdAt ?? DateTime.UtcNow,
             UpdatedAt = updatedAt ?? DateTime.UtcNow
         };
         _dbContext.Conversations.Add(conversation);
         _dbContext.SaveChanges();
-        _createdConversationIds.Add(conversationId);
         return conversation;
     }
 
-    public Message CreateMessage(long conversationId, long senderId, string text, DateTime? createdAt = null, bool isRead = true)
+    public Message CreateMessage(long listingId, long senderId, string text, DateTime? createdAt = null)
     {
         var messageId = _nextUserId++;
         var now = createdAt ?? DateTime.UtcNow;
         var message = new Message
         {
             MessageId = messageId,
-            ConversationId = conversationId,
+            ConversationId = listingId,
             SenderId = senderId,
             MessageText = text,
-            IsRead = isRead,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -151,24 +167,56 @@ public class TestDataManager : IDisposable
         return message;
     }
 
-    public ClientsProperty CreateClientProperty(long propertyId, long clientId, long agentId, long conversationId, string title = "Test Property")
+    public MessageRead CreateMessageRead(long messageId, long readerId, DateTime? createdAt = null)
     {
-        var clientPropertyId = _nextUserId++;
-        var clientProperty = new ClientsProperty
+        var messageReadId = _nextUserId++;
+        var now = createdAt ?? DateTime.UtcNow;
+        var messageRead = new MessageRead
         {
-            ClientPropertyId = clientPropertyId,
-            PropertyId = propertyId,
+            MessageReadId = messageReadId,
+            MessageId = messageId,
+            ReaderId = readerId,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        _dbContext.MessageReads.Add(messageRead);
+        _dbContext.SaveChanges();
+        _createdMessageReadIds.Add(messageReadId);
+        return messageRead;
+    }
+
+    public ClientsListing CreateClientListing(long listingId, long clientId)
+    {
+        var clientListingId = _nextUserId++;
+        var clientListing = new ClientsListing
+        {
+            ClientListingId = clientListingId,
+            ListingId = listingId,
             ClientId = clientId,
-            AgentId = agentId,
-            ConversationId = conversationId,
-            Title = title,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        _dbContext.ClientsProperties.Add(clientProperty);
+        _dbContext.ClientsListings.Add(clientListing);
         _dbContext.SaveChanges();
-        _createdClientPropertyIds.Add(clientPropertyId);
-        return clientProperty;
+        _createdClientListingIds.Add(clientListingId);
+        return clientListing;
+    }
+
+    public AgentsListing CreateAgentListing(long listingId, long agentId)
+    {
+        var agentListingId = _nextUserId++;
+        var agentListing = new AgentsListing
+        {
+            AgentListingId = agentListingId,
+            ListingId = listingId,
+            AgentId = agentId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _dbContext.AgentsListings.Add(agentListing);
+        _dbContext.SaveChanges();
+        _createdAgentListingIds.Add(agentListingId);
+        return agentListing;
     }
 
     public PropertyInvitation CreatePropertyInvitation(string addressLine1, string city, string region,
@@ -214,14 +262,13 @@ public class TestDataManager : IDisposable
     {
         try
         {
-            // Delete in correct order to avoid foreign key constraints
+            if (_createdMessageReadIds.Any())
+            {
+                _dbContext.MessageReads.RemoveRange(_dbContext.MessageReads.Where(mr => _createdMessageReadIds.Contains(mr.MessageReadId)));
+            }
             if (_createdMessageIds.Any())
             {
                 _dbContext.Messages.RemoveRange(_dbContext.Messages.Where(m => _createdMessageIds.Contains(m.MessageId)));
-            }
-            if (_createdClientPropertyIds.Any())
-            {
-                _dbContext.ClientsProperties.RemoveRange(_dbContext.ClientsProperties.Where(cp => _createdClientPropertyIds.Contains(cp.ClientPropertyId)));
             }
             if (_createdClientInvitationsPropertyIds.Any())
             {
@@ -231,9 +278,20 @@ public class TestDataManager : IDisposable
             {
                 _dbContext.PropertyInvitations.RemoveRange(_dbContext.PropertyInvitations.Where(pi => _createdPropertyInvitationIds.Contains(pi.PropertyInvitationId)));
             }
-            if (_createdConversationIds.Any())
+            if (_createdListingIds.Any())
             {
-                _dbContext.Conversations.RemoveRange(_dbContext.Conversations.Where(c => _createdConversationIds.Contains(c.ConversationId)));
+                var listings = _dbContext.Listings.Where(l => _createdListingIds.Contains(l.ListingId)).ToList();
+                var conversationsToRemove = _dbContext.Conversations.Where(c => _createdListingIds.Contains(c.ListingId)).ToList();
+                _dbContext.Conversations.RemoveRange(conversationsToRemove);
+                _dbContext.Listings.RemoveRange(listings);
+            }
+            if (_createdClientListingIds.Any())
+            {
+                _dbContext.ClientsListings.RemoveRange(_dbContext.ClientsListings.Where(cl => _createdClientListingIds.Contains(cl.ClientListingId)));
+            }
+            if (_createdAgentListingIds.Any())
+            {
+                _dbContext.AgentsListings.RemoveRange(_dbContext.AgentsListings.Where(al => _createdAgentListingIds.Contains(al.AgentListingId)));
             }
             if (_createdPropertyIds.Any())
             {
@@ -260,7 +318,6 @@ public class TestDataManager : IDisposable
         }
         catch (Exception)
         {
-            // Ignore cleanup errors in tests
         }
     }
 }

@@ -3,13 +3,13 @@ using System.Collections.Generic;
 
 namespace RealtorApp.Domain.Models;
 
-public partial class Conversation
+public partial class AgentsListing
 {
+    public long AgentListingId { get; set; }
+
+    public long AgentId { get; set; }
+
     public long ListingId { get; set; }
-
-    public string? Nickname { get; set; }
-
-    public long? ImageId { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
@@ -17,9 +17,7 @@ public partial class Conversation
 
     public DateTime? DeletedAt { get; set; }
 
-    public virtual File? Image { get; set; }
+    public virtual Agent Agent { get; set; } = null!;
 
     public virtual Listing Listing { get; set; } = null!;
-
-    public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
 }

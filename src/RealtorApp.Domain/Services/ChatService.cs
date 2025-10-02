@@ -44,7 +44,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
 
             await _context.SaveChangesAsync();
 
-            await _context.Conversations.Where(i => i.ConversationId == command.ConversationId)
+            await _context.Conversations.Where(i => i.ListingId == command.ConversationId)
                 .ExecuteUpdateAsync(i => i.SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
 
             return message.ToSendMessageResponse();
@@ -55,6 +55,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
         }
     }
 
+    //TODO: marking message as read is using new table
     public async Task<MarkMessagesAsReadCommandResponse> MarkMessagesAsReadAsync(MarkMessagesAsReadCommand command, long userId)
     {
         try
@@ -144,32 +145,31 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
     {
         try
         {
-            var clientPropertiesQuery = await _context.ClientsProperties.Where(i => i.ClientId == clientId)
+            var clientListingsQuery = await _context.ClientsListings.Where(i => i.ClientId == clientId)
                 .Select(i => new
                 {
-                    i.AgentId,
-                    AgentFirstName = i.Agent.User.FirstName,
-                    AgentLastName = i.Agent.User.LastName,
-                    i.Conversation,
-                    LastMessage = i.Conversation.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault()
+                    AgentUsers = i.Listing.AgentsListings.Select(al => al.Agent.User),
+                    i.Listing.Conversation,
+                    LastMessage = i.Listing.Conversation!.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault()
                 }).ToListAsync();
 
-            var clientPropertiesGroupedByAgent = clientPropertiesQuery.GroupBy(i => i.AgentId);
-            var groupedAgentConvosCount = clientPropertiesGroupedByAgent.Count();
+            var clientListingsGroupedByAgents = clientListingsQuery.GroupBy(i => string.Join('|', i.AgentUsers
+                .OrderByDescending(i => i.UserId).Select(i => i.UserId)));
+            var groupedAgentConvosCount = clientListingsGroupedByAgents.Count();
             var conversations = new List<ClientConversationResponse>();
 
-            foreach (var group in clientPropertiesGroupedByAgent.Skip(query.Offset).Take(query.Limit))
+            foreach (var group in clientListingsGroupedByAgents.Skip(query.Offset).Take(query.Limit))
             {
-                var latestConversationGroup = group.OrderByDescending(i => i.Conversation.UpdatedAt).FirstOrDefault();
-                var unreadConvoCount = group.Where(i => i.Conversation.Messages?.Any(i => !i.IsRead ?? false) ?? false).Count();
+                var latestConversationGroup = group.OrderByDescending(i => i.Conversation?.UpdatedAt ?? DateTime.MinValue).FirstOrDefault();
+                var unreadConvoCount = group.Where(i => i.Conversation?.Messages?.Any(i => !i.IsRead ?? false) ?? false).Count();
 
                 if (latestConversationGroup == null || latestConversationGroup.Conversation == null) continue;
 
                 var conversation = new ClientConversationResponse()
                 {
-                    AgentName = latestConversationGroup.AgentFirstName + " " + latestConversationGroup.AgentLastName,
+                    AgentNames = [.. latestConversationGroup.AgentUsers.Select(i => i.FirstName + " " + i.LastName)],
                     ConversationUpdatedAt = latestConversationGroup.Conversation.UpdatedAt,
-                    ClickThroughConversationId = latestConversationGroup.Conversation.ConversationId,
+                    ClickThroughConversationId = latestConversationGroup.Conversation.ListingId,
                     LastMessage = latestConversationGroup.LastMessage?.ToMessageResponse(),
                     UnreadConversationCount = (byte)unreadConvoCount
                 };
@@ -196,11 +196,11 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
         try
         {
             var convosList = await _context.Conversations
-                .Where(i => i.ClientsProperties.Any(i => i.AgentId == agentId && i.DeletedAt == null))
+                .Where(i => i.Listing.AgentsListings.Any(i => i.AgentId == agentId && i.DeletedAt == null))
                 .Select(i => new
                 {
-                    ClientIds = i.ClientsProperties.Select(i => i.ClientId).OrderByDescending(i => i).ToList(),
-                    ClientData = i.ClientsProperties.Select(x => new { x.ClientId, ClientName = x.Client.User.FirstName + " " + x.Client.User.LastName }).ToList(),
+                    ClientIds = i.Listing.ClientsListings.Select(i => i.ClientId).OrderByDescending(i => i).ToList(),
+                    ClientData = i.Listing.ClientsListings.Select(x => new { x.ClientId, ClientName = x.Client.User.FirstName + " " + x.Client.User.LastName }).ToList(),
                     Conversation = i,
                     LastMessage = i.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault()
                 })
@@ -222,7 +222,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
                 var conversation = new AgentConversationResponse()
                 {
                     ConversationUpdatedAt = latestConversation.Conversation.UpdatedAt,
-                    ClickThroughConversationId = latestConversation.Conversation.ConversationId,
+                    ClickThroughConversationId = latestConversation.Conversation.ListingId,
                     Clients = group.FirstOrDefault()?.ClientData?
                         .Select(i => new ClientDetailsConversationResponse() { ClientId = i.ClientId, ClientName = i.ClientName })
                         .ToArray() ?? [],

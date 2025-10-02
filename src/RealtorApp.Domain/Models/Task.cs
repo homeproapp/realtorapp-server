@@ -7,7 +7,7 @@ public partial class Task
 {
     public long TaskId { get; set; }
 
-    public long PropertyId { get; set; }
+    public long ListingId { get; set; }
 
     public string? Title { get; set; }
 
@@ -31,7 +31,7 @@ public partial class Task
 
     public virtual ICollection<Link> Links { get; set; } = new List<Link>();
 
-    public virtual Property Property { get; set; } = null!;
+    public virtual Listing Listing { get; set; } = null!;
 
     public virtual ICollection<TaskAttachment> TaskAttachments { get; set; } = new List<TaskAttachment>();
 }

@@ -60,13 +60,22 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         Assert.Contains(properties, p => p.AddressLine1 == "123 Main St");
         Assert.Contains(properties, p => p.AddressLine1 == "456 Oak Ave");
 
-        // Verify ClientsProperties relationships created
-        var clientProperties = await DbContext.ClientsProperties
-            .Include(cp => cp.Property)
-            .Where(cp => cp.ClientId == client.UserId)
+        // Verify Listings and ClientsListings relationships created
+        var listings = await DbContext.Listings
+            .Include(l => l.Property)
+            .Where(l => properties.Select(p => p.PropertyId).Contains(l.PropertyId))
             .ToListAsync();
-        Assert.Equal(2, clientProperties.Count);
-        Assert.All(clientProperties, cp => Assert.Equal(agent.UserId, cp.AgentId));
+        Assert.Equal(2, listings.Count);
+
+        var clientListings = await DbContext.ClientsListings
+            .Where(cl => listings.Select(l => l.ListingId).Contains(cl.ListingId) && cl.ClientId == client.UserId)
+            .ToListAsync();
+        Assert.Equal(2, clientListings.Count);
+
+        var agentListings = await DbContext.AgentsListings
+            .Where(al => listings.Select(l => l.ListingId).Contains(al.ListingId) && al.AgentId == agent.UserId)
+            .ToListAsync();
+        Assert.Equal(2, agentListings.Count);
 
         // Verify invitation marked as accepted
         var updatedInvitation = await DbContext.ClientInvitations.FindAsync(invitation.ClientInvitationId);
@@ -125,14 +134,20 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         Assert.Equal(initialUserCount, finalUserCount);
         Assert.Equal(initialClientCount, finalClientCount);
 
-        // Verify new property and relationship created
+        // Verify new property, listing, and relationships created
         var newProperty = await DbContext.Properties.FirstOrDefaultAsync(p => p.AddressLine1 == "789 Pine Rd");
         Assert.NotNull(newProperty);
 
-        var clientProperty = await DbContext.ClientsProperties
-            .FirstOrDefaultAsync(cp => cp.ClientId == existingClient.UserId && cp.PropertyId == newProperty.PropertyId);
-        Assert.NotNull(clientProperty);
-        Assert.Equal(agent.UserId, clientProperty.AgentId);
+        var listing = await DbContext.Listings.FirstOrDefaultAsync(l => l.PropertyId == newProperty.PropertyId);
+        Assert.NotNull(listing);
+
+        var clientListing = await DbContext.ClientsListings
+            .FirstOrDefaultAsync(cl => cl.ClientId == existingClient.UserId && cl.ListingId == listing.ListingId);
+        Assert.NotNull(clientListing);
+
+        var agentListing = await DbContext.AgentsListings
+            .FirstOrDefaultAsync(al => al.AgentId == agent.UserId && al.ListingId == listing.ListingId);
+        Assert.NotNull(agentListing);
     }
 
     [Fact]
@@ -146,8 +161,10 @@ public class InvitationServiceAcceptInvitationTests : TestBase
 
         // Create existing property with agent1
         var existingProperty = CreateTestProperty("123 Existing St", "Toronto", "ON", "M5V3A8", "CA");
-        var existingConversation = CreateTestConversation();
-        var existingClientProperty = CreateTestClientProperty(existingProperty.PropertyId, existingClient.UserId, agent1.UserId, existingConversation.ConversationId);
+        var existingListing = TestDataManager.CreateListing(existingProperty.PropertyId);
+        var existingConversation = TestDataManager.CreateConversation(existingListing.ListingId);
+        var existingClientListing = TestDataManager.CreateClientListing(existingListing.ListingId, existingClient.UserId);
+        var existingAgentListing = TestDataManager.CreateAgentListing(existingListing.ListingId, agent1.UserId);
 
         // Create invitation from agent2 for the same property
         var propertyInvitation = CreateTestPropertyInvitation("123 Existing St", "Toronto", "ON", "M5V3A8", "CA", agent2.UserId);
@@ -178,18 +195,19 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         // Assert
         Assert.True(result.IsSuccess());
 
-        // Verify old relationship is soft deleted
-        var oldRelationship = await DbContext.ClientsProperties
+        // Verify old agent listing is soft deleted
+        var oldAgentListing = await DbContext.AgentsListings
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(cp => cp.ClientId == existingClient.UserId && cp.AgentId == agent1.UserId && cp.DeletedAt != null);
-        Assert.NotNull(oldRelationship);
+            .FirstOrDefaultAsync(al => al.ListingId == existingListing.ListingId && al.AgentId == agent1.UserId && al.DeletedAt != null);
+        Assert.NotNull(oldAgentListing);
 
-        // Verify new relationship created with agent2
-        var newRelationship = await DbContext.ClientsProperties
-            .Where(cp => cp.ClientId == existingClient.UserId && cp.AgentId == agent2.UserId && cp.DeletedAt == null)
+        // Verify new agent listing created with agent2
+        var newAgentListing = await DbContext.AgentsListings
+            .Include(al => al.Listing)
+            .Where(al => al.AgentId == agent2.UserId && al.DeletedAt == null)
             .FirstOrDefaultAsync();
-        Assert.NotNull(newRelationship);
-        Assert.Equal(existingProperty.PropertyId, newRelationship.PropertyId);
+        Assert.NotNull(newAgentListing);
+        Assert.Equal(existingProperty.PropertyId, newAgentListing.Listing.PropertyId);
     }
 
     [Fact]

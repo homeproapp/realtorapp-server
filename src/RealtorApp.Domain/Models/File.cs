@@ -19,7 +19,11 @@ public partial class File
 
     public DateTime? DeletedAt { get; set; }
 
+    public virtual ICollection<Conversation> Conversations { get; set; } = new List<Conversation>();
+
     public virtual FileType FileType { get; set; } = null!;
 
     public virtual ICollection<FilesTask> FilesTasks { get; set; } = new List<FilesTask>();
+
+    public virtual ICollection<User> Users { get; set; } = new List<User>();
 }

@@ -12,7 +12,7 @@ public class ClientConversationListQueryResponse : ResponseWithError
 
 public class ClientConversationResponse
 {
-    public required string AgentName { get; set; }
+    public required string[] AgentNames { get; set; }
     public required DateTime ConversationUpdatedAt { get; set; }
     public MessageResponse? LastMessage { get; set; }
     public long ClickThroughConversationId { get; set; }

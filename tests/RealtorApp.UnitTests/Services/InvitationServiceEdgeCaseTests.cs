@@ -201,8 +201,10 @@ public class InvitationServiceEdgeCaseTests : TestBase
 
         // Create existing property with different casing
         var existingProperty = CreateTestProperty("123 MAIN STREET", "Toronto", "ON", "M5V3A8", "CA");
-        var existingConversation = CreateTestConversation();
-        var existingClientProperty = CreateTestClientProperty(existingProperty.PropertyId, existingClient.UserId, agent.UserId, existingConversation.ConversationId);
+        var existingListing = TestDataManager.CreateListing(existingProperty.PropertyId);
+        var existingConversation = TestDataManager.CreateConversation(existingListing.ListingId);
+        var existingClientListing = TestDataManager.CreateClientListing(existingListing.ListingId, existingClient.UserId);
+        var existingAgentListing = TestDataManager.CreateAgentListing(existingListing.ListingId, agent.UserId);
 
         // Create invitation with lowercase address
         var propertyInvitation = CreateTestPropertyInvitation("123 main street", "Toronto", "ON", "M5V3A8", "CA", agent.UserId);
@@ -233,18 +235,19 @@ public class InvitationServiceEdgeCaseTests : TestBase
         // Assert
         Assert.True(result.IsSuccess());
 
-        // Verify old relationship is soft deleted
-        var oldRelationship = await DbContext.ClientsProperties
+        // Verify old agent listing is soft deleted
+        var oldAgentListing = await DbContext.AgentsListings
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(cp => cp.ClientId == existingClient.UserId && cp.AgentId == agent.UserId && cp.DeletedAt != null);
-        Assert.NotNull(oldRelationship);
+            .FirstOrDefaultAsync(al => al.ListingId == existingListing.ListingId && al.AgentId == agent.UserId && al.DeletedAt != null);
+        Assert.NotNull(oldAgentListing);
 
-        // Verify new relationship created with current agent
-        var newRelationship = await DbContext.ClientsProperties
-            .Where(cp => cp.ClientId == existingClient.UserId && cp.AgentId == agent.UserId && cp.DeletedAt == null)
+        // Verify new agent listing created with current agent
+        var newAgentListing = await DbContext.AgentsListings
+            .Include(al => al.Listing)
+            .Where(al =>  al.AgentId == agent.UserId && al.DeletedAt == null)
             .FirstOrDefaultAsync();
-        Assert.NotNull(newRelationship);
-        Assert.Equal(existingProperty.PropertyId, newRelationship.PropertyId);
+        Assert.NotNull(newAgentListing);
+        Assert.Equal(existingProperty.PropertyId, newAgentListing.Listing.PropertyId);
 
         // Verify only one property exists (no duplicate created)
         var allProperties = await DbContext.Properties.ToListAsync();

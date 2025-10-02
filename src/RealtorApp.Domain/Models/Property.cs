@@ -29,7 +29,5 @@ public partial class Property
 
     public DateTime? DeletedAt { get; set; }
 
-    public virtual ICollection<ClientsProperty> ClientsProperties { get; set; } = new List<ClientsProperty>();
-
-    public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
+    public virtual ICollection<Listing> Listings { get; set; } = new List<Listing>();
 }

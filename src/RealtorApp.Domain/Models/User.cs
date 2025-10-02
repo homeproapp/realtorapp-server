@@ -17,6 +17,8 @@ public partial class User
 
     public string? Phone { get; set; }
 
+    public long? ProfileImageId { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
@@ -27,11 +29,13 @@ public partial class User
 
     public virtual Client? Client { get; set; }
 
-    public virtual ICollection<ClientInvitation> ClientInvitations { get; set; } = new List<ClientInvitation>();
+    public virtual ICollection<MessageRead> MessageReads { get; set; } = new List<MessageRead>();
 
     public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
 
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+
+    public virtual File? ProfileImage { get; set; }
 
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

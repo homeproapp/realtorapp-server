@@ -112,30 +112,19 @@ public abstract class TestBase : IDisposable
         return TestDataManager.CreateProperty(addressLine1, city, region, postalCode, countryCode);
     }
 
-    protected ClientsProperty CreateTestClientProperty(long propertyId, long clientId, long agentId, long conversationId)
-    {
-        return TestDataManager.CreateClientProperty(propertyId, clientId, agentId, conversationId);
-    }
-
     protected PropertyInvitation CreateTestPropertyInvitation(string addressLine1, string city, string region, string postalCode, string countryCode, long invitedBy)
     {
         return TestDataManager.CreatePropertyInvitation(addressLine1, city, region, postalCode, countryCode, invitedBy);
     }
 
-    protected Conversation CreateTestConversation()
-    {
-        return TestDataManager.CreateConversation();
-    }
-
     private void CleanupAllTestData()
     {
-        // Delete in correct order to avoid foreign key constraints
-        // This is safer than TRUNCATE for avoiding deadlocks
         DbContext.Database.ExecuteSqlRaw(@"
             DELETE FROM contact_attachments;
             DELETE FROM task_attachments;
             DELETE FROM attachments;
             DELETE FROM files_tasks;
+            DELETE FROM message_reads;
             DELETE FROM messages;
             DELETE FROM notifications;
             DELETE FROM tasks;
@@ -143,10 +132,12 @@ public abstract class TestBase : IDisposable
             DELETE FROM links;
             DELETE FROM third_party_contacts;
             DELETE FROM client_invitations_properties;
-            DELETE FROM clients_properties;
+            DELETE FROM clients_listings;
+            DELETE FROM agents_listings;
             DELETE FROM property_invitations;
             DELETE FROM client_invitations;
             DELETE FROM conversations;
+            DELETE FROM listings;
             DELETE FROM properties;
             DELETE FROM refresh_tokens;
             DELETE FROM clients;

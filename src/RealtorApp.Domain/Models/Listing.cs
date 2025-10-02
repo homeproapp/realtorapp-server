@@ -3,17 +3,11 @@ using System.Collections.Generic;
 
 namespace RealtorApp.Domain.Models;
 
-public partial class ClientsProperty
+public partial class Listing
 {
-    public long ClientPropertyId { get; set; }
+    public long ListingId { get; set; }
 
     public long PropertyId { get; set; }
-
-    public long ClientId { get; set; }
-
-    public long AgentId { get; set; }
-
-    public long ConversationId { get; set; }
 
     public string? ExternalId { get; set; }
 
@@ -39,7 +33,7 @@ public partial class ClientsProperty
 
     public DateTime? ListedAt { get; set; }
 
-    public DateTime? ClosingAt { get; set; }
+    public DateTime? ClosedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
@@ -47,11 +41,13 @@ public partial class ClientsProperty
 
     public DateTime? DeletedAt { get; set; }
 
-    public virtual Agent Agent { get; set; } = null!;
+    public virtual ICollection<AgentsListing> AgentsListings { get; set; } = new List<AgentsListing>();
 
-    public virtual Client Client { get; set; } = null!;
+    public virtual ICollection<ClientsListing> ClientsListings { get; set; } = new List<ClientsListing>();
 
-    public virtual Conversation Conversation { get; set; } = null!;
+    public virtual Conversation? Conversation { get; set; }
 
     public virtual Property Property { get; set; } = null!;
+
+    public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
 }
