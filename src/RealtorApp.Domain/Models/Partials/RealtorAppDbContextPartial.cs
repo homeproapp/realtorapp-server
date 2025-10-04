@@ -10,6 +10,8 @@ public partial class RealtorAppDbContext
         modelBuilder.Entity<Agent>().HasQueryFilter(e => e.DeletedAt == null);
         modelBuilder.Entity<Client>().HasQueryFilter(e => e.DeletedAt == null);
         modelBuilder.Entity<ClientInvitation>().HasQueryFilter(e => e.DeletedAt == null);
+        modelBuilder.Entity<ClientsListing>().HasQueryFilter(e => e.DeletedAt == null);
+        modelBuilder.Entity<AgentsListing>().HasQueryFilter(e => e.DeletedAt == null);
         modelBuilder.Entity<Listing>().HasQueryFilter(e => e.DeletedAt == null);
         modelBuilder.Entity<Conversation>().HasQueryFilter(e => e.DeletedAt == null);
         modelBuilder.Entity<File>().HasQueryFilter(e => e.DeletedAt == null);

@@ -17,6 +17,7 @@ public class TestDataManager : IDisposable
     private readonly List<long> _createdAgentListingIds = new();
     private readonly List<long> _createdPropertyInvitationIds = new();
     private readonly List<long> _createdClientInvitationsPropertyIds = new();
+    private readonly List<long> _createdTaskIds = new();
 
     private long _nextUserId = new Random().Next(999, 999999); // Start from a unique base
 
@@ -258,10 +259,32 @@ public class TestDataManager : IDisposable
         return clientInvitationsProperty;
     }
 
+    public RealtorApp.Domain.Models.Task CreateTask(long listingId, string? title = "Test Task", short? status = null, DateTime? updatedAt = null)
+    {
+        var taskId = _nextUserId++;
+        var task = new RealtorApp.Domain.Models.Task
+        {
+            TaskId = taskId,
+            ListingId = listingId,
+            Title = title,
+            Status = status,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = updatedAt ?? DateTime.UtcNow
+        };
+        _dbContext.Tasks.Add(task);
+        _dbContext.SaveChanges();
+        _createdTaskIds.Add(taskId);
+        return task;
+    }
+
     public void Dispose()
     {
         try
         {
+            if (_createdTaskIds.Any())
+            {
+                _dbContext.Tasks.RemoveRange(_dbContext.Tasks.Where(t => _createdTaskIds.Contains(t.TaskId)));
+            }
             if (_createdMessageReadIds.Any())
             {
                 _dbContext.MessageReads.RemoveRange(_dbContext.MessageReads.Where(mr => _createdMessageReadIds.Contains(mr.MessageReadId)));
