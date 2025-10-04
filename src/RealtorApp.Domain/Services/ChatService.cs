@@ -127,7 +127,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
 
             var messageResponses = messages.Select(m => m.ToMessageResponse()).ToArray();
             var nextBefore = hasMore && messages.Count > 0 ? messages.Last().CreatedAt : (DateTime?)null;
-
+            
             return new MessageHistoryQueryResponse
             {
                 Messages = messageResponses,

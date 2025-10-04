@@ -73,9 +73,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result);
+        Assert.Single(result.ClientGroupedTasksDetails);
 
-        var group = result[0];
+        var group = result.ClientGroupedTasksDetails[0];
         Assert.Equal(2, group.Clients.Length);
         Assert.Contains(group.Clients, c => c.FirstName == "Client" && c.LastName == "One");
         Assert.Contains(group.Clients, c => c.FirstName == "Client" && c.LastName == "Two");
@@ -89,9 +89,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result);
+        Assert.Single(result.ClientGroupedTasksDetails);
 
-        var group = result[0];
+        var group = result.ClientGroupedTasksDetails[0];
         Assert.Equal(2, group.TotalListings);
         Assert.Equal(2, group.Clients.Length);
         Assert.Contains(group.Clients, c => c.FirstName == "Client" && c.LastName == "One");
@@ -106,7 +106,7 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Equal(2, result.Count);
+        Assert.Equal(2, result.ClientGroupedTasksDetails.Count);
     }
 
     [Fact]
@@ -117,9 +117,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result);
+        Assert.Single(result.ClientGroupedTasksDetails);
 
-        var group = result[0];
+        var group = result.ClientGroupedTasksDetails[0];
         Assert.Equal(2, group.TaskStatusCounts[TaskStatus.NotStarted]);
         Assert.Equal(1, group.TaskStatusCounts[TaskStatus.InProgress]);
         Assert.Equal(1, group.TaskStatusCounts[TaskStatus.Completed]);
@@ -133,9 +133,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result);
+        Assert.Single(result.ClientGroupedTasksDetails);
 
-        var group = result[0];
+        var group = result.ClientGroupedTasksDetails[0];
         Assert.Empty(group.TaskStatusCounts);
         Assert.True(group.ClickThroughListingId > 0);
     }
@@ -148,9 +148,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result);
+        Assert.Single(result.ClientGroupedTasksDetails);
 
-        var group = result[0];
+        var group = result.ClientGroupedTasksDetails[0];
         Assert.True(group.ClickThroughListingId > 0);
     }
 
@@ -162,9 +162,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result);
+        Assert.Single(result.ClientGroupedTasksDetails);
 
-        var group = result[0];
+        var group = result.ClientGroupedTasksDetails[0];
         Assert.Equal(2, group.TaskStatusCounts[TaskStatus.InProgress]);
         Assert.False(group.TaskStatusCounts.ContainsKey((TaskStatus)0));
     }
@@ -177,9 +177,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result);
+        Assert.Single(result.ClientGroupedTasksDetails);
 
-        var group = result[0];
+        var group = result.ClientGroupedTasksDetails[0];
         Assert.Equal(3, group.TotalListings);
     }
 
@@ -192,7 +192,7 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agent.UserId);
 
         Assert.NotNull(result);
-        Assert.Empty(result);
+        Assert.Empty(result.ClientGroupedTasksDetails);
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result);
+        Assert.Single(result.ClientGroupedTasksDetails);
     }
 
     [Fact]
@@ -214,9 +214,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result);
+        Assert.Single(result.ClientGroupedTasksDetails);
 
-        var group = result[0];
+        var group = result.ClientGroupedTasksDetails[0];
         Assert.Equal(3, group.TaskStatusCounts[TaskStatus.NotStarted]);
         Assert.Equal(2, group.TaskStatusCounts[TaskStatus.Completed]);
         Assert.Equal(2, group.TotalListings);

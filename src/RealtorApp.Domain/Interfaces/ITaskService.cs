@@ -6,5 +6,5 @@ namespace RealtorApp.Domain.Interfaces;
 
 public interface ITaskService
 {
-    Task<List<ClientGroupedTasksListQueryResponse>> GetClientGroupedTasksListAsync(ClientGroupedTasksListQuery query, long agentId);
+    Task<ClientGroupedTasksListQueryResponse> GetClientGroupedTasksListAsync(ClientGroupedTasksListQuery query, long agentId);
 }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealtorApp.Contracts.Queries.User.Responses;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Models;
 
@@ -59,5 +60,25 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
         return await _dbContext.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Email == email);
+    }
+
+    public async Task<UserProfileQueryResponse?> GetUserProfileAsync(long userId)
+    {
+        var user = await _dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.UserId == userId)
+            .Select(u => new UserProfileQueryResponse
+            {
+                UserId = u.UserId,
+                Email = u.Email,
+                FirstName = u.FirstName,
+                LastName = u.LastName,
+                Phone = u.Phone,
+                ProfileImageId = u.ProfileImageId,
+                Role = u.Agent != null ? "agent" : u.Client != null ? "client" : "unknown"
+            })
+            .FirstOrDefaultAsync();
+
+        return user;
     }
 }

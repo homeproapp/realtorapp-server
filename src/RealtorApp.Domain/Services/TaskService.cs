@@ -12,7 +12,7 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
 {
     private readonly RealtorAppDbContext _dbContext = dbContext;
 
-    public async Task<List<ClientGroupedTasksListQueryResponse>> GetClientGroupedTasksListAsync(ClientGroupedTasksListQuery query, long agentId)
+    public async Task<ClientGroupedTasksListQueryResponse> GetClientGroupedTasksListAsync(ClientGroupedTasksListQuery query, long agentId)
     {
         var clientsList = await _dbContext.AgentsListings
             .Where(i => i.AgentId == agentId)
@@ -26,10 +26,13 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
                 MaxTaskUpdatedAt = i.Listing.Tasks.Any() ? i.Listing.Tasks.Max(t => t.UpdatedAt) : DateTime.MinValue
             })
             .ToListAsync();
-        
-        var clientsGroupedTasks = clientsList.GroupBy(i => string.Join("|", i.ClientIds.OrderByDescending(x => x)))
-            .Skip(query.Offset).Take(query.Limit);
-        var response = new List<ClientGroupedTasksListQueryResponse>();
+
+        var allGroups = clientsList.GroupBy(i => string.Join("|", i.ClientIds.OrderByDescending(x => x))).ToList();
+        var totalCount = allGroups.Count;
+
+        var clientsGroupedTasks = allGroups.Skip(query.Offset).Take(query.Limit);
+        var detailItems = new List<ClientGroupedTasksDetailItem>();
+
         foreach (var group in clientsGroupedTasks)
         {
             var latestListing = group.OrderByDescending(g => g.MaxTaskUpdatedAt).FirstOrDefault() ?? group.First();
@@ -55,7 +58,7 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
                 }
             }
 
-            var clientsGroupedTask = new ClientGroupedTasksListQueryResponse
+            var clientsGroupedTask = new ClientGroupedTasksDetailItem
             {
                 ClickThroughListingId = latestListing.ListingId,
                 Clients = [.. latestListing.Clients.Select(c => new ClientListItemResponse
@@ -69,9 +72,14 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
                 TaskStatusCounts = statusCounts
             };
 
-            response.Add(clientsGroupedTask);
+            detailItems.Add(clientsGroupedTask);
         }
 
-        return response;
+        return new ClientGroupedTasksListQueryResponse
+        {
+            ClientGroupedTasksDetails = detailItems,
+            TotalCount = totalCount,
+            HasMore = query.Offset + query.Limit < totalCount
+        };
     }
 }
