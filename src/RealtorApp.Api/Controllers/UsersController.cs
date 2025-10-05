@@ -8,7 +8,7 @@ namespace RealtorApp.Api.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/Users/v1")]
-public class UsersController(IUserService userService) : BaseController
+public class UsersController(IUserService userService) : RealtorApiBaseController
 {
     private readonly IUserService _userService = userService;
 

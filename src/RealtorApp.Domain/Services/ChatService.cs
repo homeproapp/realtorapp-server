@@ -125,12 +125,12 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
                 messages.RemoveAt(messages.Count - 1); // Remove the extra message
             }
 
-            var messageResponses = messages.Select(m => m.ToMessageResponse()).ToArray();
+            var messageResponses = messages.Select(m => m.ToMessageResponse()).GroupMessagesByDate();
             var nextBefore = hasMore && messages.Count > 0 ? messages.Last().CreatedAt : (DateTime?)null;
             
             return new MessageHistoryQueryResponse
             {
-                Messages = messageResponses,
+                MessageGroups = messageResponses,
                 HasMore = hasMore,
                 NextBefore = nextBefore
             };

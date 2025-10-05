@@ -5,9 +5,15 @@ namespace RealtorApp.Contracts.Queries.Chat.Responses;
 
 public class MessageHistoryQueryResponse : ResponseWithError
 {
-    public MessageResponse[] Messages { get; set; } = [];
+    public List<MessageGroupByDate> MessageGroups { get; set; } = [];
     public bool HasMore { get; set; }
     public DateTime? NextBefore { get; set; }
+}
+
+public class MessageGroupByDate
+{
+    public DateTime Date { get; set; }
+    public List<MessageResponse> Messages { get; set; } = [];
 }
 
 public class MessageResponse
