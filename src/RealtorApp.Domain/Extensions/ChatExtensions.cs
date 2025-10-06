@@ -15,7 +15,6 @@ public static class ChatExtensions
             ConversationId = command.ConversationId,
             SenderId = command.SenderId,
             MessageText = command.MessageText,
-            IsRead = false
         };
     }
 
@@ -43,7 +42,6 @@ public static class ChatExtensions
             ConversationId = message.ConversationId,
             SenderId = message.SenderId,
             MessageText = message.MessageText,
-            IsRead = message.IsRead,
             CreatedAt = message.CreatedAt,
             UpdatedAt = message.UpdatedAt,
             AttachmentResponses = message.Attachments?

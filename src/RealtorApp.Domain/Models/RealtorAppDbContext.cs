@@ -64,7 +64,6 @@ public partial class RealtorAppDbContext : DbContext
     public virtual DbSet<ThirdPartyContact> ThirdPartyContacts { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -433,7 +432,9 @@ public partial class RealtorAppDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
-            entity.Property(e => e.IsReferral).HasColumnName("is_referral");
+            entity.Property(e => e.IsReferral)
+                .HasDefaultValue(false)
+                .HasColumnName("is_referral");
             entity.Property(e => e.Name).HasColumnName("name");
             entity.Property(e => e.TaskId).HasColumnName("task_id");
             entity.Property(e => e.TimesUsed).HasColumnName("times_used");
@@ -504,9 +505,6 @@ public partial class RealtorAppDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
-            entity.Property(e => e.IsRead)
-                .HasDefaultValue(false)
-                .HasColumnName("is_read");
             entity.Property(e => e.MessageText).HasColumnName("message_text");
             entity.Property(e => e.SenderId).HasColumnName("sender_id");
             entity.Property(e => e.UpdatedAt)
@@ -684,6 +682,7 @@ public partial class RealtorAppDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.EstimatedCost).HasColumnName("estimated_cost");
             entity.Property(e => e.FollowUpDate).HasColumnName("follow_up_date");
             entity.Property(e => e.ListingId).HasColumnName("listing_id");

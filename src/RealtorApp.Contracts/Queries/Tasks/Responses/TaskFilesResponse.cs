@@ -5,11 +5,6 @@ namespace RealtorApp.Contracts.Queries.Tasks.Responses;
 
 public class TaskFilesResponse
 {
-    public long TaskFileId { get; set; }
-
-    public string FileName { get; set; } = string.Empty;
-
-    public FileTypes FileType { get; set; }
-
-    public string FileUrl { get; set; } = string.Empty;
+    public long FileId { get; set; }
+    public required string FileTypeName { get; set; }
 }

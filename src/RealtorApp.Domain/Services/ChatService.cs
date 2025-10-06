@@ -56,39 +56,38 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
     }
 
     //TODO: marking message as read is using new table
-    public async Task<MarkMessagesAsReadCommandResponse> MarkMessagesAsReadAsync(MarkMessagesAsReadCommand command, long userId)
-    {
-        try
-        {
-            var messages = await _context.Messages
-                .Where(m => command.MessageIds.Contains(m.MessageId))
-                .ToListAsync();
+    // public async Task<MarkMessagesAsReadCommandResponse> MarkMessagesAsReadAsync(MarkMessagesAsReadCommand command, long userId)
+    // {
+    //     try
+    //     {
+    //         var messages = await _context.Messages
+    //             .Where(m => command.MessageIds.Contains(m.MessageId))
+    //             .ToListAsync();
 
-            var validMessageIds = new List<long>();
+    //         var validMessageIds = new List<long>();
 
-            foreach (var message in messages)
-            {
-                if (await _userAuthService.IsConversationParticipant(message.ConversationId, userId))
-                {
-                    message.IsRead = true;
-                    message.UpdatedAt = DateTime.UtcNow;
-                    validMessageIds.Add(message.MessageId);
-                }
-            }
+    //         foreach (var message in messages)
+    //         {
+    //             if (await _userAuthService.IsConversationParticipant(message.ConversationId, userId))
+    //             {
+    //                 message.UpdatedAt = DateTime.UtcNow;
+    //                 validMessageIds.Add(message.MessageId);
+    //             }
+    //         }
 
-            await _context.SaveChangesAsync();
+    //         await _context.SaveChangesAsync();
 
-            return new MarkMessagesAsReadCommandResponse
-            {
-                MarkedMessageIds = validMessageIds.ToArray(),
-                TotalMarkedCount = validMessageIds.Count
-            };
-        }
-        catch (Exception)
-        {
-            return new MarkMessagesAsReadCommandResponse { ErrorMessage = "Failed to mark messages as read" };
-        }
-    }
+    //         return new MarkMessagesAsReadCommandResponse
+    //         {
+    //             MarkedMessageIds = validMessageIds.ToArray(),
+    //             TotalMarkedCount = validMessageIds.Count
+    //         };
+    //     }
+    //     catch (Exception)
+    //     {
+    //         return new MarkMessagesAsReadCommandResponse { ErrorMessage = "Failed to mark messages as read" };
+    //     }
+    // }
 
     public async Task<MessageHistoryQueryResponse> GetMessageHistoryAsync(MessageHistoryQuery query, long userId, long conversationId)
     {
@@ -161,7 +160,8 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
             foreach (var group in clientListingsGroupedByAgents.Skip(query.Offset).Take(query.Limit))
             {
                 var latestConversationGroup = group.OrderByDescending(i => i.Conversation?.UpdatedAt ?? DateTime.MinValue).FirstOrDefault();
-                var unreadConvoCount = group.Where(i => i.Conversation?.Messages?.Any(i => !i.IsRead ?? false) ?? false).Count();
+                var unreadConvoCount = 0;
+                // group.Where(i => i.Conversation?.Messages?.Any(i => i.MessageReads.Where(i => i.Del).Count != 0) ?? false).Count();
 
                 if (latestConversationGroup == null || latestConversationGroup.Conversation == null) continue;
 
@@ -215,7 +215,8 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
             foreach (var group in convosGrouped.Skip(query.Offset).Take(query.Limit))
             {
                 var latestConversation = group.OrderByDescending(i => i.Conversation.UpdatedAt).FirstOrDefault();
-                var unreadConvoCount = group.Where(i => i.Conversation.Messages?.Any(i => !i.IsRead ?? false) ?? false).Count();
+                var unreadConvoCount = 0;
+                // group.Where(i => i.Conversation.Messages?.Any(i => !i.IsRead ?? false) ?? false).Count();
 
                 if (latestConversation == null || latestConversation.Conversation == null) continue;
 

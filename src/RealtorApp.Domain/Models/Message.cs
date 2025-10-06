@@ -13,8 +13,6 @@ public partial class Message
 
     public string MessageText { get; set; } = null!;
 
-    public bool? IsRead { get; set; }
-
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

@@ -18,6 +18,7 @@ public class TestDataManager : IDisposable
     private readonly List<long> _createdPropertyInvitationIds = new();
     private readonly List<long> _createdClientInvitationsPropertyIds = new();
     private readonly List<long> _createdTaskIds = new();
+    private readonly List<long> _createdLinkIds = new();
 
     private long _nextUserId = new Random().Next(999, 999999); // Start from a unique base
 
@@ -277,10 +278,32 @@ public class TestDataManager : IDisposable
         return task;
     }
 
+    public Link CreateLink(long taskId, string name = "Test Link", string url = "https://example.com")
+    {
+        var linkId = _nextUserId++;
+        var link = new Link
+        {
+            LinkId = linkId,
+            TaskId = taskId,
+            Name = name,
+            Url = url,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _dbContext.Links.Add(link);
+        _dbContext.SaveChanges();
+        _createdLinkIds.Add(linkId);
+        return link;
+    }
+
     public void Dispose()
     {
         try
         {
+            if (_createdLinkIds.Any())
+            {
+                _dbContext.Links.RemoveRange(_dbContext.Links.Where(l => _createdLinkIds.Contains(l.LinkId)));
+            }
             if (_createdTaskIds.Any())
             {
                 _dbContext.Tasks.RemoveRange(_dbContext.Tasks.Where(t => _createdTaskIds.Contains(t.TaskId)));

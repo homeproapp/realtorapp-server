@@ -1,9 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using RealtorApp.Contracts.Commands.Tasks.Requests;
+using RealtorApp.Contracts.Commands.Tasks.Responses;
 using RealtorApp.Contracts.Queries;
 using RealtorApp.Contracts.Queries.Tasks.Requests;
 using RealtorApp.Contracts.Queries.Tasks.Responses;
+using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Models;
+using Task = RealtorApp.Domain.Models.Task;
 using TaskStatus = RealtorApp.Contracts.Enums.TaskStatus;
 
 namespace RealtorApp.Domain.Services;
@@ -81,5 +85,129 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
             TotalCount = totalCount,
             HasMore = query.Offset + query.Limit < totalCount
         };
+    }
+
+    public async Task<ListingTasksQueryResponse[]> GetListingTasksAsync(ListingTasksQuery query, long listingId)
+    {
+        var tasks = await _dbContext.Tasks
+            .Where(t => t.ListingId == listingId)
+            .AsNoTracking()
+            .Select(t => new ListingTasksQueryResponse
+            {
+                TaskId = t.TaskId,
+                Title = t.Title,
+                Room = t.Room,
+                Priority = t.Priority,
+                Status = t.Status,
+                FollowUpDate = t.FollowUpDate,
+                EstimatedCost = t.EstimatedCost,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                TaskFiles = t.FilesTasks.Select(tf => new TaskFilesResponse
+                {
+                    FileId = tf.FileId,
+                    FileTypeName = tf.File.FileType.Name,
+                }).ToArray(),
+                Links = t.Links.Select(l => new LinkResponse
+                {
+                    LinkId = l.LinkId,
+                    Url = l.Url,
+                    Name = l.Name,
+                }).ToArray()
+            })
+            .ToArrayAsync();
+
+        return tasks ?? [];
+    }
+
+    public async Task<AddOrUpdateTaskCommandResponse> AddOrUpdateTaskAsync(AddOrUpdateTaskCommand command, long listingId)
+    {
+        if (command.TaskId.HasValue)
+        {
+            return await _updateExistingTaskAsync(command);
+        }
+        else
+        {
+            return await _addNewTaskAsync(command, listingId);
+        }
+    }
+
+    private async Task<AddOrUpdateTaskCommandResponse> _updateExistingTaskAsync(AddOrUpdateTaskCommand command)
+    {
+        var existingTask = await _dbContext.Tasks
+            .Include(t => t.Links)
+            .FirstOrDefaultAsync(t => t.TaskId == command.TaskId);
+
+        if (existingTask == null)
+        {
+            return new() { ErrorMessage = "Unable to find data" };
+        }
+
+        existingTask.Title = command.TitleString;
+        existingTask.Room = command.Room;
+        existingTask.Description = command.Description;
+        existingTask.Priority = (short)command.Priority;
+
+        var addedLinks = new List<Link>();
+
+        foreach (var linkCommand in command.Links)
+        {
+            if (linkCommand.IsMarkedForDeletion)
+            {
+                var linkToRemove = existingTask.Links.FirstOrDefault(l => l.LinkId == linkCommand.LinkId);
+                if (linkToRemove != null)
+                {
+                    linkToRemove.DeletedAt = DateTime.UtcNow;
+                }
+            }
+            else
+            {
+                var newLink = new Link
+                {
+                    Name = linkCommand.LinkText,
+                    Url = linkCommand.LinkUrl,
+                    TaskId = existingTask.TaskId
+                };
+                existingTask.Links.Add(newLink);
+                addedLinks.Add(newLink);
+            }
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        return existingTask.FromExistingTaskToTaskCommandResponse(addedLinks);
+    }
+    private async Task<AddOrUpdateTaskCommandResponse> _addNewTaskAsync(AddOrUpdateTaskCommand command, long listingId)
+    {
+        var newTask = new Task
+        {
+            Title = command.TitleString,
+            ListingId = listingId,
+            Room = command.Room,
+            Description = command.Description,
+            Priority = (short)command.Priority,
+            Status = (short)TaskStatus.NotStarted,
+            Links = []
+        };
+
+        if (command.Links != null)
+        {
+            foreach (var link in command.Links)
+            {
+                var newLink = new Link
+                {
+                    Name = link.LinkText,
+                    Url = link.LinkUrl,
+                    TaskId = newTask.TaskId
+                };
+
+                newTask.Links.Add(newLink);
+            }
+        }
+
+        await _dbContext.Tasks.AddAsync(newTask);
+        await _dbContext.SaveChangesAsync();
+
+        return newTask.FromNewTaskToTaskCommandResponse();
     }
 }

@@ -7,12 +7,12 @@ namespace RealtorApp.Api.Controllers;
 
 [Authorize]
 [ApiController]
-[Route("api/Users/v1")]
+[Route("api/[controller]")]
 public class UsersController(IUserService userService) : RealtorApiBaseController
 {
     private readonly IUserService _userService = userService;
 
-    [HttpGet("me")]
+    [HttpGet("v1/me")]
     public async Task<ActionResult<UserProfileQueryResponse>> GetMyProfile()
     {
         var result = await _userService.GetUserProfileAsync(RequiredCurrentUserId);

@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using RealtorApp.Contracts.Commands.Tasks.Requests;
+using RealtorApp.Contracts.Enums;
 using RealtorApp.Contracts.Queries.Tasks.Requests;
 using RealtorApp.Domain.Models;
 using RealtorApp.Domain.Services;
@@ -44,9 +46,9 @@ public class TaskServiceTests : IDisposable
             DELETE FROM message_reads;
             DELETE FROM messages;
             DELETE FROM notifications;
+            DELETE FROM links;
             DELETE FROM tasks;
             DELETE FROM files;
-            DELETE FROM links;
             DELETE FROM third_party_contacts;
             DELETE FROM client_invitations_properties;
             DELETE FROM clients_listings;
@@ -477,6 +479,444 @@ public class TaskServiceTests : IDisposable
         _testData.CreateTask(listing2.ListingId, "Task 5", (short)TaskStatus.Completed);
 
         return await System.Threading.Tasks.Task.FromResult(agent.UserId);
+    }
+
+    #endregion
+
+    #region GetListingTasksAsync Tests
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetListingTasksAsync_WithTasksInListing_ReturnsAllTasks()
+    {
+        var listingId = await SetupTestData_ListingWithMultipleTasks();
+
+        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listingId);
+
+        Assert.NotNull(result);
+        Assert.Equal(3, result.Length);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetListingTasksAsync_WithTasksWithLinks_ReturnsLinksCorrectly()
+    {
+        var listingId = await SetupTestData_ListingWithTasksAndLinks();
+
+        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listingId);
+
+        Assert.NotNull(result);
+        Assert.Single(result);
+        var task = result[0];
+        Assert.Equal(2, task.Links.Length);
+        Assert.Contains(task.Links, l => l.Name == "Link 1");
+        Assert.Contains(task.Links, l => l.Name == "Link 2");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetListingTasksAsync_WithNoTasks_ReturnsEmptyArray()
+    {
+        var agentUser = _testData.CreateUser("agent@test.com", "Agent", "One");
+        var agent = _testData.CreateAgent(agentUser);
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Empty(result);
+    }
+
+    private async System.Threading.Tasks.Task<long> SetupTestData_ListingWithMultipleTasks()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.InProgress);
+        _testData.CreateTask(listing.ListingId, "Task 3", (short)TaskStatus.Completed);
+
+        return await System.Threading.Tasks.Task.FromResult(listing.ListingId);
+    }
+
+    private async System.Threading.Tasks.Task<long> SetupTestData_ListingWithTasksAndLinks()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task = _testData.CreateTask(listing.ListingId, "Task with Links", (short)TaskStatus.NotStarted);
+
+        _testData.CreateLink(task.TaskId, "Link 1", "https://example.com/1");
+        _testData.CreateLink(task.TaskId, "Link 2", "https://example.com/2");
+
+        return await System.Threading.Tasks.Task.FromResult(listing.ListingId);
+    }
+
+    #endregion
+
+    #region AddOrUpdateTaskAsync Tests - Add New Task
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddOrUpdateTaskAsync_AddNewTask_CreatesTaskSuccessfully()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        var command = new AddOrUpdateTaskCommand
+        {
+            TaskId = null,
+            TitleString = "New Task",
+            Room = "Living Room",
+            Description = "Test description",
+            Priority = TaskPriority.High,
+            Links = []
+        };
+
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Null(result.ErrorMessage);
+        Assert.True(result.TaskId > 0);
+
+        var createdTask = await _dbContext.Tasks.FindAsync(result.TaskId);
+        Assert.NotNull(createdTask);
+        Assert.Equal("New Task", createdTask.Title);
+        Assert.Equal("Living Room", createdTask.Room);
+        Assert.Equal("Test description", createdTask.Description);
+        Assert.Equal((short)TaskPriority.High, createdTask.Priority);
+        Assert.Equal((short)TaskStatus.NotStarted, createdTask.Status);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddOrUpdateTaskAsync_AddNewTaskWithLinks_CreatesTaskAndLinksSuccessfully()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        var command = new AddOrUpdateTaskCommand
+        {
+            TaskId = null,
+            TitleString = "New Task with Links",
+            Room = "Kitchen",
+            Description = "Task with links",
+            Priority = TaskPriority.Medium,
+            Links = [
+                new AddOrUpdateLinkRequest { LinkText = "Google", LinkUrl = "https://google.com" },
+                new AddOrUpdateLinkRequest { LinkText = "Example", LinkUrl = "https://example.com" }
+            ]
+        };
+
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Null(result.ErrorMessage);
+        Assert.True(result.TaskId > 0);
+        Assert.NotNull(result.AddedLinks);
+        Assert.Equal(2, result.AddedLinks.Length);
+        Assert.Contains(result.AddedLinks, l => l.LinkText == "Google" && l.LinkUrl == "https://google.com");
+        Assert.Contains(result.AddedLinks, l => l.LinkText == "Example" && l.LinkUrl == "https://example.com");
+
+        var createdTask = await _dbContext.Tasks
+            .Include(t => t.Links)
+            .FirstOrDefaultAsync(t => t.TaskId == result.TaskId);
+        Assert.NotNull(createdTask);
+        Assert.Equal(2, createdTask.Links.Count);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddOrUpdateTaskAsync_AddNewTaskWithEmptyLinks_CreatesTaskWithNoLinks()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        var command = new AddOrUpdateTaskCommand
+        {
+            TaskId = null,
+            TitleString = "Task without links",
+            Room = "Bedroom",
+            Priority = TaskPriority.Low,
+            Links = []
+        };
+
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Null(result.ErrorMessage);
+        Assert.True(result.TaskId > 0);
+        Assert.True(result.AddedLinks == null || result.AddedLinks.Length == 0);
+    }
+
+    #endregion
+
+    #region AddOrUpdateTaskAsync Tests - Update Existing Task
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddOrUpdateTaskAsync_UpdateExistingTask_UpdatesTaskSuccessfully()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task = _testData.CreateTask(listing.ListingId, "Original Title", (short)TaskStatus.NotStarted);
+
+        var command = new AddOrUpdateTaskCommand
+        {
+            TaskId = task.TaskId,
+            TitleString = "Updated Title",
+            Room = "Updated Room",
+            Description = "Updated description",
+            Priority = TaskPriority.High,
+            Links = []
+        };
+
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Null(result.ErrorMessage);
+        Assert.Equal(task.TaskId, result.TaskId);
+
+        var updatedTask = await _dbContext.Tasks.FindAsync(task.TaskId);
+        Assert.NotNull(updatedTask);
+        Assert.Equal("Updated Title", updatedTask.Title);
+        Assert.Equal("Updated Room", updatedTask.Room);
+        Assert.Equal("Updated description", updatedTask.Description);
+        Assert.Equal((short)TaskPriority.High, updatedTask.Priority);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddOrUpdateTaskAsync_UpdateTaskWithNewLinks_AddsLinksSuccessfully()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task = _testData.CreateTask(listing.ListingId, "Task Title", (short)TaskStatus.NotStarted);
+
+        var command = new AddOrUpdateTaskCommand
+        {
+            TaskId = task.TaskId,
+            TitleString = "Task Title",
+            Room = "Living Room",
+            Priority = TaskPriority.Medium,
+            Links = [
+                new AddOrUpdateLinkRequest { LinkText = "New Link", LinkUrl = "https://newlink.com" }
+            ]
+        };
+
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Null(result.ErrorMessage);
+        Assert.NotNull(result.AddedLinks);
+        Assert.Single(result.AddedLinks);
+        Assert.Equal("New Link", result.AddedLinks[0].LinkText);
+
+        var updatedTask = await _dbContext.Tasks
+            .Include(t => t.Links)
+            .FirstOrDefaultAsync(t => t.TaskId == task.TaskId);
+        Assert.NotNull(updatedTask);
+        Assert.Single(updatedTask.Links);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddOrUpdateTaskAsync_UpdateTaskDeleteLink_SoftDeletesLinkSuccessfully()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task = _testData.CreateTask(listing.ListingId, "Task Title", (short)TaskStatus.NotStarted);
+        var link = _testData.CreateLink(task.TaskId, "Link to Delete", "https://delete.com");
+
+        var command = new AddOrUpdateTaskCommand
+        {
+            TaskId = task.TaskId,
+            TitleString = "Task Title",
+            Room = "Living Room",
+            Priority = TaskPriority.Medium,
+            Links = [
+                new AddOrUpdateLinkRequest
+                {
+                    LinkId = link.LinkId,
+                    LinkText = "Link to Delete",
+                    LinkUrl = "https://delete.com",
+                    IsMarkedForDeletion = true
+                }
+            ]
+        };
+
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Null(result.ErrorMessage);
+
+        var deletedLink = await _dbContext.Links.FindAsync(link.LinkId);
+        Assert.NotNull(deletedLink);
+        Assert.NotNull(deletedLink.DeletedAt);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddOrUpdateTaskAsync_UpdateTaskWithMixedLinks_HandlesAddAndDeleteCorrectly()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task = _testData.CreateTask(listing.ListingId, "Task Title", (short)TaskStatus.NotStarted);
+        var existingLink = _testData.CreateLink(task.TaskId, "Existing Link", "https://existing.com");
+
+        var command = new AddOrUpdateTaskCommand
+        {
+            TaskId = task.TaskId,
+            TitleString = "Task Title",
+            Room = "Living Room",
+            Priority = TaskPriority.Medium,
+            Links = [
+                new AddOrUpdateLinkRequest
+                {
+                    LinkId = existingLink.LinkId,
+                    LinkText = "Existing Link",
+                    LinkUrl = "https://existing.com",
+                    IsMarkedForDeletion = true
+                },
+                new AddOrUpdateLinkRequest { LinkText = "New Link", LinkUrl = "https://new.com" }
+            ]
+        };
+
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Null(result.ErrorMessage);
+        Assert.NotNull(result.AddedLinks);
+        Assert.Single(result.AddedLinks);
+        Assert.Equal("New Link", result.AddedLinks[0].LinkText);
+
+        var deletedLink = await _dbContext.Links.FindAsync(existingLink.LinkId);
+        Assert.NotNull(deletedLink);
+        Assert.NotNull(deletedLink.DeletedAt);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddOrUpdateTaskAsync_UpdateNonExistentTask_ReturnsError()
+    {
+        var command = new AddOrUpdateTaskCommand
+        {
+            TaskId = 999999,
+            TitleString = "Task Title",
+            Room = "Living Room",
+            Priority = TaskPriority.Medium,
+            Links = []
+        };
+
+        var result = await _taskService.AddOrUpdateTaskAsync(command, 1);
+
+        Assert.NotNull(result);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Equal("Unable to find data", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddOrUpdateTaskAsync_UpdateTaskDeleteNonExistentLink_IgnoresGracefully()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task = _testData.CreateTask(listing.ListingId, "Task Title", (short)TaskStatus.NotStarted);
+
+        var command = new AddOrUpdateTaskCommand
+        {
+            TaskId = task.TaskId,
+            TitleString = "Task Title",
+            Room = "Living Room",
+            Priority = TaskPriority.Medium,
+            Links = [
+                new AddOrUpdateLinkRequest
+                {
+                    LinkId = 999999,
+                    LinkText = "Non-existent Link",
+                    LinkUrl = "https://nonexistent.com",
+                    IsMarkedForDeletion = true
+                }
+            ]
+        };
+
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Null(result.ErrorMessage);
+    }
+
+    #endregion
+
+    #region Edge Case Tests
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddOrUpdateTaskAsync_AddTaskWithNullDescription_CreatesSuccessfully()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        var command = new AddOrUpdateTaskCommand
+        {
+            TaskId = null,
+            TitleString = "Task without description",
+            Room = "Office",
+            Description = null,
+            Priority = TaskPriority.Low,
+            Links = []
+        };
+
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Null(result.ErrorMessage);
+        Assert.True(result.TaskId > 0);
+
+        var createdTask = await _dbContext.Tasks.FindAsync(result.TaskId);
+        Assert.NotNull(createdTask);
+        Assert.Null(createdTask.Description);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddOrUpdateTaskAsync_UpdateTaskToNullDescription_UpdatesSuccessfully()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task = _testData.CreateTask(listing.ListingId, "Task Title", (short)TaskStatus.NotStarted);
+
+        var command = new AddOrUpdateTaskCommand
+        {
+            TaskId = task.TaskId,
+            TitleString = "Task Title",
+            Room = "Living Room",
+            Description = null,
+            Priority = TaskPriority.Medium,
+            Links = []
+        };
+
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Null(result.ErrorMessage);
+
+        var updatedTask = await _dbContext.Tasks.FindAsync(task.TaskId);
+        Assert.NotNull(updatedTask);
+        Assert.Null(updatedTask.Description);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddOrUpdateTaskAsync_AddMultipleLinksWithSimilarUrls_CreatesAllLinks()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        var command = new AddOrUpdateTaskCommand
+        {
+            TaskId = null,
+            TitleString = "Task with similar links",
+            Room = "Garage",
+            Priority = TaskPriority.High,
+            Links = [
+                new AddOrUpdateLinkRequest { LinkText = "Link 1", LinkUrl = "https://example.com/page1" },
+                new AddOrUpdateLinkRequest { LinkText = "Link 2", LinkUrl = "https://example.com/page2" },
+                new AddOrUpdateLinkRequest { LinkText = "Link 3", LinkUrl = "https://example.com/page3" }
+            ]
+        };
+
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Null(result.ErrorMessage);
+        Assert.NotNull(result.AddedLinks);
+        Assert.Equal(3, result.AddedLinks.Length);
     }
 
     #endregion

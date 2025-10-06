@@ -9,9 +9,9 @@ public partial class Link
 
     public long TaskId { get; set; }
 
-    public string? Name { get; set; }
+    public string Name { get; set; } = null!;
 
-    public string? Url { get; set; }
+    public string Url { get; set; } = null!;
 
     public bool? IsReferral { get; set; }
 
