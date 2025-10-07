@@ -19,6 +19,9 @@ public class TestDataManager : IDisposable
     private readonly List<long> _createdClientInvitationsPropertyIds = new();
     private readonly List<long> _createdTaskIds = new();
     private readonly List<long> _createdLinkIds = new();
+    private readonly List<long> _createdFileIds = new();
+    private readonly List<long> _createdFileTaskIds = new();
+    private readonly List<long> _createdFileTypeIds = new();
 
     private long _nextUserId = new Random().Next(999, 999999); // Start from a unique base
 
@@ -296,6 +299,57 @@ public class TestDataManager : IDisposable
         return link;
     }
 
+    public FileType CreateFileType(string name = "TestFileType")
+    {
+        var fileTypeId = _nextUserId++;
+        var fileType = new FileType
+        {
+            FileTypeId = fileTypeId,
+            Name = name,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _dbContext.FileTypes.Add(fileType);
+        _dbContext.SaveChanges();
+        _createdFileTypeIds.Add(fileTypeId);
+        return fileType;
+    }
+
+    public Domain.Models.File CreateFile(long fileTypeId, string? fileExtension = ".pdf")
+    {
+        var fileId = _nextUserId++;
+        var file = new Domain.Models.File
+        {
+            FileId = fileId,
+            Uuid = Guid.NewGuid(),
+            FileExtension = fileExtension,
+            FileTypeId = fileTypeId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _dbContext.Files.Add(file);
+        _dbContext.SaveChanges();
+        _createdFileIds.Add(fileId);
+        return file;
+    }
+
+    public FilesTask CreateFilesTask(long fileId, long taskId)
+    {
+        var fileTaskId = _nextUserId++;
+        var filesTask = new FilesTask
+        {
+            FileTaskId = fileTaskId,
+            FileId = fileId,
+            TaskId = taskId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _dbContext.FilesTasks.Add(filesTask);
+        _dbContext.SaveChanges();
+        _createdFileTaskIds.Add(fileTaskId);
+        return filesTask;
+    }
+
     public void Dispose()
     {
         try
@@ -304,9 +358,21 @@ public class TestDataManager : IDisposable
             {
                 _dbContext.Links.RemoveRange(_dbContext.Links.Where(l => _createdLinkIds.Contains(l.LinkId)));
             }
+            if (_createdFileTaskIds.Any())
+            {
+                _dbContext.FilesTasks.RemoveRange(_dbContext.FilesTasks.Where(ft => _createdFileTaskIds.Contains(ft.FileTaskId)));
+            }
             if (_createdTaskIds.Any())
             {
                 _dbContext.Tasks.RemoveRange(_dbContext.Tasks.Where(t => _createdTaskIds.Contains(t.TaskId)));
+            }
+            if (_createdFileIds.Any())
+            {
+                _dbContext.Files.RemoveRange(_dbContext.Files.Where(f => _createdFileIds.Contains(f.FileId)));
+            }
+            if (_createdFileTypeIds.Any())
+            {
+                _dbContext.FileTypes.RemoveRange(_dbContext.FileTypes.Where(ft => _createdFileTypeIds.Contains(ft.FileTypeId)));
             }
             if (_createdMessageReadIds.Any())
             {

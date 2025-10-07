@@ -132,6 +132,36 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
         }
     }
 
+    public async Task<bool> MarkTaskAndChildrenAsDeleted(long taskId)
+    {
+        var task = await _dbContext.Tasks
+            .Include(i => i.FilesTasks)
+                .ThenInclude(i => i.File)
+            .Include(i => i.Links)
+            .FirstOrDefaultAsync(i => i.TaskId == taskId);
+
+        if (task == null)
+        {
+            return false;
+        }
+
+        task.DeletedAt = DateTime.UtcNow;
+        foreach (var fileTask in task.FilesTasks)
+        {
+            fileTask.DeletedAt = DateTime.UtcNow;
+            fileTask.File.DeletedAt = DateTime.UtcNow;
+        }
+
+        foreach (var link in task.Links)
+        {
+            link.DeletedAt = DateTime.UtcNow;
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        return true;
+    }
+
     private async Task<AddOrUpdateTaskCommandResponse> _updateExistingTaskAsync(AddOrUpdateTaskCommand command)
     {
         var existingTask = await _dbContext.Tasks

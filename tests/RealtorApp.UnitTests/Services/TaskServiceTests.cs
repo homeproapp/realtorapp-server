@@ -921,6 +921,216 @@ public class TaskServiceTests : IDisposable
 
     #endregion
 
+    #region MarkTaskAndChildrenAsDeleted Tests
+
+    [Fact]
+    public async System.Threading.Tasks.Task MarkTaskAndChildrenAsDeleted_WithValidTaskId_SoftDeletesTask()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task = _testData.CreateTask(listing.ListingId, "Task to Delete", (short)TaskStatus.NotStarted);
+
+        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
+
+        Assert.True(result);
+
+        var deletedTask = await _dbContext.Tasks
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.TaskId == task.TaskId);
+        Assert.NotNull(deletedTask);
+        Assert.NotNull(deletedTask.DeletedAt);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task MarkTaskAndChildrenAsDeleted_WithInvalidTaskId_ReturnsFalse()
+    {
+        var result = await _taskService.MarkTaskAndChildrenAsDeleted(999999);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task MarkTaskAndChildrenAsDeleted_WithLinks_SoftDeletesAllLinks()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task = _testData.CreateTask(listing.ListingId, "Task with Links", (short)TaskStatus.NotStarted);
+        var link1 = _testData.CreateLink(task.TaskId, "Link 1", "https://example.com/1");
+        var link2 = _testData.CreateLink(task.TaskId, "Link 2", "https://example.com/2");
+
+        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
+
+        Assert.True(result);
+
+        var deletedLinks = await _dbContext.Links
+            .IgnoreQueryFilters()
+            .Where(l => l.TaskId == task.TaskId)
+            .ToListAsync();
+
+        Assert.Equal(2, deletedLinks.Count);
+        Assert.All(deletedLinks, link => Assert.NotNull(link.DeletedAt));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task MarkTaskAndChildrenAsDeleted_WithFiles_SoftDeletesFilesAndFilesTasks()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task = _testData.CreateTask(listing.ListingId, "Task with Files", (short)TaskStatus.NotStarted);
+        var fileType = _testData.CreateFileType("TestType");
+        var file1 = _testData.CreateFile(fileType.FileTypeId, ".pdf");
+        var file2 = _testData.CreateFile(fileType.FileTypeId, ".jpg");
+        var filesTask1 = _testData.CreateFilesTask(file1.FileId, task.TaskId);
+        var filesTask2 = _testData.CreateFilesTask(file2.FileId, task.TaskId);
+
+        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
+
+        Assert.True(result);
+
+        var deletedFilesTasks = await _dbContext.FilesTasks
+            .IgnoreQueryFilters()
+            .Where(ft => ft.TaskId == task.TaskId)
+            .ToListAsync();
+
+        Assert.Equal(2, deletedFilesTasks.Count);
+        Assert.All(deletedFilesTasks, ft => Assert.NotNull(ft.DeletedAt));
+
+        var deletedFiles = await _dbContext.Files
+            .IgnoreQueryFilters()
+            .Where(f => f.FileId == file1.FileId || f.FileId == file2.FileId)
+            .ToListAsync();
+
+        Assert.Equal(2, deletedFiles.Count);
+        Assert.All(deletedFiles, file => Assert.NotNull(file.DeletedAt));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task MarkTaskAndChildrenAsDeleted_WithLinksAndFiles_SoftDeletesAll()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task = _testData.CreateTask(listing.ListingId, "Task with Links and Files", (short)TaskStatus.NotStarted);
+
+        var link1 = _testData.CreateLink(task.TaskId, "Link 1", "https://example.com/1");
+        var link2 = _testData.CreateLink(task.TaskId, "Link 2", "https://example.com/2");
+
+        var fileType = _testData.CreateFileType("TestType");
+        var file = _testData.CreateFile(fileType.FileTypeId, ".pdf");
+        var filesTask = _testData.CreateFilesTask(file.FileId, task.TaskId);
+
+        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
+
+        Assert.True(result);
+
+        var deletedTask = await _dbContext.Tasks
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.TaskId == task.TaskId);
+        Assert.NotNull(deletedTask);
+        Assert.NotNull(deletedTask.DeletedAt);
+
+        var deletedLinks = await _dbContext.Links
+            .IgnoreQueryFilters()
+            .Where(l => l.TaskId == task.TaskId)
+            .ToListAsync();
+        Assert.Equal(2, deletedLinks.Count);
+        Assert.All(deletedLinks, link => Assert.NotNull(link.DeletedAt));
+
+        var deletedFilesTask = await _dbContext.FilesTasks
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(ft => ft.FileTaskId == filesTask.FileTaskId);
+        Assert.NotNull(deletedFilesTask);
+        Assert.NotNull(deletedFilesTask.DeletedAt);
+
+        var deletedFile = await _dbContext.Files
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(f => f.FileId == file.FileId);
+        Assert.NotNull(deletedFile);
+        Assert.NotNull(deletedFile.DeletedAt);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task MarkTaskAndChildrenAsDeleted_DeletedTaskNotReturnedByGetListingTasksAsync()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.NotStarted);
+        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.InProgress);
+
+        await _taskService.MarkTaskAndChildrenAsDeleted(task1.TaskId);
+
+        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Equal(task2.TaskId, result[0].TaskId);
+        Assert.DoesNotContain(result, t => t.TaskId == task1.TaskId);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task MarkTaskAndChildrenAsDeleted_DeletedTaskWithLinksNotReturnedByGetListingTasksAsync()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task = _testData.CreateTask(listing.ListingId, "Task with Links", (short)TaskStatus.NotStarted);
+        var link = _testData.CreateLink(task.TaskId, "Link", "https://example.com");
+
+        await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
+
+        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task MarkTaskAndChildrenAsDeleted_DeletedTaskNotIncludedInClientGroupedTasks()
+    {
+        var agentUser = _testData.CreateUser("agent@test.com", "Agent", "One");
+        var clientUser = _testData.CreateUser("client@test.com", "Client", "One");
+        var agent = _testData.CreateAgent(agentUser);
+        var client = _testData.CreateClient(clientUser);
+
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        _testData.CreateAgentListing(listing.ListingId, agent.UserId);
+        _testData.CreateClientListing(listing.ListingId, client.UserId);
+
+        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.NotStarted);
+        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.Completed);
+
+        await _taskService.MarkTaskAndChildrenAsDeleted(task1.TaskId);
+
+        var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agent.UserId);
+
+        Assert.NotNull(result);
+        Assert.Single(result.ClientGroupedTasksDetails);
+
+        var group = result.ClientGroupedTasksDetails[0];
+        Assert.False(group.TaskStatusCounts.ContainsKey(TaskStatus.NotStarted));
+        Assert.Equal(1, group.TaskStatusCounts[TaskStatus.Completed]);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task MarkTaskAndChildrenAsDeleted_WithNoChildren_SoftDeletesOnlyTask()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var task = _testData.CreateTask(listing.ListingId, "Simple Task", (short)TaskStatus.NotStarted);
+
+        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
+
+        Assert.True(result);
+
+        var deletedTask = await _dbContext.Tasks
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.TaskId == task.TaskId);
+        Assert.NotNull(deletedTask);
+        Assert.NotNull(deletedTask.DeletedAt);
+    }
+
+    #endregion
+
     public void Dispose()
     {
         _testData.Dispose();

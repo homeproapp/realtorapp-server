@@ -11,4 +11,5 @@ public interface ITaskService
     Task<ClientGroupedTasksListQueryResponse> GetClientGroupedTasksListAsync(ClientGroupedTasksListQuery query, long agentId);
     Task<ListingTasksQueryResponse[]> GetListingTasksAsync(ListingTasksQuery query, long listingId);
     Task<AddOrUpdateTaskCommandResponse> AddOrUpdateTaskAsync(AddOrUpdateTaskCommand command, long listingId);
+    Task<bool> MarkTaskAndChildrenAsDeleted(long taskId);
 }

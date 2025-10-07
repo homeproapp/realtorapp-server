@@ -9,7 +9,7 @@ public class AppSettings()
     public string ApplicationName { get; set; } = "HomePro";
     public JwtSettings Jwt { get; set; } = new();
     public FirebaseSettings Firebase { get; set; } = new();
-    public EmailSettings Email { get; set; } = new();
+    public required S3Settings S3 { get; set; }
 }
 
 public class JwtSettings
@@ -25,18 +25,11 @@ public class FirebaseSettings
     public string ProjectId { get; set; } = string.Empty;
 }
 
-public class EmailSettings
+public class S3Settings
 {
-    public SmtpSettings Smtp { get; set; } = new();
-}
-
-public class SmtpSettings
-{
-    public string Host { get; set; } = string.Empty;
-    public int Port { get; set; } = 587;
-    public bool EnableSsl { get; set; } = true;
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-    public string FromEmail { get; set; } = string.Empty;
-    public string FromName { get; set; } = string.Empty;
+    public required string BucketNamePrefix { get; set; }
+    public required string Region { get; set; }
+    public required string ImagesBucketName { get; set; }
+    public required string SecretKey { get; set; }
+    public required string AccessKey { get; set; }
 }

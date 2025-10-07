@@ -1,19 +1,19 @@
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using RealtorApp.Contracts.Commands.Chat.Requests;
 using RealtorApp.Domain.Interfaces;
 
 namespace RealtorApp.Api.Hubs;
 
-
-
 [Authorize]
-public sealed class ChatHub(IUserAuthService userAuthService) : Hub
+public sealed class ChatHub(IUserAuthService userAuthService, IChatService chatService, IUserService userService) : Hub
 {
     private static readonly ConcurrentDictionary<long, HashSet<string>> _userConnections = new();
     private readonly IUserAuthService _userAuthService = userAuthService;
+    private readonly IChatService _chatService = chatService;
+    private readonly IUserService _userService = userService;
 
-    // Convenience accessor for downstream code
     private Guid _uuid => Guid.Parse(Context.UserIdentifier!
         ?? throw new HubException("Unauthenticated: no UserIdentifier present."));
 
@@ -57,7 +57,6 @@ public sealed class ChatHub(IUserAuthService userAuthService) : Hub
             return;
         }
 
-        // Optional: verify participant before joining
         if (!await _userAuthService.IsConversationParticipant(conversationId, (long)userId))
             throw new HubException("Not a participant.");
 
@@ -67,23 +66,35 @@ public sealed class ChatHub(IUserAuthService userAuthService) : Hub
     public Task LeaveConversation(long conversationId) =>
         Groups.RemoveFromGroupAsync(Context.ConnectionId, conversationId.ToString());
 
-    // TODO: fix this method
-    // public async Task SendMessage(dynamic dto) 
-    // {
-    //     // Defense-in-depth
-    //     if (string.IsNullOrWhiteSpace(dto.ConversationId) || string.IsNullOrWhiteSpace(dto.Text))
-    //         throw new HubException("Invalid payload.");
+    public async Task SendMessage(SendMessageCommand command) 
+    {
+        var userId = await _userAuthService.GetUserIdByUuid(_uuid);
 
-    //     if (!await _repo.IsParticipantAsync(dto.ConversationId, _userId))
-    //         throw new HubException("Not a participant.");
+        if (userId == null)
+        {
+            return;
+        }
 
-    //     // Persist + produce canonical server payload
-    //     var saved = await _repo.SaveMessageAsync(dto.ConversationId, _userId, dto.Text, dto.ClientTempId);
+        if (string.IsNullOrWhiteSpace(command.MessageText))
+            throw new HubException("Invalid payload.");
 
-    //     // Echo to all current members of the conversation (including sender)
-    //     await Clients.Group(dto.ConversationId)
-    //         .SendAsync("onMessage", saved);
-    // }
+        if (!await _userAuthService.IsConversationParticipant(command.ConversationId, (long)userId))
+            throw new HubException("Not a participant.");
+
+        // Persist + produce canonical server payload
+        var saved = await _chatService.SendMessageAsync(command);
+
+        if (saved == null || !string.IsNullOrEmpty(saved.ErrorMessage))
+        {
+            throw new HubException("Failed to send message.");
+        }
+
+        saved.LocalId = command.LocalId;
+
+        // Echo to all current members of the conversation (including sender)
+        await Clients.Group(command.ConversationId.ToString())
+            .SendAsync("onMessage", saved);
+    }
 
     public async Task SetTyping(long conversationId, bool isTyping)
     {
@@ -94,10 +105,12 @@ public sealed class ChatHub(IUserAuthService userAuthService) : Hub
             return;
         }
 
-        if (!await _userAuthService.IsConversationParticipant(conversationId, (long)userId))
+        var user = await _userService.GetUserProfileAsync((long)userId);
+
+        if (!await _userAuthService.IsConversationParticipant(conversationId, (long)userId) || user == null)
             throw new HubException("Not a participant.");
 
         await Clients.OthersInGroup(conversationId.ToString())
-            .SendAsync("onTyping", new { conversationId, userId, isTyping });
+            .SendAsync("onTyping", new { userId, name = user.FirstName + " " + user.LastName?.FirstOrDefault() , isTyping });
     }
 }

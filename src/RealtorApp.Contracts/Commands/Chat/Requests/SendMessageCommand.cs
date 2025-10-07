@@ -3,6 +3,7 @@ namespace RealtorApp.Contracts.Commands.Chat.Requests;
 public class SendMessageCommand
 {
     public long? MessageId { get; set; }
+    public string LocalId { get; set; } = string.Empty;
     public long ConversationId { get; set; }
     public long SenderId { get; set; }
     public string MessageText { get; set; } = string.Empty;
