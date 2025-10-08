@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealtorApp.Contracts.Commands.Tasks.Requests;
 using RealtorApp.Contracts.Commands.Tasks.Responses;
@@ -9,6 +10,7 @@ namespace RealtorApp.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class TasksController(ITaskService taskService) : RealtorApiBaseController
     {
         private readonly ITaskService _taskService = taskService;

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RealtorApp.Contracts.Queries.Listing.Responses;
+using RealtorApp.Domain.Constants;
 using RealtorApp.Domain.Interfaces;
 
 namespace RealtorApp.Api.Controllers
@@ -9,6 +11,7 @@ namespace RealtorApp.Api.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [EnableRateLimiting(RateLimitConstants.Authenticated)]
     public class ListingsController(IListingService listingService, IUserAuthService userAuth) : RealtorApiBaseController
     {
         private readonly IListingService _listingService = listingService;
