@@ -287,7 +287,7 @@ public class ChatServiceTests : IDisposable
         _testData.CreateClientListing(listing2.ListingId, client1.UserId);
         _testData.CreateClientListing(listing2.ListingId, client2.UserId);
 
-        var msg1 = _testData.CreateMessage(listing1.ListingId, client1.UserId, "Unread message 1", DateTime.UtcNow.AddMinutes(-10));
+        var msg1 = _testData.CreateMessage(listing1.ListingId, client1.UserId, "Unread message 1", DateTime.UtcNow.AddMinutes(-2));
         var msg2 = _testData.CreateMessage(listing2.ListingId, client2.UserId, "Unread message 2", DateTime.UtcNow.AddMinutes(-5));
         var msg3 = _testData.CreateMessage(listing1.ListingId, agent.UserId, "Read message from agent", DateTime.UtcNow.AddMinutes(-3));
 
@@ -662,7 +662,7 @@ public class ChatServiceTests : IDisposable
         _testData.CreateAgentListing(listing2.ListingId, agent.UserId);
         _testData.CreateClientListing(listing2.ListingId, client.UserId);
 
-        var msg1 = _testData.CreateMessage(listing1.ListingId, agent.UserId, "Unread message 1", DateTime.UtcNow.AddMinutes(-10));
+        var msg1 = _testData.CreateMessage(listing1.ListingId, agent.UserId, "Unread message 1", DateTime.UtcNow.AddMinutes(-1));
         var msg2 = _testData.CreateMessage(listing2.ListingId, agent.UserId, "Unread message 2", DateTime.UtcNow.AddMinutes(-5));
         var msg3 = _testData.CreateMessage(listing1.ListingId, client.UserId, "Read message from client", DateTime.UtcNow.AddMinutes(-3));
 

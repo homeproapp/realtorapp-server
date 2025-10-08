@@ -172,7 +172,8 @@ public class InvitationServiceResendInvitationTests : TestBase
             .ReturnsAsync(new List<InvitationEmailDto> { new() {
                 ClientEmail = "test@example.com",
                 AgentName = "Test Agent",
-                EncryptedData = "encrypted_data"
+                EncryptedData = "encrypted_data",
+                IsExistingUser = false
             } });
 
         MockUserService.Setup(x => x.GetUserByEmailAsync(It.IsAny<string>()))

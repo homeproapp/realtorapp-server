@@ -6,4 +6,5 @@ public class InvitationEmailDto
     public string? ClientFirstName { get; set; }
     public required string AgentName { get; set; }
     public required string EncryptedData { get; set; }
+    public required bool IsExistingUser { get; set; }
 }

@@ -1,14 +1,20 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using RealtorApp.Domain.Constants;
 using RealtorApp.Domain.Interfaces;
 
 namespace RealtorApp.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ImagesController(IUserAuthService userAuthService) : RealtorApiBaseController
+    [Authorize]
+    [EnableRateLimiting(RateLimitConstants.Authenticated)]
+    public class ImagesController(IUserAuthService userAuthService, IImagesService imagesService) : RealtorApiBaseController
     {
         private readonly IUserAuthService _userAuthService = userAuthService;
+        private readonly IImagesService _imagesService = imagesService;
 
         [HttpPost("v1/avatars/upload")]
         public async Task<IActionResult> UploadAvatar(IFormFile file)
@@ -27,15 +33,27 @@ namespace RealtorApp.Api.Controllers
                 return BadRequest();
             }
 
-            await Task.CompletedTask;
-            return File([], "image/png");
+            var (ImageStream, ContentType) = await _imagesService.GetImageByFileIdAsync(profileImageId);
+
+            if (ImageStream == null || ContentType == null)
+            {
+                return NotFound();
+            }
+
+            return File(ImageStream, ContentType);
         }
 
         [HttpGet("v1/avatars/me")]
         public async Task<IActionResult> GetMyAvatar()
         {
-            await Task.CompletedTask;
-            return Ok();
+            var (ImageStream, ContentType) = await _imagesService.GetImageByUserIdAsync(RequiredCurrentUserId);
+
+            if (ImageStream == null || ContentType == null)
+            {
+                return NotFound();
+            }
+
+            return File(ImageStream, ContentType);
         }
     }
 }

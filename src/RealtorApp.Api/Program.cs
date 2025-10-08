@@ -13,8 +13,13 @@ using RealtorApp.Domain.Settings;
 using System.Threading.RateLimiting;
 using FluentValidation.AspNetCore;
 using FluentValidation;
+using RealtorApp.Domain.Constants;
 
 var builder = WebApplication.CreateBuilder(args);
+
+#if DEBUG
+    Environment.SetEnvironmentVariable(FirebaseConstants.EnvironmentVariableName, "/home/stew/repos/realtorApp/realtor-app-66c0d-firebase-adminsdk-fbsvc-9f28d0bc95.json");
+#endif
 
 
 // Add services to the container.
@@ -34,6 +39,8 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICryptoService, CryptoService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IListingService, ListingService>();
+builder.Services.AddScoped<IS3Service, S3Service>();
+builder.Services.AddScoped<IImagesService, ImagesService>();
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();

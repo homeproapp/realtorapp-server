@@ -6,7 +6,7 @@ This document defines the client invitation system where agents can invite clien
 ## Current State
 - ✅ **Phase 1 Complete**: Invitation creation and email system fully implemented
 - ✅ Database schema updated with invitation tables
-- ✅ Email service with MailKit integration and encrypted invitation links
+- ✅ Email service with Amazon SES integration and encrypted invitation links
 - ✅ Rate limiting and validation implemented
 - ✅ **Phase 2 Complete**: Invitation acceptance and user record creation fully implemented
 - ✅ **Phase 3 Complete**: Re-invite functionality for failed invitations or client detail updates fully implemented
@@ -43,7 +43,7 @@ This document defines the client invitation system where agents can invite clien
 - ✅ Create ClientInvitationsProperties records for every client-property combination
 - ✅ Generate unique invitation tokens for each client (UUID)
 - ✅ Check for existing users to determine invitation type
-- ✅ Send personalized invitation emails using MailKit
+- ✅ Send personalized invitation emails using Amazon SES
 - ✅ Use encrypted invitation links with crypto service
 - ✅ Handle email failures and report to agent
 - ✅ Each client can accept their invitation independently

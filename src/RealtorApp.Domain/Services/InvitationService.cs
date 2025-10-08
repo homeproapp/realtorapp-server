@@ -82,7 +82,7 @@ public class InvitationService(
 
                 var encryptedData = _getEncryptedInviteData(clientInvitation.InvitationToken, existingUser is not null);
 
-                invitesToSend.Add(clientInvitation.ToEmailDto(agentName, encryptedData));
+                invitesToSend.Add(clientInvitation.ToEmailDto(agentName, encryptedData, existingUser is not null));
 
                 _dbContext.ClientInvitations.Add(clientInvitation);
             }
@@ -312,7 +312,7 @@ public class InvitationService(
             var encryptedData = _getEncryptedInviteData(clientInvitation.InvitationToken, existingUser != null);
 
             // Create email DTO and send
-            var emailDto = clientInvitation.ToEmailDto(agentName, encryptedData);
+            var emailDto = clientInvitation.ToEmailDto(agentName, encryptedData, existingUser != null);
             var failedInvites = await _emailService.SendBulkInvitationEmailsAsync([emailDto]);
 
             if (failedInvites.Count > 0)

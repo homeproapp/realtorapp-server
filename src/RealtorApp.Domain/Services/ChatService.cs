@@ -149,7 +149,9 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
                 {
                     AgentUsers = i.Listing.AgentsListings.Select(al => al.Agent.User),
                     i.Listing.Conversation,
-                    LastMessage = i.Listing.Conversation!.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault()
+                    LastMessage = i.Listing.Conversation!.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault(),
+                    LatestMessageIsReadByUser = i.Listing.Conversation.Messages.OrderByDescending(i => i.CreatedAt).Take(1).Any(i => i.MessageReads.Any(x => x.ReaderId == clientId))
+
                 }).ToListAsync();
 
             var clientListingsGroupedByAgents = clientListingsQuery.GroupBy(i => string.Join('|', i.AgentUsers
@@ -160,8 +162,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
             foreach (var group in clientListingsGroupedByAgents.Skip(query.Offset).Take(query.Limit))
             {
                 var latestConversationGroup = group.OrderByDescending(i => i.Conversation?.UpdatedAt ?? DateTime.MinValue).FirstOrDefault();
-                var unreadConvoCount = 0;
-                // group.Where(i => i.Conversation?.Messages?.Any(i => i.MessageReads.Where(i => i.Del).Count != 0) ?? false).Count();
+                var unreadConvoCount = group.Where(i => !i.LatestMessageIsReadByUser).Count();
 
                 if (latestConversationGroup == null || latestConversationGroup.Conversation == null) continue;
 
@@ -202,7 +203,8 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
                     ClientIds = i.Listing.ClientsListings.Select(i => i.ClientId).OrderByDescending(i => i).ToList(),
                     ClientData = i.Listing.ClientsListings.Select(x => new { x.ClientId, ClientName = x.Client.User.FirstName + " " + x.Client.User.LastName }).ToList(),
                     Conversation = i,
-                    LastMessage = i.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault()
+                    LastMessage = i.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault(),
+                    LatestMessageIsReadByUser = i.Messages.OrderByDescending(i => i.CreatedAt).Take(1).Any(i => i.MessageReads.Any(x => x.ReaderId == agentId))
                 })
                 .ToListAsync();
 
@@ -215,7 +217,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
             foreach (var group in convosGrouped.Skip(query.Offset).Take(query.Limit))
             {
                 var latestConversation = group.OrderByDescending(i => i.Conversation.UpdatedAt).FirstOrDefault();
-                var unreadConvoCount = 0;
+                var unreadConvoCount = group.Where(i => !i.LatestMessageIsReadByUser).Count();
                 // group.Where(i => i.Conversation.Messages?.Any(i => !i.IsRead ?? false) ?? false).Count();
 
                 if (latestConversation == null || latestConversation.Conversation == null) continue;

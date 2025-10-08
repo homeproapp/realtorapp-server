@@ -162,7 +162,8 @@ public class InvitationServiceSendInvitationsTests : TestBase
             ClientEmail = $"failed{Guid.NewGuid():N}@example.com",
             AgentName = "Test Agent",
             EncryptedData = "encrypted_data",
-            ClientFirstName = "John"
+            ClientFirstName = "John",
+            IsExistingUser = false
         };
         MockEmailService.Setup(x => x.SendBulkInvitationEmailsAsync(It.IsAny<List<InvitationEmailDto>>()))
             .ReturnsAsync(new List<InvitationEmailDto> { failedEmail });

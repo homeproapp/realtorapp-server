@@ -9,7 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MailKit" Version="4.13.0" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.3.2" />
+    <PackageReference Include="AWSSDK.SimpleEmailV2" Version="4.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.9" />
@@ -21,6 +22,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="SqlQueries\**\*.sql" />
+    <EmbeddedResource Include="EmailTemplates\**\*.html" />
   </ItemGroup>
 
   <ItemGroup>

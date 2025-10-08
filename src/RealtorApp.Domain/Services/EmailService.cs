@@ -1,52 +1,76 @@
+using System.Reflection;
 using System.Web;
-using MailKit.Net.Smtp;
-using MailKit.Security;
+using Amazon;
+using Amazon.SimpleEmailV2;
+using Amazon.SimpleEmailV2.Model;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using MimeKit;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Settings;
 
 namespace RealtorApp.Domain.Services;
 
-public class EmailService(IOptions<AppSettings> appSettings, ILogger<EmailService> logger) : IEmailService
+public class EmailService(AppSettings appSettings, ILogger<EmailService> logger) : IEmailService
 {
-    private readonly AppSettings _appSettings = appSettings.Value;
+    private readonly AppSettings _appSettings = appSettings;
     private readonly ILogger<EmailService> _logger = logger;
-    public async Task<bool> SendInvitationEmailAsync(string clientEmail, string? clientFirstName, string agentName, string encryptedData)
+    private static string? _newClientTemplate;
+    private static string? _existingClientTemplate;
+
+    public async Task<bool> SendInvitationEmailAsync(string clientEmail, string? clientFirstName, string agentName, string encryptedData, bool isExistingUser)
     {
         try
         {
-            var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(_appSettings.Email.Smtp.FromName, _appSettings.Email.Smtp.FromEmail));
-            message.To.Add(new MailboxAddress(clientFirstName ?? clientEmail, clientEmail));
-            message.Subject = $"You've been invited to {_appSettings.ApplicationName} by {agentName}";
-
             var invitationLink = GenerateInvitationLink(encryptedData);
-            var emailBody = GenerateNewClientInvitationEmailBody(clientFirstName, agentName, invitationLink, _appSettings.ApplicationName);
+            var emailBody = isExistingUser
+                    ? GenerateExistingClientInvitationEmailBody(clientFirstName, agentName, invitationLink, _appSettings.ApplicationName)
+                    : GenerateNewClientInvitationEmailBody(clientFirstName, agentName, invitationLink, _appSettings.ApplicationName);
+            var credentials = new Amazon.Runtime.BasicAWSCredentials(
+                _appSettings.Aws.AccessKey,
+                _appSettings.Aws.SecretKey
+            );
 
-            //TODO: change this to html
-            message.Body = new TextPart("plain")
+            var region = RegionEndpoint.GetBySystemName(_appSettings.Aws.Ses.Region);
+            using var client = new AmazonSimpleEmailServiceV2Client(credentials, region);
+
+            var htmlBody = isExistingUser
+                ? GenerateExistingClientInvitationEmailHtml(clientFirstName, agentName, invitationLink, _appSettings.ApplicationName)
+                : GenerateNewClientInvitationEmailHtml(clientFirstName, agentName, invitationLink, _appSettings.ApplicationName);
+
+            var sendRequest = new SendEmailRequest
             {
-                Text = emailBody
+                FromEmailAddress = $"{_appSettings.Aws.Ses.FromName} <{_appSettings.Aws.Ses.FromEmail}>",
+                Destination = new Destination
+                {
+                    ToAddresses = [clientEmail]
+                },
+                Content = new EmailContent
+                {
+                    Simple = new Message
+                    {
+                        Subject = new Content
+                        {
+                            Data = $"You've been invited to {_appSettings.ApplicationName} by {agentName}",
+                            Charset = "UTF-8"
+                        },
+                        Body = new Body
+                        {
+                            Text = new Content
+                            {
+                                Data = emailBody,
+                                Charset = "UTF-8"
+                            },
+                            Html = new Content
+                            {
+                                Data = htmlBody,
+                                Charset = "UTF-8"
+                            }
+                        }
+                    }
+                }
             };
 
-            using var client = new SmtpClient();
-            await client.ConnectAsync(_appSettings.Email.Smtp.Host, _appSettings.Email.Smtp.Port,
-                _appSettings.Email.Smtp.EnableSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls);
-
-            if (!string.IsNullOrEmpty(_appSettings.Email.Smtp.Username))
-            {
-                await client.AuthenticateAsync(_appSettings.Email.Smtp.Username, _appSettings.Email.Smtp.Password);
-            }
-
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
-
-            // await Task.CompletedTask;
-            // var invitationLink = GenerateInvitationLink(encryptedData);
-            // Console.WriteLine($"INVITE ENDPOINT -> {invitationLink}");
+            await client.SendEmailAsync(sendRequest);
 
             _logger.LogInformation("Successfully sent invitation email to {ClientEmail} from {AgentName}", clientEmail, agentName);
             return true;
@@ -62,17 +86,68 @@ public class EmailService(IOptions<AppSettings> appSettings, ILogger<EmailServic
     {
         var failedInvites = new List<InvitationEmailDto>();
 
+        var credentials = new Amazon.Runtime.BasicAWSCredentials(
+            _appSettings.Aws.AccessKey,
+            _appSettings.Aws.SecretKey
+        );
+
+        var region = RegionEndpoint.GetBySystemName(_appSettings.Aws.Ses.Region);
+        using var client = new AmazonSimpleEmailServiceV2Client(credentials, region);
+
         foreach (var invitation in invitations)
         {
-            var success = await SendInvitationEmailAsync(
-                invitation.ClientEmail,
-                invitation.ClientFirstName,
-                invitation.AgentName,
-                invitation.EncryptedData
-            );
-
-            if (!success)
+            try
             {
+                var invitationLink = GenerateInvitationLink(invitation.EncryptedData);
+                var emailBody = invitation.IsExistingUser
+                    ? GenerateExistingClientInvitationEmailBody(invitation.ClientFirstName, invitation.AgentName, invitationLink, _appSettings.ApplicationName)
+                    : GenerateNewClientInvitationEmailBody(invitation.ClientFirstName, invitation.AgentName, invitationLink, _appSettings.ApplicationName);
+
+                var htmlBody = invitation.IsExistingUser
+                    ? GenerateExistingClientInvitationEmailHtml(invitation.ClientFirstName, invitation.AgentName, invitationLink, _appSettings.ApplicationName)
+                    : GenerateNewClientInvitationEmailHtml(invitation.ClientFirstName, invitation.AgentName, invitationLink, _appSettings.ApplicationName);
+
+                var sendRequest = new SendEmailRequest
+                {
+                    FromEmailAddress = $"{_appSettings.Aws.Ses.FromName} <{_appSettings.Aws.Ses.FromEmail}>",
+                    Destination = new Destination
+                    {
+                        ToAddresses = [invitation.ClientEmail]
+                    },
+                    Content = new EmailContent
+                    {
+                        Simple = new Message
+                        {
+                            Subject = new Content
+                            {
+                                Data = $"You've been invited to {_appSettings.ApplicationName} by {invitation.AgentName}",
+                                Charset = "UTF-8"
+                            },
+                            Body = new Body
+                            {
+                                Text = new Content
+                                {
+                                    Data = emailBody,
+                                    Charset = "UTF-8"
+                                },
+                                Html = new Content
+                                {
+                                    Data = htmlBody,
+                                    Charset = "UTF-8"
+                                }
+                            }
+                        }
+                    }
+                };
+
+                await client.SendEmailAsync(sendRequest);
+
+                _logger.LogInformation("Successfully sent invitation email to {ClientEmail} from {AgentName}",
+                    invitation.ClientEmail, invitation.AgentName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send invitation email to {ClientEmail}", invitation.ClientEmail);
                 failedInvites.Add(invitation);
             }
         }
@@ -91,16 +166,77 @@ public class EmailService(IOptions<AppSettings> appSettings, ILogger<EmailServic
 
         return $@"{greeting}
 
-        You've been invited by {agentName} to join {applicationName}. We're excited to help you with your property needs!
+You've been invited by {agentName} to join {applicationName}. We're excited to help you with your listing needs!
 
-        To accept this invitation and create your account, please click the link below:
-        {invitationLink}
+To accept this invitation and create your account, please click the link below:
 
-        This invitation will expire in 7 days.
+{invitationLink}
 
-        If you have any questions, please don't hesitate to reach out to {agentName}.
+This invitation will expire in 7 days.
 
-        Best regards,
-        The {applicationName} Team";
+If you have any questions, please don't hesitate to reach out to {agentName}.
+
+Best regards,
+The {applicationName} Team";
+    }
+
+    private static string GenerateExistingClientInvitationEmailBody(string? clientFirstName, string agentName, string invitationLink, string applicationName)
+    {
+        var greeting = string.IsNullOrWhiteSpace(clientFirstName) ? "Hello," : $"Hello {clientFirstName},";
+
+        return $@"{greeting}
+You've been invited by {agentName} to work with them on {applicationName}. We're excited to get you back and help with your listing needs!
+
+To accept this invitation and link to {agentName}, please click the link below:
+
+{invitationLink}
+
+This invitation will expire in 7 days.
+
+If you have any questions, please don't hesitate to reach out to {agentName}.
+
+Best regards,
+The {applicationName} Team";
+    }
+
+    private static string LoadTemplate(string templateName)
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceName = $"RealtorApp.Domain.EmailTemplates.{templateName}";
+
+        using var stream = assembly.GetManifestResourceStream(resourceName);
+        if (stream == null)
+        {
+            throw new FileNotFoundException($"Email template '{templateName}' not found as embedded resource.");
+        }
+
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    private static string GenerateNewClientInvitationEmailHtml(string? clientFirstName, string agentName, string invitationLink, string applicationName)
+    {
+        _newClientTemplate ??= LoadTemplate("new-client-invitation.html");
+
+        var greeting = string.IsNullOrWhiteSpace(clientFirstName) ? "Hello," : $"Hello {clientFirstName},";
+
+        return _newClientTemplate
+            .Replace("{{ApplicationName}}", applicationName)
+            .Replace("{{Greeting}}", greeting)
+            .Replace("{{AgentName}}", agentName)
+            .Replace("{{InvitationLink}}", invitationLink);
+    }
+
+    private static string GenerateExistingClientInvitationEmailHtml(string? clientFirstName, string agentName, string invitationLink, string applicationName)
+    {
+        _existingClientTemplate ??= LoadTemplate("existing-client-invitation.html");
+
+        var greeting = string.IsNullOrWhiteSpace(clientFirstName) ? "Hello," : $"Hello {clientFirstName},";
+
+        return _existingClientTemplate
+            .Replace("{{ApplicationName}}", applicationName)
+            .Replace("{{Greeting}}", greeting)
+            .Replace("{{AgentName}}", agentName)
+            .Replace("{{InvitationLink}}", invitationLink);
     }
 }

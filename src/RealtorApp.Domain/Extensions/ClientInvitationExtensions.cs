@@ -6,7 +6,7 @@ namespace RealtorApp.Domain.Extensions;
 
 public static class ClientInvitationExtensions
 {
-    public static InvitationEmailDto ToEmailDto(this ClientInvitation invitation, string agentName, string encryptedData)
+    public static InvitationEmailDto ToEmailDto(this ClientInvitation invitation, string agentName, string encryptedData, bool isExistingUser)
     {
         return new InvitationEmailDto
         {
@@ -14,6 +14,7 @@ public static class ClientInvitationExtensions
             ClientFirstName = invitation.ClientFirstName,
             AgentName = agentName,
             EncryptedData = encryptedData,
+            IsExistingUser = isExistingUser
         };
     }
 
