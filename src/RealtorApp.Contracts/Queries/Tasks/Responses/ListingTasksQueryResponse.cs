@@ -16,9 +16,11 @@ public class TaskCompletionCountItem
     public required double Completion { get; set; }
 }
 
-public enum TaskCountType {
+public enum TaskCountType
+{
     Room,
-    Priority
+    Priority,
+    Total
 }
 
 public class TaskListItemResponse

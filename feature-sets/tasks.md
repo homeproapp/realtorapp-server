@@ -372,17 +372,102 @@ TODO: - this will be a more generic notification hub set of methods that will ha
 - **Data Integrity**: Zero data loss with proper soft delete and audit trails
 - **Permission Enforcement**: 100% accuracy in role-based access control
 
+## UI/UX Requirements
+
+### Listing Header Component (Shared)
+The tasks page and conversation page both need a consistent header showing listing details with the ability to switch between listings. This should be extracted into a reusable component.
+
+**Component: `ListingHeaderComponent`**
+Location: `src/app/components/shared/page/listing-header/`
+
+**Features:**
+- Display client avatar(s) (single or stacked for multiple clients)
+- Show client name(s) (comma-separated for multiple)
+- Display listing address
+- Listing selector dropdown (icon-only select with home icon)
+  - Only shown when user has multiple listings
+  - Lists all other available listings for the same clients
+- Back button integration (handled by parent page)
+- Loading skeleton state
+
+**Inputs:**
+- `listingDetails: ListingDetails` - Contains clientNames, address, otherListings
+- `loading: boolean` - Show skeleton during data fetch
+
+**Outputs:**
+- `listingChange: EventEmitter<number>` - Emits selected listing ID
+
+**Usage Example:**
+```html
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button [defaultHref]="'/tasks'"></ion-back-button>
+    </ion-buttons>
+    <app-listing-header
+      [listingDetails]="listingDetails()"
+      [loading]="loading()"
+      (listingChange)="handleListingChange($event)"
+    />
+  </ion-toolbar>
+</ion-header>
+```
+
+**Migration:**
+- Replace `app-conversation-header` in `/chat/pages/conversation/conversation.page.html` with new `app-listing-header`
+- Use same component in tasks listing page
+
+### Tasks Listing Page
+**Route:** `/tasks/:listingId`
+
+**Layout:**
+1. **Header Section**
+   - Listing header component (described above)
+   - Task completion summary cards/stats by room and priority
+
+2. **Task List Section**
+   - Grouped by room (collapsible sections)
+   - Task cards showing:
+     - Title
+     - Status indicator (color-coded)
+     - Priority badge
+     - Estimated cost
+     - Follow-up date (if set)
+     - Attachment count indicator
+     - Link count indicator
+   - Pull-to-refresh support
+   - Infinite scroll for pagination
+
+3. **Action Button**
+   - Floating action button (FAB) to create new task (agent only)
+   - Positioned bottom-right
+
+**Filtering & Sorting:**
+- Client-side filtering by:
+  - Room
+  - Status
+  - Priority
+- Sort options:
+  - Created date (newest/oldest)
+  - Follow-up date
+  - Priority (high to low)
+  - Status
+
 ## Implementation Phases
 
 ### Phase 1: Core Task Management
+- Extract and create shared `ListingHeaderComponent` from conversation header
 - Basic CRUD operations for agents
 - Client status update functionality
 - File attachment management
-- Simple task listing and filtering
+- Simple task listing page with grouping by room
+- Task detail view/edit page
 
 ### Phase 2: Enhanced Collaboration
 - Advanced task filtering and search
   - for now will be handled client side
+- Task completion analytics display
+- Pull-to-refresh and infinite scroll
 
 ### Phase 3: Advanced Features
 - Task analytics and reporting

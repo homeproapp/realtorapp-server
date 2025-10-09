@@ -42,7 +42,7 @@ public static class TaskExtensions
     {
         var roomGroupings = tasks.GroupBy(i => i.Room);
         var priorityGroupings = tasks.GroupBy(i => i.Priority);
-        var result = new List<TaskCompletionCountItem>(roomGroupings.Count() + priorityGroupings.Count());
+        var result = new List<TaskCompletionCountItem>(roomGroupings.Count() + priorityGroupings.Count() + 1);
 
         var maxCount = Math.Max(roomGroupings.Count(), priorityGroupings.Count());
 
@@ -56,7 +56,7 @@ public static class TaskExtensions
                 result.Add(new()
                 {
                     Type = TaskCountType.Room,
-                    Name = roomGroup.Key ?? string.Empty,
+                    Name = (roomGroup.Key ?? string.Empty) + " Tasks",
                     Completion = (double)roomGroup.Where(i => i.Status == (short)TaskStatus.Completed).Count() / roomGroup.Count()
                 });
             }
@@ -66,11 +66,18 @@ public static class TaskExtensions
                 result.Add(new()
                 {
                     Type = TaskCountType.Priority,
-                    Name = ((TaskPriority)(priorityGroup.Key ?? 0)).ToString(),
+                    Name = ((TaskPriority)(priorityGroup.Key ?? 0)).ToString() + " Priority Tasks",
                     Completion = (double)priorityGroup.Where(i => i.Status == (short)TaskStatus.Completed).Count() / priorityGroup.Count()
                 });
             }
         }
+
+        result.Add(new()
+        {
+            Type = TaskCountType.Total,
+            Name = "Total Completion",
+            Completion = (double)tasks.Where(i => i.Status == (short)TaskStatus.Completed).Count() / tasks.Length
+        });
 
         return [.. result];
     }
