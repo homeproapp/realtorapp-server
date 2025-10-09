@@ -374,49 +374,6 @@ TODO: - this will be a more generic notification hub set of methods that will ha
 
 ## UI/UX Requirements
 
-### Listing Header Component (Shared)
-The tasks page and conversation page both need a consistent header showing listing details with the ability to switch between listings. This should be extracted into a reusable component.
-
-**Component: `ListingHeaderComponent`**
-Location: `src/app/components/shared/page/listing-header/`
-
-**Features:**
-- Display client avatar(s) (single or stacked for multiple clients)
-- Show client name(s) (comma-separated for multiple)
-- Display listing address
-- Listing selector dropdown (icon-only select with home icon)
-  - Only shown when user has multiple listings
-  - Lists all other available listings for the same clients
-- Back button integration (handled by parent page)
-- Loading skeleton state
-
-**Inputs:**
-- `listingDetails: ListingDetails` - Contains clientNames, address, otherListings
-- `loading: boolean` - Show skeleton during data fetch
-
-**Outputs:**
-- `listingChange: EventEmitter<number>` - Emits selected listing ID
-
-**Usage Example:**
-```html
-<ion-header>
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-back-button [defaultHref]="'/tasks'"></ion-back-button>
-    </ion-buttons>
-    <app-listing-header
-      [listingDetails]="listingDetails()"
-      [loading]="loading()"
-      (listingChange)="handleListingChange($event)"
-    />
-  </ion-toolbar>
-</ion-header>
-```
-
-**Migration:**
-- Replace `app-conversation-header` in `/chat/pages/conversation/conversation.page.html` with new `app-listing-header`
-- Use same component in tasks listing page
-
 ### Tasks Listing Page
 **Route:** `/tasks/:listingId`
 
