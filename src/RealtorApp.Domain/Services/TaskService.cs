@@ -87,12 +87,12 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
         };
     }
 
-    public async Task<ListingTasksQueryResponse[]> GetListingTasksAsync(ListingTasksQuery query, long listingId)
+    public async Task<ListingTasksQueryResponse> GetListingTasksAsync(ListingTasksQuery query, long listingId)
     {
         var tasks = await _dbContext.Tasks
             .Where(t => t.ListingId == listingId)
             .AsNoTracking()
-            .Select(t => new ListingTasksQueryResponse
+            .Select(t => new TaskListItemResponse
             {
                 TaskId = t.TaskId,
                 Title = t.Title,
@@ -117,7 +117,11 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
             })
             .ToArrayAsync();
 
-        return tasks ?? [];
+        return new()
+        {
+            Tasks = tasks,
+            TaskCompletionCounts = tasks.ToCompletionCounts()
+        };
     }
 
     public async Task<AddOrUpdateTaskCommandResponse> AddOrUpdateTaskAsync(AddOrUpdateTaskCommand command, long listingId)

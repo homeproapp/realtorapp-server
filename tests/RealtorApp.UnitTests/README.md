@@ -94,7 +94,13 @@ public class TaskServiceTests : IDisposable
 
 ## How to Add New Tests
 
-### Option 1: Using TestBase (Recommended for services with many dependencies)
+**IMPORTANT:** All test classes MUST inherit from `TestBase`. This provides:
+- Pre-configured `DbContext` connected to the test database
+- `TestDataManager` for creating and cleaning up test data
+- Mock services for all dependencies
+- Automatic cleanup after each test
+
+### Using TestBase
 
 1. Create a new test class that inherits from `TestBase`:
 
@@ -116,8 +122,8 @@ public class MyServiceTests : TestBase
     public async Task MyMethod_WithValidInput_ReturnsExpectedResult()
     {
         // Arrange
-        var agent = CreateTestAgent();
-        var client = CreateTestClient();
+        var agent = TestDataManager.CreateAgent(TestDataManager.CreateUser("agent@test.com", "Test", "Agent"));
+        var client = TestDataManager.CreateClient(TestDataManager.CreateUser("client@test.com", "Test", "Client"));
 
         // Act
         var result = await _myService.MyMethod(agent.UserId);
@@ -129,7 +135,12 @@ public class MyServiceTests : TestBase
 }
 ```
 
-### Option 2: Standalone Test Class (For services with fewer dependencies)
+### Legacy Pattern (Deprecated - Do Not Use)
+
+The following standalone pattern was used in older tests but should NOT be used for new tests. Always use TestBase instead.
+
+<details>
+<summary>Click to see legacy pattern (for reference only)</summary>
 
 1. Create a test class implementing `IDisposable`:
 
@@ -181,6 +192,8 @@ public class MyServiceTests : IDisposable
     }
 }
 ```
+
+</details>
 
 ### Test Organization Pattern
 

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using RealtorApp.Contracts.Commands.Tasks.Requests;
 using RealtorApp.Contracts.Enums;
 using RealtorApp.Contracts.Queries.Tasks.Requests;
+using RealtorApp.Contracts.Queries.Tasks.Responses;
 using RealtorApp.Domain.Models;
 using RealtorApp.Domain.Services;
 using RealtorApp.UnitTests.Helpers;
@@ -493,7 +494,7 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listingId);
 
         Assert.NotNull(result);
-        Assert.Equal(3, result.Length);
+        Assert.Equal(3, result.Tasks.Length);
     }
 
     [Fact]
@@ -504,8 +505,8 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listingId);
 
         Assert.NotNull(result);
-        Assert.Single(result);
-        var task = result[0];
+        Assert.Single(result.Tasks);
+        var task = result.Tasks[0];
         Assert.Equal(2, task.Links.Length);
         Assert.Contains(task.Links, l => l.Name == "Link 1");
         Assert.Contains(task.Links, l => l.Name == "Link 2");
@@ -522,7 +523,8 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
 
         Assert.NotNull(result);
-        Assert.Empty(result);
+        Assert.Empty(result.Tasks);
+        Assert.Empty(result.TaskCompletionCounts);
     }
 
     private async System.Threading.Tasks.Task<long> SetupTestData_ListingWithMultipleTasks()
@@ -545,6 +547,172 @@ public class TaskServiceTests : IDisposable
 
         _testData.CreateLink(task.TaskId, "Link 1", "https://example.com/1");
         _testData.CreateLink(task.TaskId, "Link 2", "https://example.com/2");
+
+        return await System.Threading.Tasks.Task.FromResult(listing.ListingId);
+    }
+
+    #endregion
+
+    #region GetListingTasksAsync - TaskCompletionCounts Tests
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetListingTasksAsync_WithTasksGroupedByRoom_CalculatesCompletionCorrectly()
+    {
+        var listingId = await SetupTestData_TasksGroupedByRoom();
+
+        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listingId);
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.TaskCompletionCounts);
+
+        var kitchenCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "Kitchen" && c.Type == TaskCountType.Room);
+        Assert.NotNull(kitchenCount);
+        Assert.Equal(0.5, kitchenCount.Completion);
+
+        var bedroomCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "Bedroom" && c.Type == TaskCountType.Room);
+        Assert.NotNull(bedroomCount);
+        Assert.Equal(1.0, bedroomCount.Completion);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetListingTasksAsync_WithAllTasksCompleted_ReturnsFullCompletion()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.Completed);
+        _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.Completed);
+
+        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.All(result.TaskCompletionCounts, count => Assert.Equal(1.0, count.Completion));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetListingTasksAsync_WithNoTasksCompleted_ReturnsZeroCompletion()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.InProgress);
+
+        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.All(result.TaskCompletionCounts, count => Assert.Equal(0.0, count.Completion));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetListingTasksAsync_WithTasksGroupedByPriority_CalculatesCompletionCorrectly()
+    {
+        var listingId = await SetupTestData_TasksGroupedByPriority();
+
+        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listingId);
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.TaskCompletionCounts);
+
+        var highPriorityCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "High" && c.Type == TaskCountType.Priority);
+        Assert.NotNull(highPriorityCount);
+        Assert.Equal(0.5, highPriorityCount.Completion);
+
+        var mediumPriorityCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "Medium" && c.Type == TaskCountType.Priority);
+        Assert.NotNull(mediumPriorityCount);
+        Assert.Equal(0.0, mediumPriorityCount.Completion);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetListingTasksAsync_WithMixedRoomAndPriority_ReturnsAllCompletionCounts()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.Completed);
+        task1.Room = "Kitchen";
+        task1.Priority = (short)TaskPriority.High;
+
+        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.NotStarted);
+        task2.Room = "Bedroom";
+        task2.Priority = (short)TaskPriority.Low;
+
+        _dbContext.SaveChanges();
+
+        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.TaskCompletionCounts);
+
+        var roomCounts = result.TaskCompletionCounts.Where(c => c.Type == TaskCountType.Room).ToArray();
+        var priorityCounts = result.TaskCompletionCounts.Where(c => c.Type == TaskCountType.Priority).ToArray();
+
+        Assert.Equal(2, roomCounts.Length);
+        Assert.Equal(2, priorityCounts.Length);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetListingTasksAsync_WithNullRoomAndPriority_HandlesGracefully()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.Completed);
+        task1.Room = null;
+        task1.Priority = null;
+
+        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.NotStarted);
+        task2.Room = "Kitchen";
+        task2.Priority = (short)TaskPriority.High;
+
+        _dbContext.SaveChanges();
+
+        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.TaskCompletionCounts);
+    }
+
+    private async System.Threading.Tasks.Task<long> SetupTestData_TasksGroupedByRoom()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        var task1 = _testData.CreateTask(listing.ListingId, "Kitchen Task 1", (short)TaskStatus.Completed);
+        task1.Room = "Kitchen";
+        task1.Priority = (short)TaskPriority.High;
+
+        var task2 = _testData.CreateTask(listing.ListingId, "Kitchen Task 2", (short)TaskStatus.NotStarted);
+        task2.Room = "Kitchen";
+        task2.Priority = (short)TaskPriority.High;
+
+        var task3 = _testData.CreateTask(listing.ListingId, "Bedroom Task 1", (short)TaskStatus.Completed);
+        task3.Room = "Bedroom";
+        task3.Priority = (short)TaskPriority.Medium;
+
+        _dbContext.SaveChanges();
+
+        return await System.Threading.Tasks.Task.FromResult(listing.ListingId);
+    }
+
+    private async System.Threading.Tasks.Task<long> SetupTestData_TasksGroupedByPriority()
+    {
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+
+        var task1 = _testData.CreateTask(listing.ListingId, "High Priority Task 1", (short)TaskStatus.Completed);
+        task1.Room = "Kitchen";
+        task1.Priority = (short)TaskPriority.High;
+
+        var task2 = _testData.CreateTask(listing.ListingId, "High Priority Task 2", (short)TaskStatus.NotStarted);
+        task2.Room = "Bedroom";
+        task2.Priority = (short)TaskPriority.High;
+
+        var task3 = _testData.CreateTask(listing.ListingId, "Medium Priority Task 1", (short)TaskStatus.NotStarted);
+        task3.Room = "Living Room";
+        task3.Priority = (short)TaskPriority.Medium;
+
+        _dbContext.SaveChanges();
 
         return await System.Threading.Tasks.Task.FromResult(listing.ListingId);
     }
@@ -1061,9 +1229,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
 
         Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.Equal(task2.TaskId, result[0].TaskId);
-        Assert.DoesNotContain(result, t => t.TaskId == task1.TaskId);
+        Assert.Single(result.Tasks);
+        Assert.Equal(task2.TaskId, result.Tasks[0].TaskId);
+        Assert.DoesNotContain(result.Tasks, t => t.TaskId == task1.TaskId);
     }
 
     [Fact]
@@ -1079,7 +1247,7 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
 
         Assert.NotNull(result);
-        Assert.Empty(result);
+        Assert.Empty(result.Tasks);
     }
 
     [Fact]

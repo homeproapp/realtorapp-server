@@ -1,11 +1,30 @@
 using System;
+using RealtorApp.Contracts.Common;
 
 namespace RealtorApp.Contracts.Queries.Tasks.Responses;
 
-public class ListingTasksQueryResponse
+public class ListingTasksQueryResponse : ResponseWithError
+{
+    public TaskCompletionCountItem[] TaskCompletionCounts { get; set; } = [];
+    public TaskListItemResponse[] Tasks { get; set; } = [];
+}
+
+public class TaskCompletionCountItem
+{
+    public required TaskCountType Type { get; set; }
+    public required string Name { get; set; }
+    public required double Completion { get; set; }
+}
+
+public enum TaskCountType {
+    Room,
+    Priority
+}
+
+public class TaskListItemResponse
 {
     public long TaskId { get; set; }
-    
+
     public string? Title { get; set; }
 
     public string? Room { get; set; }
