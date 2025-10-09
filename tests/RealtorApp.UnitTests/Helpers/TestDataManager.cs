@@ -22,6 +22,7 @@ public class TestDataManager : IDisposable
     private readonly List<long> _createdFileIds = new();
     private readonly List<long> _createdFileTaskIds = new();
     private readonly List<long> _createdFileTypeIds = new();
+    private readonly List<long> _createdThirdPartyContactIds = new();
 
     private long _nextUserId = new Random().Next(999, 999999); // Start from a unique base
 
@@ -350,10 +351,35 @@ public class TestDataManager : IDisposable
         return filesTask;
     }
 
+    public ThirdPartyContact CreateThirdPartyContact(long agentId, string? name = "John Contractor",
+        string? email = "contractor@example.com", string? phone = "+1234567890", string? trade = "Electrician")
+    {
+        var contactId = _nextUserId++;
+        var contact = new ThirdPartyContact
+        {
+            ThirdPartyContactId = contactId,
+            AgentId = agentId,
+            Name = name,
+            Email = email,
+            Phone = phone,
+            Trade = trade,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _dbContext.ThirdPartyContacts.Add(contact);
+        _dbContext.SaveChanges();
+        _createdThirdPartyContactIds.Add(contactId);
+        return contact;
+    }
+
     public void Dispose()
     {
         try
         {
+            if (_createdThirdPartyContactIds.Any())
+            {
+                _dbContext.ThirdPartyContacts.RemoveRange(_dbContext.ThirdPartyContacts.Where(c => _createdThirdPartyContactIds.Contains(c.ThirdPartyContactId)));
+            }
             if (_createdLinkIds.Any())
             {
                 _dbContext.Links.RemoveRange(_dbContext.Links.Where(l => _createdLinkIds.Contains(l.LinkId)));

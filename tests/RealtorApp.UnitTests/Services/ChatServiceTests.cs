@@ -811,6 +811,58 @@ public class ChatServiceTests : IDisposable
 
     #endregion
 
+    #region SendMessage Tests
+
+    [Fact]
+    public async Task SendMessageAsync_UpdatesConversationUpdatedAt()
+    {
+        // Arrange
+        var agentUser = _testData.CreateUser("agent@test.com", "Agent", "One");
+        var clientUser = _testData.CreateUser("client@test.com", "Client", "One");
+        var agent = _testData.CreateAgent(agentUser);
+        var client = _testData.CreateClient(clientUser);
+
+        var property = _testData.CreateProperty();
+        var listing = _testData.CreateListing(property.PropertyId);
+        var conversation = _testData.CreateConversation(listing.ListingId);
+
+        _testData.CreateAgentListing(listing.ListingId, agent.UserId);
+        _testData.CreateClientListing(listing.ListingId, client.UserId);
+
+        var originalUpdatedAt = conversation.UpdatedAt;
+
+        _mockUserAuthService.Setup(x => x.IsConversationParticipant(It.IsAny<long>(), It.IsAny<long>()))
+            .ReturnsAsync(true);
+
+        await Task.Delay(100);
+
+        var command = new RealtorApp.Contracts.Commands.Chat.Requests.SendMessageCommand
+        {
+            ConversationId = listing.ListingId,
+            SenderId = agent.UserId,
+            MessageText = "Test message",
+            AttachmentRequests = []
+        };
+
+        // Act
+        var result = await _chatService.SendMessageAsync(command);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Null(result.ErrorMessage);
+
+        _dbContext.ChangeTracker.Clear();
+
+        var updatedConversation = await _dbContext.Conversations
+            .FirstOrDefaultAsync(c => c.ListingId == listing.ListingId);
+
+        Assert.NotNull(updatedConversation);
+        Assert.True(updatedConversation.UpdatedAt > originalUpdatedAt,
+            $"Expected UpdatedAt ({updatedConversation.UpdatedAt}) to be greater than original ({originalUpdatedAt})");
+    }
+
+    #endregion
+
     public void Dispose()
     {
         _testData.Dispose();

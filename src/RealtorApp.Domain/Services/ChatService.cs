@@ -19,6 +19,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
 
     public async Task<SendMessageCommandResponse> SendMessageAsync(SendMessageCommand command)
     {
+        using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
             if (!await _userAuthService.IsConversationParticipant(command.ConversationId, command.SenderId))
@@ -47,10 +48,12 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
             await _context.Conversations.Where(i => i.ListingId == command.ConversationId)
                 .ExecuteUpdateAsync(i => i.SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
 
+            await transaction.CommitAsync();
             return message.ToSendMessageResponse();
         }
         catch (Exception)
         {
+            await transaction.RollbackAsync();
             return new SendMessageCommandResponse { ErrorMessage = "Failed to send message" };
         }
     }

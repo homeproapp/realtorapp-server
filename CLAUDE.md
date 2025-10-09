@@ -118,6 +118,20 @@ SignalR `ChatHub` provides:
 - Database-first approach with scaffolded DbContext
 - Foreign key constraints with restrict delete behavior
 - Proper async/await patterns with `ConfigureAwait(false)`
+- **IMPORTANT**: `ExecuteUpdateAsync` and `ExecuteDeleteAsync` bypass EF Core's change tracker
+  - When testing code that uses `ExecuteUpdateAsync`, you MUST call `DbContext.ChangeTracker.Clear()` before querying the updated entity
+  - Without clearing the tracker, queries will return stale cached values instead of the updated database values
+  - Example:
+    ```csharp
+    await _context.ThirdPartyContacts
+        .Where(c => c.Id == id)
+        .ExecuteUpdateAsync(setters => setters.SetProperty(c => c.Name, "New Name"));
+
+    _dbContext.ChangeTracker.Clear(); // Required!
+
+    var updated = await _context.ThirdPartyContacts.FirstAsync(c => c.Id == id);
+    // Now 'updated.Name' will be "New Name"
+    ```
 
 ### Service Pattern
 - Interface-based dependency injection
