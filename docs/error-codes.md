@@ -48,9 +48,24 @@ This document contains internal error codes for debugging purposes. These codes 
 
 ---
 
+## System Error Codes
+
+### SYS_E001
+**Description**: Unhandled exception occurred
+**Details**: An unexpected error occurred while processing the request. The full exception details are logged server-side for debugging.
+**User Message**: "An unexpected error occurred"
+**HTTP Status**: 500
+
+---
+
 ## Usage
 
 When debugging authentication issues:
 1. Check the error code in the API response
 2. Reference this document to understand the specific issue
 3. Investigate the corresponding validation logic in `UserValidationMiddleware`
+
+When debugging system errors:
+1. Check the error code in the API response
+2. Review server logs for the detailed exception stack trace
+3. The logs include the request path, HTTP method, and authenticated user (if applicable)

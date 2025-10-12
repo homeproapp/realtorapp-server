@@ -49,11 +49,10 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
             {
                 foreach (var status in group.SelectMany(i => i.TaskStatuses))
                 {
-                    if (status == null) continue;
                     var statusEnum = (TaskStatus)status;
-                    if (statusCounts.ContainsKey(statusEnum))
+                    if (statusCounts.TryGetValue(statusEnum, out int value))
                     {
-                        statusCounts[statusEnum]++;
+                        statusCounts[statusEnum] = ++value;
                     }
                     else
                     {
@@ -121,6 +120,26 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
         {
             Tasks = tasks,
             TaskCompletionCounts = tasks.ToCompletionCounts()
+        };
+    }
+
+    public async Task<SlimListingTasksQueryResponse> GetSlimListingTasksAsync(long listingId)
+    {
+        var tasks = await _dbContext.Tasks
+            .AsNoTracking()
+            .Where(i => i.ListingId == listingId)
+            .Select(i => new SlimTaskResponse()
+            {
+                TaskId = i.TaskId,
+                Title = i.Title,
+                Status = i.Status,
+                Priority = i.Priority,
+                Room = i.Room
+            }).ToArrayAsync();
+
+        return new()
+        {
+            Tasks = tasks,
         };
     }
 

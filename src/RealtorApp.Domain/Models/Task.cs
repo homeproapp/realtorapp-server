@@ -9,15 +9,15 @@ public partial class Task
 
     public long ListingId { get; set; }
 
-    public string? Title { get; set; }
+    public string Title { get; set; } = null!;
 
-    public string? Room { get; set; }
+    public string Room { get; set; } = null!;
 
-    public short? Priority { get; set; }
+    public short Priority { get; set; }
 
     public string? Description { get; set; }
 
-    public short? Status { get; set; }
+    public short Status { get; set; }
 
     public DateTime? FollowUpDate { get; set; }
 

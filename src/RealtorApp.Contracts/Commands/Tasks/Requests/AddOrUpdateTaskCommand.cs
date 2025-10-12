@@ -8,7 +8,7 @@ public class AddOrUpdateTaskCommand
 {
     public long? TaskId { get; set; } // null means new task, otherwise update existing
     public long? TitleId { get; set; }
-    public string? TitleString { get; set; }
+    public required string TitleString { get; set; }
     public required string Room { get; set; }
     public string? Description { get; set; }
     public required TaskPriority Priority { get; set; }

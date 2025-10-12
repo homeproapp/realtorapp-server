@@ -132,6 +132,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
 app.UseRateLimiter();
 
 app.UseAuthentication();

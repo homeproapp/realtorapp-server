@@ -12,4 +12,5 @@ public interface ITaskService
     Task<ListingTasksQueryResponse> GetListingTasksAsync(ListingTasksQuery query, long listingId);
     Task<AddOrUpdateTaskCommandResponse> AddOrUpdateTaskAsync(AddOrUpdateTaskCommand command, long listingId);
     Task<bool> MarkTaskAndChildrenAsDeleted(long taskId);
+    Task<SlimListingTasksQueryResponse> GetSlimListingTasksAsync(long listingId);
 }

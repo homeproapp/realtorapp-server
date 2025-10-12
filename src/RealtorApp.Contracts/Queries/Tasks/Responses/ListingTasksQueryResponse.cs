@@ -7,6 +7,12 @@ public class ListingTasksQueryResponse : ResponseWithError
 {
     public TaskCompletionCountItem[] TaskCompletionCounts { get; set; } = [];
     public TaskListItemResponse[] Tasks { get; set; } = [];
+    public Dictionary<string, TaskListFilterOptionsResponse[]> FilterOptions { get; set; } = [];
+}
+
+public class TaskListFilterOptionsResponse
+{
+    public required string Label { get; set; }
 }
 
 public class TaskCompletionCountItem
@@ -27,13 +33,13 @@ public class TaskListItemResponse
 {
     public long TaskId { get; set; }
 
-    public string? Title { get; set; }
+    public required string Title { get; set; }
 
-    public string? Room { get; set; }
+    public required string Room { get; set; }
 
-    public short? Priority { get; set; }
+    public required short Priority { get; set; }
 
-    public short? Status { get; set; }
+    public required short Status { get; set; }
 
     public DateTime? FollowUpDate { get; set; }
 

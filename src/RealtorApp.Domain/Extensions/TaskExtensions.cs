@@ -1,5 +1,6 @@
 using RealtorApp.Contracts.Commands.Tasks.Responses;
 using RealtorApp.Contracts.Enums;
+using RealtorApp.Contracts.Queries.Tasks.Requests;
 using RealtorApp.Contracts.Queries.Tasks.Responses;
 using RealtorApp.Domain.Models;
 using Task = RealtorApp.Domain.Models.Task;
@@ -66,7 +67,7 @@ public static class TaskExtensions
                 result.Add(new()
                 {
                     Type = TaskCountType.Priority,
-                    Name = ((TaskPriority)(priorityGroup.Key ?? 0)).ToString() + " Priority Tasks",
+                    Name = ((TaskPriority)priorityGroup.Key).ToString() + " Priority Tasks",
                     Completion = (double)priorityGroup.Where(i => i.Status == (short)TaskStatus.Completed).Count() / priorityGroup.Count()
                 });
             }
