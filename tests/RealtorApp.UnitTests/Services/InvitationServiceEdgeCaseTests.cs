@@ -18,8 +18,8 @@ public class InvitationServiceEdgeCaseTests : TestBase
         {
             Clients = new List<ClientInvitationRequest>
             {
-                new ClientInvitationRequest { Email = "duplicate@example.com", FirstName = "John" },
-                new ClientInvitationRequest { Email = "duplicate@example.com", FirstName = "Jane" } // Same email
+                new ClientInvitationRequest { Email = "duplicate@example.com", FirstName = "John", LastName = "Doe" },
+                new ClientInvitationRequest { Email = "duplicate@example.com", FirstName = "Jane", LastName = "Doe" } // Same email
             },
             Properties = new List<PropertyInvitationRequest>
             {
@@ -44,7 +44,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
         {
             Clients = new List<ClientInvitationRequest>
             {
-                new ClientInvitationRequest { Email = "client@example.com", FirstName = "John" }
+                new ClientInvitationRequest { Email = "client@example.com", FirstName = "John", LastName = "Doe" }
             },
             Properties = new List<PropertyInvitationRequest>
             {

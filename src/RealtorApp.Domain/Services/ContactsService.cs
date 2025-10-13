@@ -127,4 +127,32 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
         };
     }
 
+    public async Task<GetClientContactsQueryResponse> GetClientContactsAsync(long agentId)
+    {
+        var contacts = await _context.ClientInvitations
+            .AsNoTracking()
+            .Where(i => i.InvitedBy == agentId)
+            .Select(i => new ClientContactResponse()
+            {
+                ContactId = i.ClientInvitationId,
+                FirstName = i.ClientFirstName,
+                LastName = i.ClientLastName,
+                Email = i.ClientEmail,
+                Phone = i.ClientPhone,
+                HasAcceptedInvite = i.AcceptedAt != null,
+                InviteHasExpired = i.ExpiresAt < DateTime.UtcNow,
+                ActiveListingsCount = i.CreatedUser == null ? 0 :
+                    i.CreatedUser.ClientsListings
+                        .Select(x => x.Listing.AgentsListings)
+                        .Where(i => i.Any(i => i.AgentId == agentId))
+                        .Count()
+            })
+            .ToArrayAsync();
+
+        return new()
+        {
+            ClientContacts = contacts
+        };
+    }
+
 }

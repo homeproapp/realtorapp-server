@@ -9,9 +9,9 @@ public partial class ClientInvitation
 
     public string ClientEmail { get; set; } = null!;
 
-    public string? ClientFirstName { get; set; }
+    public string ClientFirstName { get; set; } = null!;
 
-    public string? ClientLastName { get; set; }
+    public string ClientLastName { get; set; } = null!;
 
     public string? ClientPhone { get; set; }
 

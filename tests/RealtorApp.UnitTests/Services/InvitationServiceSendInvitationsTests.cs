@@ -234,49 +234,6 @@ public class InvitationServiceSendInvitationsTests : TestBase
     }
 
     [Fact]
-    public async Task SendInvitationsAsync_WithOptionalFields_HandlesMissingData()
-    {
-        // Arrange
-        var agent = CreateTestAgent();
-        var expectedEmail = $"client{Guid.NewGuid():N}@example.com";
-        var command = new SendInvitationCommand
-        {
-            Clients = new List<ClientInvitationRequest>
-            {
-                new ClientInvitationRequest { Email = expectedEmail} // Only email provided
-            },
-            Properties = new List<PropertyInvitationRequest>
-            {
-                new PropertyInvitationRequest {
-                    AddressLine1 = "123 Main St",
-                    City = "Toronto",
-                    Region = "ON",
-                    PostalCode = "M5V3A8",
-                    CountryCode = "CA"
-                    // AddressLine2 missing
-                }
-            }
-        };
-
-        // Act
-        var result = await InvitationService.SendInvitationsAsync(command, agent.UserId);
-
-        // Assert
-        Assert.True(result.IsSuccess());
-        Assert.Equal(1, result.InvitationsSent);
-
-        var clientInvitation = await DbContext.ClientInvitations.FirstAsync();
-        Assert.Equal(expectedEmail, clientInvitation.ClientEmail);
-        Assert.Null(clientInvitation.ClientFirstName);
-        Assert.Null(clientInvitation.ClientLastName);
-        Assert.Null(clientInvitation.ClientPhone);
-
-        var propertyInvitation = await DbContext.PropertyInvitations.FirstAsync();
-        Assert.Equal("123 Main St", propertyInvitation.AddressLine1);
-        Assert.Null(propertyInvitation.AddressLine2);
-    }
-
-    [Fact]
     public async Task SendInvitationsAsync_GeneratesUniqueTokensForEachClient()
     {
         // Arrange
@@ -285,9 +242,9 @@ public class InvitationServiceSendInvitationsTests : TestBase
         {
             Clients = new List<ClientInvitationRequest>
             {
-                new ClientInvitationRequest { Email = $"client1{Guid.NewGuid():N}@example.com", FirstName = "John" },
-                new ClientInvitationRequest { Email = $"client2{Guid.NewGuid():N}@example.com", FirstName = "Jane" },
-                new ClientInvitationRequest { Email = $"client3{Guid.NewGuid():N}@example.com", FirstName = "Bob" }
+                new ClientInvitationRequest { Email = $"client1{Guid.NewGuid():N}@example.com", FirstName = "John", LastName = "Doe" },
+                new ClientInvitationRequest { Email = $"client2{Guid.NewGuid():N}@example.com", FirstName = "Jane", LastName = "Doe" },
+                new ClientInvitationRequest { Email = $"client3{Guid.NewGuid():N}@example.com", FirstName = "Bob", LastName = "Doe" }
             },
             Properties = new List<PropertyInvitationRequest>
             {
@@ -318,7 +275,7 @@ public class InvitationServiceSendInvitationsTests : TestBase
         {
             Clients = new List<ClientInvitationRequest>
             {
-                new ClientInvitationRequest { Email = $"client{Guid.NewGuid():N}@example.com", FirstName = "John" }
+                new ClientInvitationRequest { Email = $"client{Guid.NewGuid():N}@example.com", FirstName = "John", LastName = "Doe" }
             },
             Properties = new List<PropertyInvitationRequest>
             {

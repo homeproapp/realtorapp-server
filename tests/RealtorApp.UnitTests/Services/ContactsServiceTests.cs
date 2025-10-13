@@ -419,4 +419,360 @@ public class ContactsServiceTests : TestBase
     }
 
     #endregion
+
+    #region GetClientContactsAsync Tests
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetClientContactsAsync_WithNoInvitations_ReturnsEmptyArray()
+    {
+        var user = TestDataManager.CreateUser("agent@example.com", "Agent", "Smith");
+        var agent = TestDataManager.CreateAgent(user);
+
+        var result = await _contactsService.GetClientContactsAsync(agent.UserId);
+
+        Assert.NotNull(result);
+        Assert.NotNull(result.ClientContacts);
+        Assert.Empty(result.ClientContacts);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetClientContactsAsync_WithSingleInvitation_ReturnsContact()
+    {
+        var agentUser = TestDataManager.CreateUser("agent@example.com", "Agent", "Smith");
+        var agent = TestDataManager.CreateAgent(agentUser);
+
+        var invitation = TestDataManager.CreateClientInvitation(
+            agent.UserId,
+            "client@test.com",
+            "John",
+            "Doe",
+            "+1234567890"
+        );
+
+        var result = await _contactsService.GetClientContactsAsync(agent.UserId);
+
+        Assert.NotNull(result);
+        Assert.Single(result.ClientContacts);
+
+        var contact = result.ClientContacts[0];
+        Assert.Equal(invitation.ClientInvitationId, contact.ContactId);
+        Assert.Equal("John", contact.FirstName);
+        Assert.Equal("Doe", contact.LastName);
+        Assert.Equal("client@test.com", contact.Email);
+        Assert.Equal("+1234567890", contact.Phone);
+        Assert.False(contact.HasAcceptedInvite);
+        Assert.False(contact.InviteHasExpired);
+        Assert.Equal(0, contact.ActiveListingsCount);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetClientContactsAsync_WithMultipleInvitations_ReturnsAllContacts()
+    {
+        var agentUser = TestDataManager.CreateUser("agent@example.com", "Agent", "Smith");
+        var agent = TestDataManager.CreateAgent(agentUser);
+
+        var invitation1 = TestDataManager.CreateClientInvitation(agent.UserId, "client1@test.com", "John", "Doe");
+        var invitation2 = TestDataManager.CreateClientInvitation(agent.UserId, "client2@test.com", "Jane", "Smith");
+        var invitation3 = TestDataManager.CreateClientInvitation(agent.UserId, "client3@test.com", "Bob", "Wilson");
+
+        var result = await _contactsService.GetClientContactsAsync(agent.UserId);
+
+        Assert.NotNull(result);
+        Assert.Equal(3, result.ClientContacts.Length);
+        Assert.Contains(result.ClientContacts, c => c.Email == "client1@test.com");
+        Assert.Contains(result.ClientContacts, c => c.Email == "client2@test.com");
+        Assert.Contains(result.ClientContacts, c => c.Email == "client3@test.com");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetClientContactsAsync_WithMultipleAgents_ReturnsOnlyAgentInvitations()
+    {
+        var agent1User = TestDataManager.CreateUser("agent1@example.com", "Agent", "One");
+        var agent1 = TestDataManager.CreateAgent(agent1User);
+
+        var agent2User = TestDataManager.CreateUser("agent2@example.com", "Agent", "Two");
+        var agent2 = TestDataManager.CreateAgent(agent2User);
+
+        var invitation1 = TestDataManager.CreateClientInvitation(agent1.UserId, "client1@test.com", "John", "Doe");
+        var invitation2 = TestDataManager.CreateClientInvitation(agent2.UserId, "client2@test.com", "Jane", "Smith");
+        var invitation3 = TestDataManager.CreateClientInvitation(agent1.UserId, "client3@test.com", "Bob", "Wilson");
+
+        var result = await _contactsService.GetClientContactsAsync(agent1.UserId);
+
+        Assert.NotNull(result);
+        Assert.Equal(2, result.ClientContacts.Length);
+        Assert.Contains(result.ClientContacts, c => c.Email == "client1@test.com");
+        Assert.Contains(result.ClientContacts, c => c.Email == "client3@test.com");
+        Assert.DoesNotContain(result.ClientContacts, c => c.Email == "client2@test.com");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetClientContactsAsync_WithAcceptedInvitation_SetsHasAcceptedInviteTrue()
+    {
+        var agentUser = TestDataManager.CreateUser("agent@example.com", "Agent", "Smith");
+        var agent = TestDataManager.CreateAgent(agentUser);
+
+        var invitation = TestDataManager.CreateClientInvitation(
+            agent.UserId,
+            "client@test.com",
+            "John",
+            "Doe",
+            "+1234567890",
+            acceptedAt: DateTime.UtcNow.AddDays(-1)
+        );
+
+        var result = await _contactsService.GetClientContactsAsync(agent.UserId);
+
+        Assert.Single(result.ClientContacts);
+        var contact = result.ClientContacts[0];
+        Assert.True(contact.HasAcceptedInvite);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetClientContactsAsync_WithExpiredInvitation_SetsInviteHasExpiredTrue()
+    {
+        var agentUser = TestDataManager.CreateUser("agent@example.com", "Agent", "Smith");
+        var agent = TestDataManager.CreateAgent(agentUser);
+
+        var invitation = TestDataManager.CreateClientInvitation(
+            agent.UserId,
+            "client@test.com",
+            "John",
+            "Doe",
+            "+1234567890",
+            expiresAt: DateTime.UtcNow.AddDays(-1)
+        );
+
+        var result = await _contactsService.GetClientContactsAsync(agent.UserId);
+
+        Assert.Single(result.ClientContacts);
+        var contact = result.ClientContacts[0];
+        Assert.True(contact.InviteHasExpired);
+        Assert.False(contact.HasAcceptedInvite);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetClientContactsAsync_WithNonExpiredInvitation_SetsInviteHasExpiredFalse()
+    {
+        var agentUser = TestDataManager.CreateUser("agent@example.com", "Agent", "Smith");
+        var agent = TestDataManager.CreateAgent(agentUser);
+
+        var invitation = TestDataManager.CreateClientInvitation(
+            agent.UserId,
+            "client@test.com",
+            "John",
+            "Doe",
+            "+1234567890",
+            expiresAt: DateTime.UtcNow.AddDays(7)
+        );
+
+        var result = await _contactsService.GetClientContactsAsync(agent.UserId);
+
+        Assert.Single(result.ClientContacts);
+        var contact = result.ClientContacts[0];
+        Assert.False(contact.InviteHasExpired);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetClientContactsAsync_WithAcceptedInvitationAndNoListings_ReturnsZeroActiveListings()
+    {
+        var agentUser = TestDataManager.CreateUser("agent@example.com", "Agent", "Smith");
+        var agent = TestDataManager.CreateAgent(agentUser);
+
+        var clientUser = TestDataManager.CreateUser("client@test.com", "John", "Doe");
+        var client = TestDataManager.CreateClient(clientUser);
+
+        var invitation = TestDataManager.CreateClientInvitation(
+            agent.UserId,
+            clientUser.Email,
+            "John",
+            "Doe",
+            "+1234567890",
+            acceptedAt: DateTime.UtcNow.AddDays(-1)
+        );
+
+        await DbContext.ClientInvitations
+            .Where(i => i.ClientInvitationId == invitation.ClientInvitationId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(i => i.CreatedUserId, client.UserId));
+
+        DbContext.ChangeTracker.Clear();
+
+        var result = await _contactsService.GetClientContactsAsync(agent.UserId);
+
+        Assert.Single(result.ClientContacts);
+        var contact = result.ClientContacts[0];
+        Assert.Equal(0, contact.ActiveListingsCount);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetClientContactsAsync_WithAcceptedInvitationAndActiveListings_ReturnsCorrectCount()
+    {
+        var agentUser = TestDataManager.CreateUser("agent@example.com", "Agent", "Smith");
+        var agent = TestDataManager.CreateAgent(agentUser);
+
+        var clientUser = TestDataManager.CreateUser("client@test.com", "John", "Doe");
+        var client = TestDataManager.CreateClient(clientUser);
+
+        var invitation = TestDataManager.CreateClientInvitation(
+            agent.UserId,
+            clientUser.Email,
+            "John",
+            "Doe",
+            "+1234567890",
+            acceptedAt: DateTime.UtcNow.AddDays(-1)
+        );
+
+        await DbContext.ClientInvitations
+            .Where(i => i.ClientInvitationId == invitation.ClientInvitationId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(i => i.CreatedUserId, client.UserId));
+
+        var property1 = TestDataManager.CreateProperty();
+        var property2 = TestDataManager.CreateProperty();
+        var property3 = TestDataManager.CreateProperty();
+
+        var listing1 = TestDataManager.CreateListing(property1.PropertyId);
+        var listing2 = TestDataManager.CreateListing(property2.PropertyId);
+        var listing3 = TestDataManager.CreateListing(property3.PropertyId);
+
+        TestDataManager.CreateAgentListing(listing1.ListingId, agent.UserId);
+        TestDataManager.CreateClientListing(listing1.ListingId, client.UserId);
+
+        TestDataManager.CreateAgentListing(listing2.ListingId, agent.UserId);
+        TestDataManager.CreateClientListing(listing2.ListingId, client.UserId);
+
+        TestDataManager.CreateAgentListing(listing3.ListingId, agent.UserId);
+        TestDataManager.CreateClientListing(listing3.ListingId, client.UserId);
+
+        DbContext.ChangeTracker.Clear();
+
+        var result = await _contactsService.GetClientContactsAsync(agent.UserId);
+
+        Assert.Single(result.ClientContacts);
+        var contact = result.ClientContacts[0];
+        Assert.Equal(3, contact.ActiveListingsCount);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetClientContactsAsync_WithClientListingsForDifferentAgent_ExcludesThoseListings()
+    {
+        var agent1User = TestDataManager.CreateUser("agent1@example.com", "Agent", "One");
+        var agent1 = TestDataManager.CreateAgent(agent1User);
+
+        var agent2User = TestDataManager.CreateUser("agent2@example.com", "Agent", "Two");
+        var agent2 = TestDataManager.CreateAgent(agent2User);
+
+        var clientUser = TestDataManager.CreateUser("client@test.com", "John", "Doe");
+        var client = TestDataManager.CreateClient(clientUser);
+
+        var invitation = TestDataManager.CreateClientInvitation(
+            agent1.UserId,
+            clientUser.Email,
+            "John",
+            "Doe",
+            "+1234567890",
+            acceptedAt: DateTime.UtcNow.AddDays(-1)
+        );
+
+        await DbContext.ClientInvitations
+            .Where(i => i.ClientInvitationId == invitation.ClientInvitationId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(i => i.CreatedUserId, client.UserId));
+
+        var property1 = TestDataManager.CreateProperty();
+        var property2 = TestDataManager.CreateProperty();
+
+        var listing1 = TestDataManager.CreateListing(property1.PropertyId);
+        var listing2 = TestDataManager.CreateListing(property2.PropertyId);
+
+        TestDataManager.CreateAgentListing(listing1.ListingId, agent1.UserId);
+        TestDataManager.CreateClientListing(listing1.ListingId, client.UserId);
+
+        TestDataManager.CreateAgentListing(listing2.ListingId, agent2.UserId);
+        TestDataManager.CreateClientListing(listing2.ListingId, client.UserId);
+
+        DbContext.ChangeTracker.Clear();
+
+        var result = await _contactsService.GetClientContactsAsync(agent1.UserId);
+
+        Assert.Single(result.ClientContacts);
+        var contact = result.ClientContacts[0];
+        Assert.Equal(1, contact.ActiveListingsCount);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetClientContactsAsync_WithNullPhoneNumber_HandlesGracefully()
+    {
+        var agentUser = TestDataManager.CreateUser("agent@example.com", "Agent", "Smith");
+        var agent = TestDataManager.CreateAgent(agentUser);
+
+        var invitation = TestDataManager.CreateClientInvitation(
+            agent.UserId,
+            "client@test.com",
+            "John",
+            "Doe",
+            phone: null
+        );
+
+        var result = await _contactsService.GetClientContactsAsync(agent.UserId);
+
+        Assert.Single(result.ClientContacts);
+        var contact = result.ClientContacts[0];
+        Assert.Null(contact.Phone);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetClientContactsAsync_WithDeletedInvitation_ExcludesFromResults()
+    {
+        var agentUser = TestDataManager.CreateUser("agent@example.com", "Agent", "Smith");
+        var agent = TestDataManager.CreateAgent(agentUser);
+
+        var invitation1 = TestDataManager.CreateClientInvitation(agent.UserId, "client1@test.com", "John", "Doe");
+        var invitation2 = TestDataManager.CreateClientInvitation(
+            agent.UserId,
+            "client2@test.com",
+            "Jane",
+            "Smith",
+            "+1234567890",
+            deletedAt: DateTime.UtcNow
+        );
+
+        var result = await _contactsService.GetClientContactsAsync(agent.UserId);
+
+        Assert.Single(result.ClientContacts);
+        Assert.Equal("client1@test.com", result.ClientContacts[0].Email);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task GetClientContactsAsync_MapsAllPropertiesCorrectly()
+    {
+        var agentUser = TestDataManager.CreateUser("agent@example.com", "Agent", "Smith");
+        var agent = TestDataManager.CreateAgent(agentUser);
+
+        var invitation = TestDataManager.CreateClientInvitation(
+            agent.UserId,
+            "complete@test.com",
+            "Complete",
+            "Test",
+            "+9876543210",
+            expiresAt: DateTime.UtcNow.AddDays(5),
+            acceptedAt: DateTime.UtcNow.AddDays(-2)
+        );
+
+        var result = await _contactsService.GetClientContactsAsync(agent.UserId);
+
+        Assert.Single(result.ClientContacts);
+        var contact = result.ClientContacts[0];
+
+        Assert.Equal(invitation.ClientInvitationId, contact.ContactId);
+        Assert.Equal("Complete", contact.FirstName);
+        Assert.Equal("Test", contact.LastName);
+        Assert.Equal("complete@test.com", contact.Email);
+        Assert.Equal("+9876543210", contact.Phone);
+        Assert.True(contact.HasAcceptedInvite);
+        Assert.False(contact.InviteHasExpired);
+    }
+
+    #endregion
 }
