@@ -32,9 +32,10 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
         };
     }
 
-    public async Task<GetThirdPartyContactQueryResponse> GetThirdPartyContactAsync(long thirdPartyContactId)
+    public async Task<GetThirdPartyContactQueryResponse> GetThirdPartyContactAsync(long thirdPartyContactId, long agentId)
     {
-        var contact = await _context.ThirdPartyContacts.Where(i => i.ThirdPartyContactId == thirdPartyContactId)
+        var contact = await _context.ThirdPartyContacts
+            .Where(i => i.ThirdPartyContactId == thirdPartyContactId && i.AgentId == agentId)
             .AsNoTracking()
             .Select(i => new ThirdPartyContactResponse()
             {
@@ -66,7 +67,7 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
         }
         else
         {
-            return await UpdateThirdPartyContactAsync(command);
+            return await UpdateThirdPartyContactAsync(command, agentId);
         }
     }
 
@@ -88,20 +89,20 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
         return contact.ToCommandResponse();
     }
 
-    private async Task<AddOrUpdateThirdPartyContactCommandResponse> UpdateThirdPartyContactAsync(AddOrUpdateThirdPartyContactCommand command)
+    private async Task<AddOrUpdateThirdPartyContactCommandResponse> UpdateThirdPartyContactAsync(AddOrUpdateThirdPartyContactCommand command, long agentId)
     {
 
         if (command.IsMarkedForDeletion)
         {
             await _context.ThirdPartyContacts
-                .Where(i => i.ThirdPartyContactId == command.ThirdPartyId)
+                .Where(i => i.ThirdPartyContactId == command.ThirdPartyId && i.AgentId == agentId)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(x => x.DeletedAt, DateTime.UtcNow));
         }
         else
         {
             await _context.ThirdPartyContacts
-                .Where(c => c.ThirdPartyContactId == command.ThirdPartyId)
+                .Where(c => c.ThirdPartyContactId == command.ThirdPartyId && c.AgentId == agentId)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(c => c.Name, command.Name)
                     .SetProperty(c => c.Email, command.Email)
@@ -111,6 +112,19 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
         }
 
         return command.ToCommandResponse();
+    }
+
+    public async Task<DeleteThirdPartyContactCommandResponse> DeleteThirdPartyContactAsync(long thirdPartyContactId, long agentId)
+    {
+        await _context.ThirdPartyContacts
+            .Where(c => c.ThirdPartyContactId == thirdPartyContactId && c.AgentId == agentId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(c => c.DeletedAt, DateTime.UtcNow));
+
+        return new DeleteThirdPartyContactCommandResponse
+        {
+            Success = true
+        };
     }
 
 }

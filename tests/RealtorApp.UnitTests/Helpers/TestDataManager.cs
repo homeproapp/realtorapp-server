@@ -271,8 +271,8 @@ public class TestDataManager : IDisposable
         {
             TaskId = taskId,
             ListingId = listingId,
-            Title = title,
-            Status = status,
+            Title = title ?? "Test Task",
+            Status = status ?? 0,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = updatedAt ?? DateTime.UtcNow
         };

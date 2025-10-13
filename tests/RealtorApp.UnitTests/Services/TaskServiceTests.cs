@@ -658,8 +658,8 @@ public class TaskServiceTests : IDisposable
         var listing = _testData.CreateListing(property.PropertyId);
 
         var task1 = _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.Completed);
-        task1.Room = null;
-        task1.Priority = null;
+        task1.Room = "";
+        task1.Priority = 0;
 
         var task2 = _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.NotStarted);
         task2.Room = "Kitchen";

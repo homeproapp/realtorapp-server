@@ -96,7 +96,7 @@ public class ContactsServiceTests : TestBase
         var agent = TestDataManager.CreateAgent(user);
         var contact = TestDataManager.CreateThirdPartyContact(agent.UserId, "Test Contractor", "test@contractor.com", "+9876543210", "Carpenter");
 
-        var result = await _contactsService.GetThirdPartyContactAsync(contact.ThirdPartyContactId);
+        var result = await _contactsService.GetThirdPartyContactAsync(contact.ThirdPartyContactId, agent.UserId);
 
         Assert.NotNull(result);
         Assert.NotNull(result.ThirdPartyContact);
@@ -109,7 +109,10 @@ public class ContactsServiceTests : TestBase
     [Fact]
     public async System.Threading.Tasks.Task GetThirdPartyContactAsync_WithInvalidId_ReturnsErrorMessage()
     {
-        var result = await _contactsService.GetThirdPartyContactAsync(999999);
+        var user = TestDataManager.CreateUser("agent@example.com", "Agent", "Smith");
+        var agent = TestDataManager.CreateAgent(user);
+
+        var result = await _contactsService.GetThirdPartyContactAsync(999999, agent.UserId);
 
         Assert.NotNull(result);
         Assert.Null(result.ThirdPartyContact);
@@ -123,7 +126,7 @@ public class ContactsServiceTests : TestBase
         var agent = TestDataManager.CreateAgent(user);
         var contact = TestDataManager.CreateThirdPartyContact(agent.UserId, "Full Mapping Test", "mapping@test.com", "+1234567890", "Electrician");
 
-        var result = await _contactsService.GetThirdPartyContactAsync(contact.ThirdPartyContactId);
+        var result = await _contactsService.GetThirdPartyContactAsync(contact.ThirdPartyContactId, agent.UserId);
 
         Assert.NotNull(result.ThirdPartyContact);
         Assert.Equal(contact.ThirdPartyContactId, result.ThirdPartyContact.ThirdPartyId);
@@ -386,7 +389,7 @@ public class ContactsServiceTests : TestBase
             .Where(c => c.ThirdPartyContactId == contact.ThirdPartyContactId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(c => c.DeletedAt, DateTime.UtcNow));
 
-        var result = await _contactsService.GetThirdPartyContactAsync(contact.ThirdPartyContactId);
+        var result = await _contactsService.GetThirdPartyContactAsync(contact.ThirdPartyContactId, agent.UserId);
 
         Assert.NotNull(result);
         Assert.Null(result.ThirdPartyContact);
