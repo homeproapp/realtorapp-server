@@ -12,7 +12,7 @@ namespace RealtorApp.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Policy = PolicyConstants.AgentOnly)]
     [EnableRateLimiting(RateLimitConstants.Authenticated)]
     public class ContactsController(IContactsService contactsService) : RealtorApiBaseController
     {

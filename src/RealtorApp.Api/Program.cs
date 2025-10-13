@@ -116,7 +116,15 @@ builder.Services
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(PolicyConstants.AgentOnly, policy =>
+        policy.RequireRole(RoleConstants.Agent));
+
+    options.AddPolicy(PolicyConstants.ClientOnly, policy =>
+        policy.RequireRole(RoleConstants.Client));
+});
+
 builder.Services.AddSignalR().AddJsonProtocol(o =>
     {
         o.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
