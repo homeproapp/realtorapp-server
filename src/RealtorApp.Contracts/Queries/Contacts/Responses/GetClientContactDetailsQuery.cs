@@ -27,6 +27,7 @@ public class ClientContantListingDetailsResponse
     public long? ListingId { get; set; }
     public bool IsActive { get; set; }
     //TODO: Finish this!
+    // also update client contacts get to use users.firstname, then default to invite.
 }
 
 public class ClientContactAssociatedUsers
