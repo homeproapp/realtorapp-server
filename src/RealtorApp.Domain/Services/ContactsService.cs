@@ -127,12 +127,12 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
         };
     }
 
-    public async Task<GetClientContactsQueryResponse> GetClientContactsAsync(long agentId)
+    public async Task<GetClientContactsSlimQueryResponse> GetClientContactsAsync(long agentId)
     {
         var contacts = await _context.ClientInvitations
             .AsNoTracking()
             .Where(i => i.InvitedBy == agentId)
-            .Select(i => new ClientContactResponse()
+            .Select(i => new ClientContactSlimResponse()
             {
                 ContactId = i.ClientInvitationId,
                 FirstName = i.ClientFirstName,

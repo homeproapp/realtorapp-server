@@ -3,12 +3,12 @@ using RealtorApp.Contracts.Common;
 
 namespace RealtorApp.Contracts.Queries.Contacts.Responses;
 
-public class GetClientContactsQueryResponse : ResponseWithError
+public class GetClientContactsSlimQueryResponse : ResponseWithError
 {
-    public ClientContactResponse[] ClientContacts { get; set; } = [];
+    public ClientContactSlimResponse[] ClientContacts { get; set; } = [];
 }
 
-public class ClientContactResponse
+public class ClientContactSlimResponse
 {
     public long ContactId { get; set; }
     public long? ClientId { get; set; }
