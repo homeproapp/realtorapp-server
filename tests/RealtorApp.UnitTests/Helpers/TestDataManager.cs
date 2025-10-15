@@ -81,7 +81,7 @@ public class TestDataManager : IDisposable
     }
 
     public ClientInvitation CreateClientInvitation(long agentUserId, string? email = null,
-        string? firstName = "John", string? lastName = "Doe", string? phone = "+1234567890",
+        string firstName = "John", string lastName = "Doe", string? phone = "+1234567890",
         DateTime? expiresAt = null, DateTime? acceptedAt = null, DateTime? deletedAt = null)
     {
         var invitation = new ClientInvitation
@@ -264,7 +264,7 @@ public class TestDataManager : IDisposable
         return clientInvitationsProperty;
     }
 
-    public RealtorApp.Domain.Models.Task CreateTask(long listingId, string? title = "Test Task", short? status = null, DateTime? updatedAt = null)
+    public RealtorApp.Domain.Models.Task CreateTask(long listingId, string? title = "Test Task", string room = "Test Room", short? status = null, DateTime? updatedAt = null)
     {
         var taskId = _nextUserId++;
         var task = new RealtorApp.Domain.Models.Task
@@ -272,6 +272,7 @@ public class TestDataManager : IDisposable
             TaskId = taskId,
             ListingId = listingId,
             Title = title ?? "Test Task",
+            Room = room,
             Status = status ?? 0,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = updatedAt ?? DateTime.UtcNow

@@ -2,9 +2,9 @@ using RealtorApp.Contracts.Common;
 
 namespace RealtorApp.Contracts.Queries.Contacts.Responses;
 
-public class GetClientContactDetailsQuery : ResponseWithError
+public class GetClientContactDetailsQueryResponse : ResponseWithError
 {
-
+    public ClientContactDetailsResponse? Contact { get; set; }
 }
 
 public class ClientContactDetailsResponse
@@ -17,17 +17,16 @@ public class ClientContactDetailsResponse
     public string? Phone { get; set; }
     public bool HasAcceptedInvite { get; set; }
     public bool InviteHasExpired { get; set; }
-    public required ClientContantListingDetailsResponse[] Listings { get; set; }
+    public required ClientContactListingDetailsResponse[] Listings { get; set; }
     public ClientContactAssociatedUsers[] AssociatedWith { get; set; } = [];
 }
 
-public class ClientContantListingDetailsResponse
+public class ClientContactListingDetailsResponse
 {
     public long ListingInvitationId { get; set; }
     public long? ListingId { get; set; }
     public bool IsActive { get; set; }
-    //TODO: Finish this!
-    // also update client contacts get to use users.firstname, then default to invite.
+    public required string Address { get; set; }
 }
 
 public class ClientContactAssociatedUsers

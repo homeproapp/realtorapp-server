@@ -127,7 +127,7 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
         };
     }
 
-    public async Task<GetClientContactsSlimQueryResponse> GetClientContactsAsync(long agentId)
+    public async Task<GetClientContactsSlimQueryResponse> GetClientContactsSlimAsync(long agentId)
     {
         var contacts = await _context.ClientInvitations
             .AsNoTracking()
@@ -135,9 +135,9 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
             .Select(i => new ClientContactSlimResponse()
             {
                 ContactId = i.ClientInvitationId,
-                FirstName = i.ClientFirstName,
-                LastName = i.ClientLastName,
-                Email = i.ClientEmail,
+                FirstName = i.CreatedUser == null ? i.ClientFirstName : i.CreatedUser.User.FirstName,
+                LastName = i.CreatedUser == null ? i.ClientLastName : i.CreatedUser.User.LastName,
+                Email = i.CreatedUser == null ? i.ClientEmail : i.CreatedUser.User.Email,
                 Phone = i.ClientPhone,
                 HasAcceptedInvite = i.AcceptedAt != null,
                 InviteHasExpired = i.ExpiresAt < DateTime.UtcNow,
@@ -152,6 +152,68 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
         return new()
         {
             ClientContacts = contacts
+        };
+    }
+
+    public async Task<GetClientContactDetailsQueryResponse> GetClientContactDetailsAsync(long contactId, long agentId)
+    {
+        var client = await _context.ClientInvitations
+            .AsNoTracking()
+            .Where(i => i.InvitedBy == agentId && i.ClientInvitationId == contactId)
+            .Select(i => new ClientContactDetailsResponse()
+            {
+                ContactId = i.ClientInvitationId,
+                FirstName = i.CreatedUser == null ? i.ClientFirstName : i.CreatedUser.User.FirstName,
+                LastName = i.CreatedUser == null ? i.ClientLastName : i.CreatedUser.User.LastName,
+                Email = i.CreatedUser == null ? i.ClientEmail : i.CreatedUser.User.Email,
+                Phone = i.CreatedUser == null ? i.ClientPhone : i.CreatedUser.User.Phone,
+                HasAcceptedInvite = i.AcceptedAt != null,
+                InviteHasExpired = i.ExpiresAt < DateTime.UtcNow,
+                AssociatedWith = i.ClientInvitationsProperties
+                    .SelectMany(x => x.PropertyInvitation.ClientInvitationsProperties)
+                    .Select(cip => new ClientContactAssociatedUsers()
+                    {
+                        ContactId = cip.ClientInvitationId,
+                        FirstName = cip.ClientInvitation.CreatedUser == null ? cip.ClientInvitation.ClientFirstName :
+                            cip.ClientInvitation.CreatedUser.User.FirstName,
+                        LastName = cip.ClientInvitation.CreatedUser == null ? cip.ClientInvitation.ClientLastName :
+                            cip.ClientInvitation.CreatedUser.User.LastName,
+                        Email = cip.ClientInvitation.CreatedUser == null ? cip.ClientInvitation.ClientEmail :
+                            cip.ClientInvitation.CreatedUser.User.Email,
+                        Phone = cip.ClientInvitation.CreatedUser == null ? cip.ClientInvitation.ClientPhone :
+                            cip.ClientInvitation.CreatedUser.User.Phone,
+                        HasAcceptedInvite = cip.ClientInvitation.AcceptedAt != null,
+                        InviteHasExpired = cip.ClientInvitation.ExpiresAt < DateTime.UtcNow,
+                    })
+                    .ToArray(),
+                Listings = i.ClientInvitationsProperties
+                    .Select(x => new ClientContactListingDetailsResponse()
+                    {
+                        IsActive = x.ClientInvitation.CreatedUser != null &&
+                            x.ClientInvitation.CreatedUser.ClientsListings
+                                .Any(y => y.Listing.Property.AddressLine1.ToLower() == x.PropertyInvitation.AddressLine1.ToLower() && y.Listing.AgentsListings.Any(j => j.AgentId == agentId)),
+                        ListingInvitationId = x.PropertyInvitationId,
+                        ListingId = x.ClientInvitation.CreatedUser != null && x.ClientInvitation.CreatedUser.ClientsListings.FirstOrDefault(y => y.Listing.Property.AddressLine1.ToLower() == x.PropertyInvitation.AddressLine1.ToLower() && y.Listing.AgentsListings.Any(j => j.AgentId == agentId)) != null ?
+                            x.ClientInvitation.CreatedUser.ClientsListings.FirstOrDefault(y => y.Listing.Property.AddressLine1.ToLower() == x.PropertyInvitation.AddressLine1.ToLower())!.ListingId :
+                            null,
+                        Address = x.PropertyInvitation.AddressLine1
+                    }).ToArray()
+            })
+            .FirstOrDefaultAsync();
+
+        if (client == null)
+        {
+            return new()
+            {
+                ErrorMessage = "No client found"
+            };
+        }
+
+        //remove duplicates
+        client.AssociatedWith = [.. client.AssociatedWith.DistinctBy(x => x.ContactId)];
+        return new()
+        {
+            Contact = client
         };
     }
 

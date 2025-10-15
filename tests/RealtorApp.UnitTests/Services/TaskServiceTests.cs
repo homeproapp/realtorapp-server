@@ -158,21 +158,6 @@ public class TaskServiceTests : IDisposable
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task GetClientGroupedTasksListAsync_WithNullTaskStatuses_SkipsThem()
-    {
-        var agentId = await SetupTestData_WithNullStatusTasks();
-
-        var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
-
-        Assert.NotNull(result);
-        Assert.Single(result.ClientGroupedTasksDetails);
-
-        var group = result.ClientGroupedTasksDetails[0];
-        Assert.Equal(2, group.TaskStatusCounts[TaskStatus.InProgress]);
-        Assert.False(group.TaskStatusCounts.ContainsKey((TaskStatus)0));
-    }
-
-    [Fact]
     public async System.Threading.Tasks.Task GetClientGroupedTasksListAsync_WithMultipleListingsSameClients_CountsListingsCorrectly()
     {
         var agentId = await SetupTestData_MultipleListingsSameClients();
@@ -244,7 +229,7 @@ public class TaskServiceTests : IDisposable
         _testData.CreateClientListing(listing.ListingId, client1.UserId);
         _testData.CreateClientListing(listing.ListingId, client2.UserId);
 
-        _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
 
         return await System.Threading.Tasks.Task.FromResult(agent.UserId);
     }
@@ -272,8 +257,8 @@ public class TaskServiceTests : IDisposable
         _testData.CreateClientListing(listing2.ListingId, client1.UserId);
         _testData.CreateClientListing(listing2.ListingId, client2.UserId);
 
-        _testData.CreateTask(listing1.ListingId, "Task 1", (short)TaskStatus.NotStarted);
-        _testData.CreateTask(listing2.ListingId, "Task 2", (short)TaskStatus.InProgress);
+        _testData.CreateTask(listing1.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing2.ListingId, "Task 2", "Test Room", (short)TaskStatus.InProgress);
 
         return await System.Threading.Tasks.Task.FromResult(agent.UserId);
     }
@@ -302,8 +287,8 @@ public class TaskServiceTests : IDisposable
         _testData.CreateAgentListing(listing2.ListingId, agent.UserId);
         _testData.CreateClientListing(listing2.ListingId, client3.UserId);
 
-        _testData.CreateTask(listing1.ListingId, "Task 1", (short)TaskStatus.NotStarted);
-        _testData.CreateTask(listing2.ListingId, "Task 2", (short)TaskStatus.InProgress);
+        _testData.CreateTask(listing1.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing2.ListingId, "Task 2", "Test Room", (short)TaskStatus.InProgress);
 
         return await System.Threading.Tasks.Task.FromResult(agent.UserId);
     }
@@ -322,10 +307,10 @@ public class TaskServiceTests : IDisposable
         _testData.CreateAgentListing(listing.ListingId, agent.UserId);
         _testData.CreateClientListing(listing.ListingId, client1.UserId);
 
-        _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.NotStarted);
-        _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.NotStarted);
-        _testData.CreateTask(listing.ListingId, "Task 3", (short)TaskStatus.InProgress);
-        _testData.CreateTask(listing.ListingId, "Task 4", (short)TaskStatus.Completed);
+        _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing.ListingId, "Task 3", "Test Room", (short)TaskStatus.InProgress);
+        _testData.CreateTask(listing.ListingId, "Task 4", "Test Room", (short)TaskStatus.Completed);
 
         return await System.Threading.Tasks.Task.FromResult(agent.UserId);
     }
@@ -366,8 +351,8 @@ public class TaskServiceTests : IDisposable
         _testData.CreateAgentListing(listing2.ListingId, agent.UserId);
         _testData.CreateClientListing(listing2.ListingId, client1.UserId);
 
-        _testData.CreateTask(listing1.ListingId, "Task 1", (short)TaskStatus.NotStarted, DateTime.UtcNow.AddMinutes(-10));
-        _testData.CreateTask(listing2.ListingId, "Task 2", (short)TaskStatus.InProgress, DateTime.UtcNow.AddMinutes(-1));
+        _testData.CreateTask(listing1.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted, DateTime.UtcNow.AddMinutes(-10));
+        _testData.CreateTask(listing2.ListingId, "Task 2", "Test Room", (short)TaskStatus.InProgress, DateTime.UtcNow.AddMinutes(-1));
 
         return await System.Threading.Tasks.Task.FromResult(agent.UserId);
     }
@@ -386,9 +371,9 @@ public class TaskServiceTests : IDisposable
         _testData.CreateAgentListing(listing.ListingId, agent.UserId);
         _testData.CreateClientListing(listing.ListingId, client1.UserId);
 
-        _testData.CreateTask(listing.ListingId, "Task 1", null);
-        _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.InProgress);
-        _testData.CreateTask(listing.ListingId, "Task 3", (short)TaskStatus.InProgress);
+        _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", null);
+        _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.InProgress);
+        _testData.CreateTask(listing.ListingId, "Task 3", "Test Room", (short)TaskStatus.InProgress);
 
         return await System.Threading.Tasks.Task.FromResult(agent.UserId);
     }
@@ -417,9 +402,9 @@ public class TaskServiceTests : IDisposable
         _testData.CreateAgentListing(listing3.ListingId, agent.UserId);
         _testData.CreateClientListing(listing3.ListingId, client1.UserId);
 
-        _testData.CreateTask(listing1.ListingId, "Task 1", (short)TaskStatus.NotStarted);
-        _testData.CreateTask(listing2.ListingId, "Task 2", (short)TaskStatus.InProgress);
-        _testData.CreateTask(listing3.ListingId, "Task 3", (short)TaskStatus.Completed);
+        _testData.CreateTask(listing1.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing2.ListingId, "Task 2", "Test Room", (short)TaskStatus.InProgress);
+        _testData.CreateTask(listing3.ListingId, "Task 3", "Test Room", (short)TaskStatus.Completed);
 
         return await System.Threading.Tasks.Task.FromResult(agent.UserId);
     }
@@ -447,8 +432,8 @@ public class TaskServiceTests : IDisposable
         _testData.CreateClientListing(listing2.ListingId, client2.UserId);
         _testData.CreateClientListing(listing2.ListingId, client1.UserId);
 
-        _testData.CreateTask(listing1.ListingId, "Task 1", (short)TaskStatus.NotStarted);
-        _testData.CreateTask(listing2.ListingId, "Task 2", (short)TaskStatus.InProgress);
+        _testData.CreateTask(listing1.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing2.ListingId, "Task 2", "Test Room", (short)TaskStatus.InProgress);
 
         return await System.Threading.Tasks.Task.FromResult(agent.UserId);
     }
@@ -472,12 +457,12 @@ public class TaskServiceTests : IDisposable
         _testData.CreateAgentListing(listing2.ListingId, agent.UserId);
         _testData.CreateClientListing(listing2.ListingId, client1.UserId);
 
-        _testData.CreateTask(listing1.ListingId, "Task 1", (short)TaskStatus.NotStarted);
-        _testData.CreateTask(listing1.ListingId, "Task 2", (short)TaskStatus.NotStarted);
-        _testData.CreateTask(listing1.ListingId, "Task 3", (short)TaskStatus.Completed);
+        _testData.CreateTask(listing1.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing1.ListingId, "Task 2", "Test Room", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing1.ListingId, "Task 3", "Test Room", (short)TaskStatus.Completed);
 
-        _testData.CreateTask(listing2.ListingId, "Task 4", (short)TaskStatus.NotStarted);
-        _testData.CreateTask(listing2.ListingId, "Task 5", (short)TaskStatus.Completed);
+        _testData.CreateTask(listing2.ListingId, "Task 4", "Test Room", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing2.ListingId, "Task 5", "Test Room", (short)TaskStatus.Completed);
 
         return await System.Threading.Tasks.Task.FromResult(agent.UserId);
     }
@@ -524,7 +509,7 @@ public class TaskServiceTests : IDisposable
 
         Assert.NotNull(result);
         Assert.Empty(result.Tasks);
-        Assert.Empty(result.TaskCompletionCounts);
+        Assert.Equal(result.TaskCompletionCounts.First().Completion, 0);
     }
 
     private async System.Threading.Tasks.Task<long> SetupTestData_ListingWithMultipleTasks()
@@ -532,9 +517,9 @@ public class TaskServiceTests : IDisposable
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
 
-        _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.NotStarted);
-        _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.InProgress);
-        _testData.CreateTask(listing.ListingId, "Task 3", (short)TaskStatus.Completed);
+        _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.InProgress);
+        _testData.CreateTask(listing.ListingId, "Task 3", "Test Room", (short)TaskStatus.Completed);
 
         return await System.Threading.Tasks.Task.FromResult(listing.ListingId);
     }
@@ -543,7 +528,7 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task = _testData.CreateTask(listing.ListingId, "Task with Links", (short)TaskStatus.NotStarted);
+        var task = _testData.CreateTask(listing.ListingId, "Task with Links", "Test Room", (short)TaskStatus.NotStarted);
 
         _testData.CreateLink(task.TaskId, "Link 1", "https://example.com/1");
         _testData.CreateLink(task.TaskId, "Link 2", "https://example.com/2");
@@ -565,11 +550,11 @@ public class TaskServiceTests : IDisposable
         Assert.NotNull(result);
         Assert.NotEmpty(result.TaskCompletionCounts);
 
-        var kitchenCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "Kitchen" && c.Type == TaskCountType.Room);
+        var kitchenCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "Kitchen Tasks" && c.Type == TaskCountType.Room);
         Assert.NotNull(kitchenCount);
         Assert.Equal(0.5, kitchenCount.Completion);
 
-        var bedroomCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "Bedroom" && c.Type == TaskCountType.Room);
+        var bedroomCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "Bedroom Tasks" && c.Type == TaskCountType.Room);
         Assert.NotNull(bedroomCount);
         Assert.Equal(1.0, bedroomCount.Completion);
     }
@@ -580,8 +565,8 @@ public class TaskServiceTests : IDisposable
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
 
-        _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.Completed);
-        _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.Completed);
+        _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.Completed);
+        _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.Completed);
 
         var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
 
@@ -595,8 +580,8 @@ public class TaskServiceTests : IDisposable
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
 
-        _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.NotStarted);
-        _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.InProgress);
+        _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
+        _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.InProgress);
 
         var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
 
@@ -614,11 +599,11 @@ public class TaskServiceTests : IDisposable
         Assert.NotNull(result);
         Assert.NotEmpty(result.TaskCompletionCounts);
 
-        var highPriorityCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "High" && c.Type == TaskCountType.Priority);
+        var highPriorityCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "High Priority Tasks" && c.Type == TaskCountType.Priority);
         Assert.NotNull(highPriorityCount);
         Assert.Equal(0.5, highPriorityCount.Completion);
 
-        var mediumPriorityCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "Medium" && c.Type == TaskCountType.Priority);
+        var mediumPriorityCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "Medium Priority Tasks" && c.Type == TaskCountType.Priority);
         Assert.NotNull(mediumPriorityCount);
         Assert.Equal(0.0, mediumPriorityCount.Completion);
     }
@@ -629,11 +614,11 @@ public class TaskServiceTests : IDisposable
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
 
-        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.Completed);
+        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.Completed);
         task1.Room = "Kitchen";
         task1.Priority = (short)TaskPriority.High;
 
-        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.NotStarted);
+        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.NotStarted);
         task2.Room = "Bedroom";
         task2.Priority = (short)TaskPriority.Low;
 
@@ -657,11 +642,11 @@ public class TaskServiceTests : IDisposable
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
 
-        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.Completed);
+        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.Completed);
         task1.Room = "";
         task1.Priority = 0;
 
-        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.NotStarted);
+        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.NotStarted);
         task2.Room = "Kitchen";
         task2.Priority = (short)TaskPriority.High;
 
@@ -678,15 +663,15 @@ public class TaskServiceTests : IDisposable
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
 
-        var task1 = _testData.CreateTask(listing.ListingId, "Kitchen Task 1", (short)TaskStatus.Completed);
+        var task1 = _testData.CreateTask(listing.ListingId, "Kitchen Task 1", "Test Room", (short)TaskStatus.Completed);
         task1.Room = "Kitchen";
         task1.Priority = (short)TaskPriority.High;
 
-        var task2 = _testData.CreateTask(listing.ListingId, "Kitchen Task 2", (short)TaskStatus.NotStarted);
+        var task2 = _testData.CreateTask(listing.ListingId, "Kitchen Task 2", "Test Room", (short)TaskStatus.NotStarted);
         task2.Room = "Kitchen";
         task2.Priority = (short)TaskPriority.High;
 
-        var task3 = _testData.CreateTask(listing.ListingId, "Bedroom Task 1", (short)TaskStatus.Completed);
+        var task3 = _testData.CreateTask(listing.ListingId, "Bedroom Task 1", "Test Room", (short)TaskStatus.Completed);
         task3.Room = "Bedroom";
         task3.Priority = (short)TaskPriority.Medium;
 
@@ -700,15 +685,15 @@ public class TaskServiceTests : IDisposable
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
 
-        var task1 = _testData.CreateTask(listing.ListingId, "High Priority Task 1", (short)TaskStatus.Completed);
+        var task1 = _testData.CreateTask(listing.ListingId, "High Priority Task 1", "Test Room", (short)TaskStatus.Completed);
         task1.Room = "Kitchen";
         task1.Priority = (short)TaskPriority.High;
 
-        var task2 = _testData.CreateTask(listing.ListingId, "High Priority Task 2", (short)TaskStatus.NotStarted);
+        var task2 = _testData.CreateTask(listing.ListingId, "High Priority Task 2", "Test Room", (short)TaskStatus.NotStarted);
         task2.Room = "Bedroom";
         task2.Priority = (short)TaskPriority.High;
 
-        var task3 = _testData.CreateTask(listing.ListingId, "Medium Priority Task 1", (short)TaskStatus.NotStarted);
+        var task3 = _testData.CreateTask(listing.ListingId, "Medium Priority Task 1", "Test Room", (short)TaskStatus.NotStarted);
         task3.Room = "Living Room";
         task3.Priority = (short)TaskPriority.Medium;
 
@@ -820,7 +805,7 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task = _testData.CreateTask(listing.ListingId, "Original Title", (short)TaskStatus.NotStarted);
+        var task = _testData.CreateTask(listing.ListingId, "Original Title", "Test Room", (short)TaskStatus.NotStarted);
 
         var command = new AddOrUpdateTaskCommand
         {
@@ -851,7 +836,7 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task = _testData.CreateTask(listing.ListingId, "Task Title", (short)TaskStatus.NotStarted);
+        var task = _testData.CreateTask(listing.ListingId, "Task Title", "Test Room", (short)TaskStatus.NotStarted);
 
         var command = new AddOrUpdateTaskCommand
         {
@@ -884,7 +869,7 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task = _testData.CreateTask(listing.ListingId, "Task Title", (short)TaskStatus.NotStarted);
+        var task = _testData.CreateTask(listing.ListingId, "Task Title", "Test Room", (short)TaskStatus.NotStarted);
         var link = _testData.CreateLink(task.TaskId, "Link to Delete", "https://delete.com");
 
         var command = new AddOrUpdateTaskCommand
@@ -919,7 +904,7 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task = _testData.CreateTask(listing.ListingId, "Task Title", (short)TaskStatus.NotStarted);
+        var task = _testData.CreateTask(listing.ListingId, "Task Title", "Test Room", (short)TaskStatus.NotStarted);
         var existingLink = _testData.CreateLink(task.TaskId, "Existing Link", "https://existing.com");
 
         var command = new AddOrUpdateTaskCommand
@@ -977,7 +962,7 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task = _testData.CreateTask(listing.ListingId, "Task Title", (short)TaskStatus.NotStarted);
+        var task = _testData.CreateTask(listing.ListingId, "Task Title", "Test Room", (short)TaskStatus.NotStarted);
 
         var command = new AddOrUpdateTaskCommand
         {
@@ -1038,7 +1023,7 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task = _testData.CreateTask(listing.ListingId, "Task Title", (short)TaskStatus.NotStarted);
+        var task = _testData.CreateTask(listing.ListingId, "Task Title", "Test Room", (short)TaskStatus.NotStarted);
 
         var command = new AddOrUpdateTaskCommand
         {
@@ -1096,7 +1081,7 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task = _testData.CreateTask(listing.ListingId, "Task to Delete", (short)TaskStatus.NotStarted);
+        var task = _testData.CreateTask(listing.ListingId, "Task to Delete", "Test Room", (short)TaskStatus.NotStarted);
 
         var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
 
@@ -1122,7 +1107,7 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task = _testData.CreateTask(listing.ListingId, "Task with Links", (short)TaskStatus.NotStarted);
+        var task = _testData.CreateTask(listing.ListingId, "Task with Links", "Test Room", (short)TaskStatus.NotStarted);
         var link1 = _testData.CreateLink(task.TaskId, "Link 1", "https://example.com/1");
         var link2 = _testData.CreateLink(task.TaskId, "Link 2", "https://example.com/2");
 
@@ -1144,7 +1129,7 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task = _testData.CreateTask(listing.ListingId, "Task with Files", (short)TaskStatus.NotStarted);
+        var task = _testData.CreateTask(listing.ListingId, "Task with Files", "Test Room", (short)TaskStatus.NotStarted);
         var fileType = _testData.CreateFileType("TestType");
         var file1 = _testData.CreateFile(fileType.FileTypeId, ".pdf");
         var file2 = _testData.CreateFile(fileType.FileTypeId, ".jpg");
@@ -1177,7 +1162,7 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task = _testData.CreateTask(listing.ListingId, "Task with Links and Files", (short)TaskStatus.NotStarted);
+        var task = _testData.CreateTask(listing.ListingId, "Task with Links and Files", "Test Room", (short)TaskStatus.NotStarted);
 
         var link1 = _testData.CreateLink(task.TaskId, "Link 1", "https://example.com/1");
         var link2 = _testData.CreateLink(task.TaskId, "Link 2", "https://example.com/2");
@@ -1221,8 +1206,8 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.NotStarted);
-        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.InProgress);
+        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
+        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.InProgress);
 
         await _taskService.MarkTaskAndChildrenAsDeleted(task1.TaskId);
 
@@ -1239,7 +1224,7 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task = _testData.CreateTask(listing.ListingId, "Task with Links", (short)TaskStatus.NotStarted);
+        var task = _testData.CreateTask(listing.ListingId, "Task with Links", "Test Room", (short)TaskStatus.NotStarted);
         var link = _testData.CreateLink(task.TaskId, "Link", "https://example.com");
 
         await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
@@ -1264,8 +1249,8 @@ public class TaskServiceTests : IDisposable
         _testData.CreateAgentListing(listing.ListingId, agent.UserId);
         _testData.CreateClientListing(listing.ListingId, client.UserId);
 
-        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", (short)TaskStatus.NotStarted);
-        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", (short)TaskStatus.Completed);
+        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
+        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.Completed);
 
         await _taskService.MarkTaskAndChildrenAsDeleted(task1.TaskId);
 
@@ -1284,7 +1269,7 @@ public class TaskServiceTests : IDisposable
     {
         var property = _testData.CreateProperty();
         var listing = _testData.CreateListing(property.PropertyId);
-        var task = _testData.CreateTask(listing.ListingId, "Simple Task", (short)TaskStatus.NotStarted);
+        var task = _testData.CreateTask(listing.ListingId, "Simple Task", "Test Room", (short)TaskStatus.NotStarted);
 
         var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
 

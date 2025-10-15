@@ -41,6 +41,16 @@ public static class TaskExtensions
 
     public static TaskCompletionCountItem[] ToCompletionCounts(this TaskListItemResponse[] tasks)
     {
+        if (tasks.Length == 0)
+        {
+            return [new() 
+            {            
+                Type = TaskCountType.Total,
+                Name = "Total Completion",
+                Completion = 0
+            }];
+        }
+        
         var roomGroupings = tasks.GroupBy(i => i.Room);
         var priorityGroupings = tasks.GroupBy(i => i.Priority);
         var result = new List<TaskCompletionCountItem>(roomGroupings.Count() + priorityGroupings.Count() + 1);

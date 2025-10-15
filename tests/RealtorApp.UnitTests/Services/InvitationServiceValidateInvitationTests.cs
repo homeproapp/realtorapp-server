@@ -131,8 +131,8 @@ public class InvitationServiceValidateInvitationTests : TestBase
         var invitation = TestDataManager.CreateClientInvitation(
             agentUserId: agent.UserId,
             email: "minimal@example.com",
-            firstName: null, // No first name, last name, or phone
-            lastName: null,
+            firstName: "Minimal",
+            lastName: "User",
             phone: null,
             expiresAt: DateTime.UtcNow.AddDays(7)
         );
@@ -144,8 +144,8 @@ public class InvitationServiceValidateInvitationTests : TestBase
         // Assert
         Assert.True(result.IsValid);
         Assert.Equal("minimal@example.com", result.ClientEmail);
-        Assert.Null(result.ClientFirstName);
-        Assert.Null(result.ClientLastName);
+        Assert.Equal("Minimal", result.ClientFirstName);
+        Assert.Equal("User", result.ClientLastName);
         Assert.Null(result.ClientPhone);
         Assert.Single(result.Properties);
     }
@@ -159,7 +159,7 @@ public class InvitationServiceValidateInvitationTests : TestBase
             agentUserId: agent.UserId,
             email: "test@example.com",
             firstName: "John",
-            lastName: null,
+            lastName: "Doe",
             phone: null,
             expiresAt: DateTime.UtcNow // Expires exactly now
         );
@@ -184,7 +184,7 @@ public class InvitationServiceValidateInvitationTests : TestBase
             agentUserId: agent.UserId,
             email: "test@example.com",
             firstName: "John",
-            lastName: null,
+            lastName: "Doe",
             phone: null,
             expiresAt: DateTime.UtcNow.AddDays(7),
             deletedAt: DateTime.UtcNow.AddMinutes(-5) // Soft deleted

@@ -38,8 +38,8 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
         if (!string.IsNullOrWhiteSpace(displayName))
         {
             var nameParts = displayName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-            user.FirstName = nameParts.Length > 0 ? nameParts[0] : null;
-            user.LastName = nameParts.Length > 1 ? nameParts[1] : null;
+            user.FirstName = nameParts.Length > 0 ? nameParts[0] : string.Empty;
+            user.LastName = nameParts.Length > 1 ? nameParts[1] : string.Empty;
         }
 
         _dbContext.Users.Add(user);

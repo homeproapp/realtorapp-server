@@ -212,8 +212,8 @@ public class InvitationServiceEdgeCaseTests : TestBase
         var invitation = TestDataManager.CreateClientInvitation(
             agentUserId: agent.UserId,
             email: existingClient.User.Email,
-            firstName: null,
-            lastName: null,
+            firstName: "Test",
+            lastName: "Client",
             phone: null,
             expiresAt: DateTime.UtcNow.AddDays(7)
         );
@@ -265,8 +265,8 @@ public class InvitationServiceEdgeCaseTests : TestBase
         var invitation = TestDataManager.CreateClientInvitation(
             agentUserId: agent.UserId,
             email: "test@example.com",
-            firstName: null,
-            lastName: null,
+            firstName: "Test",
+            lastName: "User",
             phone: null,
             expiresAt: exactExpiryTime
         );
@@ -403,8 +403,8 @@ public class InvitationServiceEdgeCaseTests : TestBase
         var invitation = TestDataManager.CreateClientInvitation(
             agentUserId: agent.UserId,
             email: "test@example.com",
-            firstName: "", // Empty string
-            lastName: null, // Null
+            firstName: "Test",
+            lastName: "User",
             phone: "   ", // Whitespace
             expiresAt: DateTime.UtcNow.AddDays(7)
         );
@@ -429,7 +429,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
 
         var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Uuid == Guid.Parse(firebaseUid));
         Assert.NotNull(user);
-        Assert.Equal("", user.FirstName); // Empty string preserved
-        Assert.Null(user.LastName); // Null preserved
+        Assert.Equal("Test", user.FirstName);
+        Assert.Equal("User", user.LastName);
     }
 }

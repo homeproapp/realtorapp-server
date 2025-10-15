@@ -238,8 +238,8 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var expiredInvitation = TestDataManager.CreateClientInvitation(
             agentUserId: agent.UserId,
             email: "test@example.com",
-            firstName: null,
-            lastName: null,
+            firstName: "Test",
+            lastName: "User",
             phone: null,
             expiresAt: DateTime.UtcNow.AddDays(-1) // Expired
         );
@@ -266,8 +266,8 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var acceptedInvitation = TestDataManager.CreateClientInvitation(
             agentUserId: agent.UserId,
             email: "test@example.com",
-            firstName: null,
-            lastName: null,
+            firstName: "Test",
+            lastName: "User",
             phone: null,
             expiresAt: DateTime.UtcNow.AddDays(7),
             acceptedAt: DateTime.UtcNow.AddDays(-1) // Already accepted
@@ -357,8 +357,8 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var invitation = TestDataManager.CreateClientInvitation(
             agentUserId: agent.UserId,
             email: "minimal@example.com",
-            firstName: null, // No first name, last name, or phone
-            lastName: null,
+            firstName: "Minimal",
+            lastName: "User",
             phone: null,
             expiresAt: DateTime.UtcNow.AddDays(7)
         );
@@ -384,8 +384,8 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Uuid == Guid.Parse(firebaseUid));
         Assert.NotNull(user);
         Assert.Equal("minimal@example.com", user.Email);
-        Assert.Null(user.FirstName);
-        Assert.Null(user.LastName);
+        Assert.Equal("Minimal", user.FirstName);
+        Assert.Equal("User", user.LastName);
     }
 
     [Fact]
@@ -433,8 +433,8 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var invitation = TestDataManager.CreateClientInvitation(
             agentUserId: agent.UserId,
             email: "test@example.com",
-            firstName: null,
-            lastName: null,
+            firstName: "Test",
+            lastName: "User",
             phone: null,
             expiresAt: DateTime.UtcNow.AddDays(7),
             deletedAt: DateTime.UtcNow.AddMinutes(-5) // Soft deleted
