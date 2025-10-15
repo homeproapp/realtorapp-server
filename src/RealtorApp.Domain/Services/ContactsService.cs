@@ -171,6 +171,7 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
                 InviteHasExpired = i.ExpiresAt < DateTime.UtcNow,
                 AssociatedWith = i.ClientInvitationsProperties
                     .SelectMany(x => x.PropertyInvitation.ClientInvitationsProperties)
+                    .Where(i => i.ClientInvitationId != contactId)
                     .Select(cip => new ClientContactAssociatedUsers()
                     {
                         ContactId = cip.ClientInvitationId,
