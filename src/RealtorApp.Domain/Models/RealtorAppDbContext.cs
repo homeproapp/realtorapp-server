@@ -61,10 +61,16 @@ public partial class RealtorAppDbContext : DbContext
 
     public virtual DbSet<TaskTitle> TaskTitles { get; set; }
 
+    public virtual DbSet<Team> Teams { get; set; }
+
     public virtual DbSet<ThirdPartyContact> ThirdPartyContacts { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
-    
+
+//     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+// #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+//         => optionsBuilder.UseNpgsql("Host=localhost;Database=test-run47;Username=test;Password=test");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -80,8 +86,6 @@ public partial class RealtorAppDbContext : DbContext
             entity.Property(e => e.UserId)
                 .ValueGeneratedNever()
                 .HasColumnName("user_id");
-            entity.Property(e => e.Brokerage).HasColumnName("brokerage");
-            entity.Property(e => e.BrokerageTeam).HasColumnName("brokerage_team");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
@@ -89,11 +93,18 @@ public partial class RealtorAppDbContext : DbContext
             entity.Property(e => e.EmailValidated)
                 .HasDefaultValue(false)
                 .HasColumnName("email_validated");
-            entity.Property(e => e.TeamLead).HasColumnName("team_lead");
-            entity.Property(e => e.TeamWebsite).HasColumnName("team_website");
+            entity.Property(e => e.IsTeamLead)
+                .HasDefaultValue(false)
+                .HasColumnName("is_team_lead");
+            entity.Property(e => e.TeamId).HasColumnName("team_id");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Team).WithMany(p => p.Agents)
+                .HasForeignKey(d => d.TeamId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("agents_team_id_fkey");
 
             entity.HasOne(d => d.User).WithOne(p => p.Agent)
                 .HasForeignKey<Agent>(d => d.UserId)
@@ -751,6 +762,25 @@ public partial class RealtorAppDbContext : DbContext
             entity.Property(e => e.TaskTitle1)
                 .HasColumnType("citext")
                 .HasColumnName("task_title");
+        });
+
+        modelBuilder.Entity<Team>(entity =>
+        {
+            entity.HasKey(e => e.TeamId).HasName("teams_pkey");
+
+            entity.ToTable("teams");
+
+            entity.Property(e => e.TeamId).HasColumnName("team_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.Realty).HasColumnName("realty");
+            entity.Property(e => e.TeamName).HasColumnName("team_name");
+            entity.Property(e => e.TeamSite).HasColumnName("team_site");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
         });
 
         modelBuilder.Entity<ThirdPartyContact>(entity =>

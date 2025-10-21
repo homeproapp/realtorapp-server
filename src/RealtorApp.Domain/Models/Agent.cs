@@ -7,15 +7,11 @@ public partial class Agent
 {
     public long UserId { get; set; }
 
-    public string? Brokerage { get; set; }
-
-    public string? BrokerageTeam { get; set; }
-
-    public string? TeamWebsite { get; set; }
-
-    public string? TeamLead { get; set; }
+    public long? TeamId { get; set; }
 
     public bool? EmailValidated { get; set; }
+
+    public bool? IsTeamLead { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
@@ -28,6 +24,8 @@ public partial class Agent
     public virtual ICollection<ClientInvitation> ClientInvitations { get; set; } = new List<ClientInvitation>();
 
     public virtual ICollection<PropertyInvitation> PropertyInvitations { get; set; } = new List<PropertyInvitation>();
+
+    public virtual Team? Team { get; set; }
 
     public virtual ICollection<ThirdPartyContact> ThirdPartyContacts { get; set; } = new List<ThirdPartyContact>();
 
