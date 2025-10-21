@@ -4,7 +4,7 @@ namespace RealtorApp.Contracts.Queries.Search.Responses;
 
 public class SearchQueryResponse : ResponseWithError
 {
-    
+    public SearchItemResponse[] Items { get; set; } = [];
 }
 
 public class SearchItemResponse

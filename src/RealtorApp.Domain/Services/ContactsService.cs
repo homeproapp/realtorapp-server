@@ -195,12 +195,13 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
                         ListingId = x.PropertyInvitation.CreatedListingId,
                         Address = x.PropertyInvitation.AddressLine1,
                         Agents = x.PropertyInvitation.CreatedListing == null ?
-                            Array.Empty<ClientContactListingAgentDetailResponse>() : 
-                            x.PropertyInvitation.CreatedListing.AgentsListings.Select(y => new ClientContactListingAgentDetailResponse()
-                            {
-                                Name = y.Agent.User.FirstName + " " + y.Agent.User.LastName,
-                                AgentId = y.AgentId
-                            }).ToArray(),
+                            Array.Empty<ClientContactListingAgentDetailResponse>() :
+                            x.PropertyInvitation.CreatedListing.AgentsListings.Where(y => y.AgentId != agentId)
+                                .Select(y => new ClientContactListingAgentDetailResponse()
+                                {
+                                    Name = y.Agent.User.FirstName + ' ' + y.Agent.User.LastName.First() + '.',
+                                    AgentId = y.AgentId
+                                }).ToArray(),
                     }).ToArray()
             })
             .FirstOrDefaultAsync();
