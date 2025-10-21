@@ -168,7 +168,7 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
                 Email = i.CreatedUser == null ? i.ClientEmail : i.CreatedUser.User.Email,
                 Phone = i.CreatedUser == null ? i.ClientPhone : i.CreatedUser.User.Phone,
                 HasAcceptedInvite = i.AcceptedAt != null,
-                InviteHasExpired = i.ExpiresAt < DateTime.UtcNow,
+                InviteHasExpired = i.AcceptedAt == null && i.ExpiresAt < DateTime.UtcNow,
                 AssociatedWith = i.ClientInvitationsProperties
                     .SelectMany(x => x.PropertyInvitation.ClientInvitationsProperties)
                     .Where(i => i.ClientInvitationId != contactId)
@@ -190,14 +190,17 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
                 Listings = i.ClientInvitationsProperties
                     .Select(x => new ClientContactListingDetailsResponse()
                     {
-                        IsActive = x.ClientInvitation.CreatedUser != null &&
-                            x.ClientInvitation.CreatedUser.ClientsListings
-                                .Any(y => y.Listing.Property.AddressLine1.ToLower() == x.PropertyInvitation.AddressLine1.ToLower() && y.Listing.AgentsListings.Any(j => j.AgentId == agentId)),
+                        IsActive = x.PropertyInvitation.CreatedListing != null && x.PropertyInvitation.CreatedListing.AgentsListings.Any(j => j.AgentId == agentId),
                         ListingInvitationId = x.PropertyInvitationId,
-                        ListingId = x.ClientInvitation.CreatedUser != null && x.ClientInvitation.CreatedUser.ClientsListings.FirstOrDefault(y => y.Listing.Property.AddressLine1.ToLower() == x.PropertyInvitation.AddressLine1.ToLower() && y.Listing.AgentsListings.Any(j => j.AgentId == agentId)) != null ?
-                            x.ClientInvitation.CreatedUser.ClientsListings.FirstOrDefault(y => y.Listing.Property.AddressLine1.ToLower() == x.PropertyInvitation.AddressLine1.ToLower())!.ListingId :
-                            null,
-                        Address = x.PropertyInvitation.AddressLine1
+                        ListingId = x.PropertyInvitation.CreatedListingId,
+                        Address = x.PropertyInvitation.AddressLine1,
+                        Agents = x.PropertyInvitation.CreatedListing == null ?
+                            Array.Empty<ClientContactListingAgentDetailResponse>() : 
+                            x.PropertyInvitation.CreatedListing.AgentsListings.Select(y => new ClientContactListingAgentDetailResponse()
+                            {
+                                Name = y.Agent.User.FirstName + " " + y.Agent.User.LastName,
+                                AgentId = y.AgentId
+                            }).ToArray(),
                     }).ToArray()
             })
             .FirstOrDefaultAsync();

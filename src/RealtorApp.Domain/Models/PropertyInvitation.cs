@@ -21,6 +21,8 @@ public partial class PropertyInvitation
 
     public long InvitedBy { get; set; }
 
+    public long? CreatedListingId { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
@@ -28,6 +30,8 @@ public partial class PropertyInvitation
     public DateTime? DeletedAt { get; set; }
 
     public virtual ICollection<ClientInvitationsProperty> ClientInvitationsProperties { get; set; } = new List<ClientInvitationsProperty>();
+
+    public virtual Listing? CreatedListing { get; set; }
 
     public virtual Agent InvitedByNavigation { get; set; } = null!;
 }

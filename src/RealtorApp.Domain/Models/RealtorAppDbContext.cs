@@ -64,7 +64,7 @@ public partial class RealtorAppDbContext : DbContext
     public virtual DbSet<ThirdPartyContact> ThirdPartyContacts { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
-
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -625,6 +625,7 @@ public partial class RealtorAppDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
+            entity.Property(e => e.CreatedListingId).HasColumnName("created_listing_id");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
             entity.Property(e => e.InvitedBy).HasColumnName("invited_by");
             entity.Property(e => e.PostalCode).HasColumnName("postal_code");
@@ -632,6 +633,11 @@ public partial class RealtorAppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.CreatedListing).WithMany(p => p.PropertyInvitations)
+                .HasForeignKey(d => d.CreatedListingId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("property_invitations_created_listing_id_fkey");
 
             entity.HasOne(d => d.InvitedByNavigation).WithMany(p => p.PropertyInvitations)
                 .HasForeignKey(d => d.InvitedBy)

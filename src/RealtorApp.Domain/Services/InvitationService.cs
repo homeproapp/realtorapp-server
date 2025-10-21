@@ -194,8 +194,10 @@ public class InvitationService(
 
             listing.AgentsListings.Add(agentListing);
             listing.ClientsListings.Add(clientListing);
+            propertyToAdd.CreatedListing = listing;
 
             await _dbContext.Listings.AddAsync(listing);
+
         }
 
         clientInvitation.AcceptedAt = DateTime.UtcNow;
@@ -258,8 +260,11 @@ public class InvitationService(
                 
                 listing.ClientsListings.Add(newClientListing);
                 listing.AgentsListings.Add(agentListing);
+                
+                propertyInvitation.CreatedListing = listing;
 
                 await _dbContext.Listings.AddAsync(listing);
+
 
                 propertyInvitationsRemapped.Add(normalizedAddress, propertyInvitation);
             }

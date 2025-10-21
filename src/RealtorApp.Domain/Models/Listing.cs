@@ -49,5 +49,7 @@ public partial class Listing
 
     public virtual Property Property { get; set; } = null!;
 
+    public virtual ICollection<PropertyInvitation> PropertyInvitations { get; set; } = new List<PropertyInvitation>();
+
     public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
 }
