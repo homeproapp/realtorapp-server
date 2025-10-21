@@ -9,5 +9,6 @@
 
   <ItemGroup>
     <Folder Include="Queries/Listing/Requests/" />
+    <Folder Include="Queries/Search/Responses/" />
   </ItemGroup>
 </Project>
