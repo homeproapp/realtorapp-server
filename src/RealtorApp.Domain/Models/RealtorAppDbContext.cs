@@ -55,6 +55,8 @@ public partial class RealtorAppDbContext : DbContext
 
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
+    public virtual DbSet<Reminder> Reminders { get; set; }
+
     public virtual DbSet<Task> Tasks { get; set; }
 
     public virtual DbSet<TaskAttachment> TaskAttachments { get; set; }
@@ -67,9 +69,9 @@ public partial class RealtorAppDbContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
-//     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-// #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-//         => optionsBuilder.UseNpgsql("Host=localhost;Database=test-run47;Username=test;Password=test");
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseNpgsql("Host=localhost;Database=test-run49;Username=test;Password=test");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -683,6 +685,37 @@ public partial class RealtorAppDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.RefreshTokens)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("refresh_tokens_user_id_fkey");
+        });
+
+        modelBuilder.Entity<Reminder>(entity =>
+        {
+            entity.HasKey(e => e.ReminderId).HasName("reminders_pkey");
+
+            entity.ToTable("reminders");
+
+            entity.HasIndex(e => e.RemindAt, "ix_reminders_remind_at");
+
+            entity.Property(e => e.ReminderId).HasColumnName("reminder_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.IsCompleted)
+                .HasDefaultValue(false)
+                .HasColumnName("is_completed");
+            entity.Property(e => e.ReferencingObjectId).HasColumnName("referencing_object_id");
+            entity.Property(e => e.RemindAt).HasColumnName("remind_at");
+            entity.Property(e => e.ReminderText).HasColumnName("reminder_text");
+            entity.Property(e => e.ReminderType).HasColumnName("reminder_type");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.User).WithMany(p => p.Reminders)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("reminders_user_id_fkey");
         });
 
         modelBuilder.Entity<Task>(entity =>

@@ -38,4 +38,6 @@ public partial class User
     public virtual File? ProfileImage { get; set; }
 
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+    public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
 }
