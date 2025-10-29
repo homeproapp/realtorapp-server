@@ -1,9 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Moq;
 using RealtorApp.Contracts.Commands.Tasks.Requests;
+using RealtorApp.Contracts.Common.Requests;
 using RealtorApp.Contracts.Enums;
 using RealtorApp.Contracts.Queries.Tasks.Requests;
 using RealtorApp.Contracts.Queries.Tasks.Responses;
+using RealtorApp.Domain.DTOs;
+using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Models;
 using RealtorApp.Domain.Services;
 using RealtorApp.UnitTests.Helpers;
@@ -15,6 +20,9 @@ public class TaskServiceTests : IDisposable
 {
     private readonly RealtorAppDbContext _dbContext;
     private readonly TaskService _taskService;
+    private readonly Mock<IS3Service> _mockS3Service;
+    private readonly Mock<ILogger<TaskService>> _mockLogger;
+    private readonly Mock<IImagesService> _mockImagesService;
     private TestDataManager _testData;
 
     public TaskServiceTests()
@@ -34,7 +42,20 @@ public class TaskServiceTests : IDisposable
         CleanupAllTestData();
 
         _testData = new TestDataManager(_dbContext);
-        _taskService = new TaskService(_dbContext);
+
+        _mockS3Service = new Mock<IS3Service>();
+        _mockLogger = new Mock<ILogger<TaskService>>();
+        _mockImagesService = new Mock<IImagesService>();
+
+        _mockS3Service.Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<FileUploadRequest>(), It.IsAny<string>()))
+            .ReturnsAsync((string fileKey, FileUploadRequest request, string folderName) => new FileUploadResponseDto()
+            {
+                FileKey = fileKey,
+                OriginalRequest = request,
+                Successful = true
+            });
+
+        _taskService = new TaskService(_dbContext, _mockS3Service.Object, _mockLogger.Object, _mockImagesService.Object);
     }
 
     private void CleanupAllTestData()
@@ -722,7 +743,7 @@ public class TaskServiceTests : IDisposable
             Links = []
         };
 
-        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId, []);
 
         Assert.NotNull(result);
         Assert.Null(result.ErrorMessage);
@@ -756,7 +777,7 @@ public class TaskServiceTests : IDisposable
             ]
         };
 
-        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId, []);
 
         Assert.NotNull(result);
         Assert.Null(result.ErrorMessage);
@@ -788,7 +809,7 @@ public class TaskServiceTests : IDisposable
             Links = []
         };
 
-        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId, []);
 
         Assert.NotNull(result);
         Assert.Null(result.ErrorMessage);
@@ -817,7 +838,7 @@ public class TaskServiceTests : IDisposable
             Links = []
         };
 
-        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId, []);
 
         Assert.NotNull(result);
         Assert.Null(result.ErrorMessage);
@@ -849,7 +870,7 @@ public class TaskServiceTests : IDisposable
             ]
         };
 
-        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId, []);
 
         Assert.NotNull(result);
         Assert.Null(result.ErrorMessage);
@@ -889,7 +910,7 @@ public class TaskServiceTests : IDisposable
             ]
         };
 
-        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId, []);
 
         Assert.NotNull(result);
         Assert.Null(result.ErrorMessage);
@@ -925,7 +946,7 @@ public class TaskServiceTests : IDisposable
             ]
         };
 
-        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId, []);
 
         Assert.NotNull(result);
         Assert.Null(result.ErrorMessage);
@@ -950,7 +971,7 @@ public class TaskServiceTests : IDisposable
             Links = []
         };
 
-        var result = await _taskService.AddOrUpdateTaskAsync(command, 1);
+        var result = await _taskService.AddOrUpdateTaskAsync(command, 1, []);
 
         Assert.NotNull(result);
         Assert.NotNull(result.ErrorMessage);
@@ -981,7 +1002,7 @@ public class TaskServiceTests : IDisposable
             ]
         };
 
-        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId, []);
 
         Assert.NotNull(result);
         Assert.Null(result.ErrorMessage);
@@ -1007,7 +1028,7 @@ public class TaskServiceTests : IDisposable
             Links = []
         };
 
-        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId, []);
 
         Assert.NotNull(result);
         Assert.Null(result.ErrorMessage);
@@ -1035,7 +1056,7 @@ public class TaskServiceTests : IDisposable
             Links = []
         };
 
-        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId, []);
 
         Assert.NotNull(result);
         Assert.Null(result.ErrorMessage);
@@ -1064,7 +1085,7 @@ public class TaskServiceTests : IDisposable
             ]
         };
 
-        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId);
+        var result = await _taskService.AddOrUpdateTaskAsync(command, listing.ListingId, []);
 
         Assert.NotNull(result);
         Assert.Null(result.ErrorMessage);

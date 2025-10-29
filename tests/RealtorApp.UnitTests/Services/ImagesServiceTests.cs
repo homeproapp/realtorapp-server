@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
+using RealtorApp.Contracts.Common.Requests;
 using RealtorApp.Contracts.Enums;
+using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Services;
 
@@ -18,8 +20,13 @@ public class ImagesServiceTests : TestBase
         _mockLogger = new Mock<ILogger<ImagesService>>();
         _mockS3Service = new Mock<IS3Service>();
 
-        _mockS3Service.Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
-            .ReturnsAsync(true);
+        _mockS3Service.Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<FileUploadRequest>(), It.IsAny<string>()))
+            .ReturnsAsync((string fileKey, FileUploadRequest request, string folderName) => new FileUploadResponseDto()
+            {
+                FileKey = Guid.NewGuid().ToString(),
+                OriginalRequest = request,
+                Successful = true
+            });
 
         _mockS3Service.Setup(x => x.GetFileAsync(It.IsAny<string>()))
             .ReturnsAsync((null, null));
@@ -35,7 +42,16 @@ public class ImagesServiceTests : TestBase
 
         using var stream = new MemoryStream(new byte[] { 1, 2, 3, 4 });
 
-        var result = await _imagesService.UploadProfileImage(user.UserId, stream, "avatar.jpg");
+        var fileUploadRequest = new FileUploadRequest
+        {
+            Content = stream,
+            FileName = "avatar.jpg",
+            ContentType = "image/jpeg",
+            FileExtension = ".jpg",
+            ContentLength = stream.Length
+        };
+
+        var result = await _imagesService.UploadProfileImage(user.UserId, fileUploadRequest);
 
         Assert.True(result);
 
@@ -63,7 +79,16 @@ public class ImagesServiceTests : TestBase
 
         using var stream = new MemoryStream(new byte[] { 1, 2, 3, 4 });
 
-        var result = await _imagesService.UploadProfileImage(user.UserId, stream, "new-avatar.jpg");
+        var fileUploadRequest = new FileUploadRequest
+        {
+            Content = stream,
+            FileName = "new-avatar.jpg",
+            ContentType = "image/jpeg",
+            FileExtension = ".jpg",
+            ContentLength = stream.Length
+        };
+
+        var result = await _imagesService.UploadProfileImage(user.UserId, fileUploadRequest);
 
         Assert.True(result);
 
@@ -86,7 +111,16 @@ public class ImagesServiceTests : TestBase
 
         using var stream = new MemoryStream(new byte[] { 1, 2, 3, 4 });
 
-        var result = await _imagesService.UploadProfileImage(99999, stream, "avatar.jpg");
+        var fileUploadRequest = new FileUploadRequest
+        {
+            Content = stream,
+            FileName = "avatar.jpg",
+            ContentType = "image/jpeg",
+            FileExtension = ".jpg",
+            ContentLength = stream.Length
+        };
+
+        var result = await _imagesService.UploadProfileImage(99999, fileUploadRequest);
 
         Assert.False(result);
     }
@@ -98,7 +132,16 @@ public class ImagesServiceTests : TestBase
 
         using var stream = new MemoryStream(new byte[] { 1, 2, 3, 4 });
 
-        var result = await _imagesService.UploadProfileImage(user.UserId, stream, "avatar.jpg");
+        var fileUploadRequest = new FileUploadRequest
+        {
+            Content = stream,
+            FileName = "avatar.jpg",
+            ContentType = "image/jpeg",
+            FileExtension = ".jpg",
+            ContentLength = stream.Length
+        };
+
+        var result = await _imagesService.UploadProfileImage(user.UserId, fileUploadRequest);
 
         Assert.False(result);
     }

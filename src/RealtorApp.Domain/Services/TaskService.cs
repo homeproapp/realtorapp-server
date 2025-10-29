@@ -1,20 +1,27 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using RealtorApp.Contracts.Commands.Tasks.Requests;
 using RealtorApp.Contracts.Commands.Tasks.Responses;
+using RealtorApp.Contracts.Common.Requests;
 using RealtorApp.Contracts.Queries;
 using RealtorApp.Contracts.Queries.Tasks.Requests;
 using RealtorApp.Contracts.Queries.Tasks.Responses;
+using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Models;
-using Task = RealtorApp.Domain.Models.Task;
+using DbTask = RealtorApp.Domain.Models.Task;
+using Task = System.Threading.Tasks.Task;
 using TaskStatus = RealtorApp.Contracts.Enums.TaskStatus;
 
 namespace RealtorApp.Domain.Services;
 
-public class TaskService(RealtorAppDbContext dbContext) : ITaskService
+public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, ILogger<TaskService> logger, IImagesService imagesService) : ITaskService
 {
     private readonly RealtorAppDbContext _dbContext = dbContext;
+    private readonly IS3Service _s3Service = s3Service;
+    private readonly ILogger<TaskService> _logger = logger;
+    private readonly IImagesService _imagesService = imagesService;
 
     public async Task<ClientGroupedTasksListQueryResponse> GetClientGroupedTasksListAsync(ClientGroupedTasksListQuery query, long agentId)
     {
@@ -105,6 +112,7 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
                 TaskFiles = t.FilesTasks.Select(tf => new TaskFilesResponse
                 {
                     FileId = tf.FileId,
+                    FileTaskId = tf.FileTaskId,
                     FileTypeName = tf.File.FileType.Name,
                 }).ToArray(),
                 Links = t.Links.Select(l => new LinkResponse
@@ -143,16 +151,23 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
         };
     }
 
-    public async Task<AddOrUpdateTaskCommandResponse> AddOrUpdateTaskAsync(AddOrUpdateTaskCommand command, long listingId)
+    public async Task<AddOrUpdateTaskCommandResponse> AddOrUpdateTaskAsync(AddOrUpdateTaskCommand command, long listingId, FileUploadRequest[] images)
     {
+        AddOrUpdateTaskCommandResponse response;
         if (command.TaskId.HasValue)
         {
-            return await _updateExistingTaskAsync(command);
+            response = await UpdateExistingTaskAsync(command);
         }
         else
         {
-            return await _addNewTaskAsync(command, listingId);
+            response = await AddNewTaskAsync(command, listingId);
         }
+
+        await _dbContext.SaveChangesAsync();
+
+        await _imagesService.UploadNewTaskImages(images, response);
+
+        return response;
     }
 
     public async Task<bool> MarkTaskAndChildrenAsDeleted(long taskId)
@@ -180,12 +195,10 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
             link.DeletedAt = DateTime.UtcNow;
         }
 
-        await _dbContext.SaveChangesAsync();
-
         return true;
     }
 
-    private async Task<AddOrUpdateTaskCommandResponse> _updateExistingTaskAsync(AddOrUpdateTaskCommand command)
+    private async Task<AddOrUpdateTaskCommandResponse> UpdateExistingTaskAsync(AddOrUpdateTaskCommand command)
     {
         var existingTask = await _dbContext.Tasks
             .Include(t => t.Links)
@@ -230,9 +243,9 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
 
         return existingTask.FromExistingTaskToTaskCommandResponse(addedLinks);
     }
-    private async Task<AddOrUpdateTaskCommandResponse> _addNewTaskAsync(AddOrUpdateTaskCommand command, long listingId)
+    private async Task<AddOrUpdateTaskCommandResponse> AddNewTaskAsync(AddOrUpdateTaskCommand command, long listingId)
     {
-        var newTask = new Task
+        var newTask = new DbTask
         {
             Title = command.TitleString,
             ListingId = listingId,
@@ -259,8 +272,6 @@ public class TaskService(RealtorAppDbContext dbContext) : ITaskService
         }
 
         await _dbContext.Tasks.AddAsync(newTask);
-        await _dbContext.SaveChangesAsync();
-
         return newTask.FromNewTaskToTaskCommandResponse();
     }
 }

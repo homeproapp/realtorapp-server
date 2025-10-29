@@ -2,6 +2,8 @@ using Amazon;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Logging;
+using RealtorApp.Contracts.Common.Requests;
+using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Settings;
 
@@ -12,7 +14,7 @@ public class S3Service(AppSettings appSettings, ILogger<S3Service> logger) : IS3
     private readonly AppSettings _appSettings = appSettings;
     private readonly ILogger<S3Service> _logger = logger;
 
-    public async Task<bool> UploadFileAsync(string key, Stream fileStream, string contentType)
+    public async Task<FileUploadResponseDto> UploadFileAsync(string key, FileUploadRequest fileUploadRequest, string folderName = "")
     {
         try
         {
@@ -27,21 +29,33 @@ public class S3Service(AppSettings appSettings, ILogger<S3Service> logger) : IS3
             var request = new PutObjectRequest
             {
                 BucketName = _appSettings.Aws.S3.ImagesBucketName,
-                Key = key,
-                InputStream = fileStream,
-                ContentType = contentType,
+                Key = folderName + key,
+                InputStream = fileUploadRequest.Content,
+                ContentType = fileUploadRequest.ContentType,
             };
 
             await s3Client.PutObjectAsync(request);
 
             _logger.LogInformation("Successfully uploaded file to S3: {Key}", key);
-            return true;
+
+            return new()
+            {
+                OriginalRequest = fileUploadRequest,
+                FileKey = key,
+                Successful = true
+            };        
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "S3 error uploading file: {Key}", key);
-            return false;
+            return new()
+            {
+                OriginalRequest = fileUploadRequest,
+                FileKey = key,
+                Successful = false
+            };        
         }
+
     }
 
     public async Task<(Stream? FileStream, string? ContentType)> GetFileAsync(string key)
