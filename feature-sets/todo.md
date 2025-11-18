@@ -2,7 +2,7 @@
 - limit agents to 1 active property if on free plan
 - add partial indexes for deleted_at column.
     - might come in handy for some tables..
-- make uuid required again, doesnt need to be nullable anymore
+- make uuid required again, doesnt need to be nullable anymore ✅
 - invite client to existing property
 - consider how sendmessageasync can set isread to true if receiving user is connected to hub
 - Set policies on endpoints for agentonly or clientonly

@@ -152,7 +152,7 @@ public class InvitationService(
 
         var clientUser = await _dbContext.Clients
             .Include(i => i.User)
-            .FirstOrDefaultAsync(i => i.User.Uuid == Guid.Parse(authUserDto.Uid));
+            .FirstOrDefaultAsync(i => i.User.Uuid == authUserDto.Uid);
 
         var propertiesToAdd = clientInvitation.ClientInvitationsProperties.Select(i => i.PropertyInvitation);
 
@@ -204,7 +204,7 @@ public class InvitationService(
 
         await _dbContext.SaveChangesAsync();
 
-        var accessToken = _jwtService.GenerateAccessToken(Guid.Parse(authUserDto.Uid), "Client");
+        var accessToken = _jwtService.GenerateAccessToken(authUserDto.Uid, "Client");
         var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(clientUser.UserId);
 
         return new()

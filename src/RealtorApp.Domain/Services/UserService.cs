@@ -11,10 +11,9 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
 
     public async Task<User> GetOrCreateAgentUserAsync(string firebaseUid, string email, string? displayName)
     {
-        var userUuid = new Guid(firebaseUid);
 
       var existingUser = await _dbContext.Users
-          .Where(u => u.Uuid == userUuid)
+          .Where(u => u.Uuid == firebaseUid)
           .Select(u => new User
           {
               UserId = u.UserId,
@@ -30,7 +29,7 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
 
         var user = new User
         {
-            Uuid = userUuid,
+            Uuid = firebaseUid,
             Email = email,
             Agent = new(),
         };

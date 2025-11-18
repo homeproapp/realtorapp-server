@@ -14,8 +14,8 @@ public sealed class ChatHub(IUserAuthService userAuthService, IChatService chatS
     private readonly IChatService _chatService = chatService;
     private readonly IUserService _userService = userService;
 
-    private Guid _uuid => Guid.Parse(Context.UserIdentifier!
-        ?? throw new HubException("Unauthenticated: no UserIdentifier present."));
+    private string _uuid => Context.UserIdentifier
+        ?? throw new HubException("Unauthenticated: no UserIdentifier present.");
 
     public override async Task OnConnectedAsync()
     {

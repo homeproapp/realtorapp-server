@@ -79,7 +79,7 @@ public class RefreshTokenService(RealtorAppDbContext context, AppSettings appSet
             .Select(rt => new UserRefreshTokenDto
             {
                 UserId = rt.User.UserId,
-                UserUuid = rt.User.Uuid ?? Guid.Empty,
+                UserUuid = rt.User.Uuid,
                 Role = rt.User.Agent != null ? "agent" : "client"
             })
             .FirstOrDefaultAsync();

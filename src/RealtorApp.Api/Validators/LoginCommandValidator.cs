@@ -9,12 +9,6 @@ public class LoginCommandValidator : AbstractValidator<LoginCommand>
     {
         RuleFor(x => x.FirebaseToken)
             .NotEmpty()
-            .Must(BeValidGuid)
-            .WithMessage("Invalid request");
-    }
-
-    private static bool BeValidGuid(string token)
-    {
-        return Guid.TryParse(token, out _);
+            .WithMessage("Firebase token is required");
     }
 }

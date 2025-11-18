@@ -81,7 +81,7 @@ public abstract class TestBase : IDisposable
         MockAuthProviderService.Setup(x => x.ValidateTokenAsync(It.IsAny<string>()))
             .ReturnsAsync(new AuthProviderUserDto { Uid = Guid.NewGuid().ToString(), Email = "test@example.com" });
 
-        MockJwtService.Setup(x => x.GenerateAccessToken(It.IsAny<Guid>(), It.IsAny<string>()))
+        MockJwtService.Setup(x => x.GenerateAccessToken(It.IsAny<string>(), It.IsAny<string>()))
             .Returns("test_access_token");
 
         MockRefreshTokenService.Setup(x => x.CreateRefreshTokenAsync(It.IsAny<long>()))
@@ -95,7 +95,7 @@ public abstract class TestBase : IDisposable
         return TestDataManager.CreateAgent(user);
     }
 
-    protected Client CreateTestClient(long? userId = null, Guid? uuid = null)
+    protected Client CreateTestClient(long? userId = null, string? uuid = null)
     {
         var userEmail = $"client{Guid.NewGuid():N}@example.com";
         var user = TestDataManager.CreateUser(userEmail, "Test", "Client", uuid);

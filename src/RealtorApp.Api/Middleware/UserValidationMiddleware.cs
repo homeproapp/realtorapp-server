@@ -20,13 +20,13 @@ public class UserValidationMiddleware(RequestDelegate next)
         }
 
         var userUuidClaim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userUuidClaim) || !Guid.TryParse(userUuidClaim, out var userUuid))
+        if (string.IsNullOrEmpty(userUuidClaim))
         {
             await WriteErrorResponseAsync(context, "AUTH_E001");
             return;
         }
 
-        var userId = await userAuthService.GetUserIdByUuid(userUuid);
+        var userId = await userAuthService.GetUserIdByUuid(userUuidClaim);
         if (userId == null)
         {
             await WriteErrorResponseAsync(context, "AUTH_E002");

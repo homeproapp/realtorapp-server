@@ -51,6 +51,26 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
+var allowClientCorsDev = "allowClientDev";
+var allowClientCors = "allowClient";
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(allowClientCorsDev, policy =>
+    {
+        policy.AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+
+    //TODO: update
+    options.AddPolicy(allowClientCors, policy =>
+    {
+        policy.WithOrigins("ADD-URL-HERE.OMOEGMOGMOA")
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
 
 // Add rate limiting
 builder.Services.AddRateLimiter(options =>
@@ -133,12 +153,19 @@ builder.Services.AddSignalR().AddJsonProtocol(o =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+var isDev = app.Environment.IsDevelopment();
+if (isDev)
 {
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+app.UseCors(isDev ? allowClientCorsDev : allowClientCors);
+
+if (!isDev)
+{
+    app.UseHttpsRedirection();
+}
+
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 

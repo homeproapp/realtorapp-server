@@ -31,13 +31,13 @@ public class TestDataManager : IDisposable
         _dbContext = dbContext;
     }
 
-    public User CreateUser(string email, string firstName, string lastName, Guid? uuid = null)
+    public User CreateUser(string email, string firstName, string lastName, string? uuid = null)
     {
         var userId = _nextUserId++;
         var user = new User
         {
             UserId = userId,
-            Uuid = uuid ?? Guid.NewGuid(),
+            Uuid = uuid ?? Guid.NewGuid().ToString(),
             Email = Guid.NewGuid().ToString() + email,
             FirstName = firstName,
             LastName = lastName,

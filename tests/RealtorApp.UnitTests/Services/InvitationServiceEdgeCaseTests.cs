@@ -101,10 +101,10 @@ public class InvitationServiceEdgeCaseTests : TestBase
         Assert.Equal("Invalid invite", result2.ErrorMessage);
 
         // Verify only one User/Client record created
-        var users = await DbContext.Users.Where(u => u.Uuid == Guid.Parse(firebaseUid)).ToListAsync();
+        var users = await DbContext.Users.Where(u => u.Uuid == firebaseUid).ToListAsync();
         Assert.Single(users);
 
-        var clients = await DbContext.Clients.Where(c => c.User.Uuid == Guid.Parse(firebaseUid)).ToListAsync();
+        var clients = await DbContext.Clients.Where(c => c.User.Uuid == firebaseUid).ToListAsync();
         Assert.Single(clients);
     }
 
@@ -196,7 +196,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var firebaseUid = Guid.NewGuid();
+        var firebaseUid = Guid.NewGuid().ToString();
         var existingClient = CreateTestClient(2, firebaseUid);
 
         // Create existing property with different casing
@@ -427,7 +427,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
         // Assert
         Assert.True(result.IsSuccess());
 
-        var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Uuid == Guid.Parse(firebaseUid));
+        var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Uuid == firebaseUid);
         Assert.NotNull(user);
         Assert.Equal("Test", user.FirstName);
         Assert.Equal("User", user.LastName);

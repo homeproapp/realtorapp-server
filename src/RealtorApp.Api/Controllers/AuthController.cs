@@ -40,7 +40,7 @@ public class AuthController(
     {
         var user = await _userService.GetOrCreateAgentUserAsync("b45b4948-9cd5-438d-989d-e488192ee613", "stew@anoya.ca", "Stew Anoya");
 
-        var accessToken = _jwtService.GenerateAccessToken(user.Uuid!.Value, "agent");
+        var accessToken = _jwtService.GenerateAccessToken(user.Uuid, "agent");
         var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(user.UserId);
 
         return Ok(new LoginCommandResponse
@@ -68,13 +68,7 @@ public class AuthController(
         var user = await _userService.GetOrCreateAgentUserAsync(firebaseUser.Uid, firebaseUser.Email, firebaseUser.DisplayName);
         var role = user.Agent == null ? "client" : "agent";
 
-        if (!user.Uuid.HasValue)
-        {
-            return BadRequest();
-        }
-
-
-        var accessToken = _jwtService.GenerateAccessToken(user.Uuid.Value, role);
+        var accessToken = _jwtService.GenerateAccessToken(user.Uuid, role);
         var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(user.UserId);
 
         return Ok(new LoginCommandResponse

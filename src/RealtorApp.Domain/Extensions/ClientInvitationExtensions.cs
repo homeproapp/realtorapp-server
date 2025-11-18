@@ -38,7 +38,7 @@ public static class ClientInvitationExtensions
         {
             User = new()
             {
-                Uuid = Guid.Parse(uuidString),
+                Uuid = uuidString,
                 Email = invitation.ClientEmail,
                 FirstName = invitation.ClientFirstName,
                 LastName = invitation.ClientLastName,

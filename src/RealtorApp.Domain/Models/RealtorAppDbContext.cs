@@ -68,7 +68,6 @@ public partial class RealtorAppDbContext : DbContext
     public virtual DbSet<ThirdPartyContact> ThirdPartyContacts { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder

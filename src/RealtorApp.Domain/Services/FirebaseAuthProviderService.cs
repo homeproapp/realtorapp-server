@@ -1,15 +1,17 @@
 using FirebaseAdmin;
 using FirebaseAdmin.Auth;
 using Google.Apis.Auth.OAuth2;
+using Microsoft.Extensions.Logging;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Settings;
 
 namespace RealtorApp.Domain.Services;
 
-public class FirebaseAuthProviderService(AppSettings appSettings) : IAuthProviderService
+public class FirebaseAuthProviderService(AppSettings appSettings, ILogger<FirebaseAuthProviderService> logger) : IAuthProviderService
 {
     private readonly AppSettings _appSettings = appSettings;
+    private readonly ILogger<FirebaseAuthProviderService> _logger = logger;
     private static FirebaseApp? _firebaseApp;
     private static readonly Lock _lock = new();
 
@@ -48,14 +50,15 @@ public class FirebaseAuthProviderService(AppSettings appSettings) : IAuthProvide
                 DisplayName = decodedToken.Claims.TryGetValue("name", out var name) ? name.ToString() : null
             };
         }
-        catch (FirebaseAuthException)
+        catch (FirebaseAuthException ex)
         {
             // Token is invalid, expired, or malformed
+            _logger.LogError(ex, "FirebaseAuthException - {Message}", ex.Message);
             return null;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Other errors (network, configuration, etc.)
+            _logger.LogError(ex, "Exception - {Message}", ex.Message);
             return null;
         }
     }

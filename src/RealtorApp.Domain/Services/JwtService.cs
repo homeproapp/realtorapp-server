@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -12,7 +11,7 @@ public class JwtService(AppSettings appSettings) : IJwtService
     private readonly JsonWebTokenHandler _tokenHandler = new();
     private readonly AppSettings _appSettings = appSettings;
 
-    public string GenerateAccessToken(Guid userUuid, string role)
+    public string GenerateAccessToken(string userUuid, string role)
     {
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_appSettings.Jwt.SecretKey));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);

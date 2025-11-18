@@ -44,7 +44,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         Assert.Equal("test_refresh_token", result.RefreshToken);
 
         // Verify User record created
-        var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Uuid == Guid.Parse(firebaseUid));
+        var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Uuid == firebaseUid);
         Assert.NotNull(user);
         Assert.Equal(invitation.ClientEmail, user.Email);
         Assert.Equal(invitation.ClientFirstName, user.FirstName);
@@ -83,7 +83,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         Assert.True(updatedInvitation.AcceptedAt > DateTime.UtcNow.AddMinutes(-1));
 
         // Verify JWT and refresh token services called
-        MockJwtService.Verify(x => x.GenerateAccessToken(Guid.Parse(firebaseUid), "Client"), Times.Once);
+        MockJwtService.Verify(x => x.GenerateAccessToken(firebaseUid, "Client"), Times.Once);
         MockRefreshTokenService.Verify(x => x.CreateRefreshTokenAsync(client.UserId), Times.Once);
     }
 
@@ -92,7 +92,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
     {
         // Arrange
         var agent = CreateTestAgent();
-        var firebaseUid = Guid.NewGuid();
+        var firebaseUid = Guid.NewGuid().ToString();
         var existingClient = CreateTestClient(2, firebaseUid);
 
         var property = CreateTestPropertyInvitation("789 Pine Rd", "Calgary", "AB", "T2P1A1", "CA", agent.UserId);
@@ -156,7 +156,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         // Arrange
         var agent1 = CreateTestAgent(1);
         var agent2 = CreateTestAgent(3);
-        var firebaseUid = Guid.NewGuid();
+        var firebaseUid = Guid.NewGuid().ToString();
         var existingClient = CreateTestClient(2, firebaseUid);
 
         // Create existing property with agent1
@@ -381,7 +381,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         // Assert
         Assert.True(result.IsSuccess());
 
-        var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Uuid == Guid.Parse(firebaseUid));
+        var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Uuid == firebaseUid);
         Assert.NotNull(user);
         Assert.Equal("minimal@example.com", user.Email);
         Assert.Equal("Minimal", user.FirstName);
@@ -417,7 +417,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         Assert.Null(result.RefreshToken);
 
         // Verify no User/Client records created
-        var users = await DbContext.Users.Where(u => u.Uuid == Guid.Parse(firebaseUid)).ToListAsync();
+        var users = await DbContext.Users.Where(u => u.Uuid == firebaseUid).ToListAsync();
         Assert.Empty(users);
 
         // Verify invitation was not marked as accepted

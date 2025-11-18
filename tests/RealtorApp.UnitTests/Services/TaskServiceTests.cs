@@ -530,7 +530,7 @@ public class TaskServiceTests : IDisposable
 
         Assert.NotNull(result);
         Assert.Empty(result.Tasks);
-        Assert.Equal(result.TaskCompletionCounts.First().Completion, 0);
+        Assert.Equal(0, result.TaskCompletionCounts.First().Completion);
     }
 
     private async System.Threading.Tasks.Task<long> SetupTestData_ListingWithMultipleTasks()

@@ -31,7 +31,7 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
     };
 
 
-    public async Task<long?> GetUserIdByUuid(Guid uuid)
+    public async Task<long?> GetUserIdByUuid(string uuid)
     {
         return await _cache.GetOrCreateAsync(
             $"{_userIdByUuIdCachePrefix}{uuid}",
