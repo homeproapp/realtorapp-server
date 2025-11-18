@@ -62,7 +62,7 @@ namespace RealtorApp.Api.Controllers
             return Ok(tasks);
         }
 
-        [HttpPost("v1/listings/{listingId}/task")]
+        [HttpPost("v1/listings/{listingId}")]
         public async Task<ActionResult<AddOrUpdateTaskCommandResponse>> UpsertTask([FromForm] string commandJson, [FromRoute] long listingId, [FromForm] IFormFile[]? images)
         {
             var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
