@@ -45,8 +45,7 @@ public class RefreshTokenService(RealtorAppDbContext context, AppSettings appSet
         };
 
         _context.RefreshTokens.Add(refreshTokenEntity);
-        await Task.CompletedTask;
-        // await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync();
 
         return refreshToken;
     }

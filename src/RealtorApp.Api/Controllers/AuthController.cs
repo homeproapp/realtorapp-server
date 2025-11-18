@@ -65,7 +65,8 @@ public class AuthController(
         }
 
         // Get or create agent user (idempotent)
-        var user = await _userService.GetOrCreateAgentUserAsync(firebaseUser.Uid, firebaseUser.Email, firebaseUser.DisplayName);
+        var displayName = $"{command.FirstName} {command.LastName}";
+        var user = await _userService.GetOrCreateAgentUserAsync(firebaseUser.Uid, firebaseUser.Email, displayName);
         var role = user.Agent == null ? "client" : "agent";
 
         var accessToken = _jwtService.GenerateAccessToken(user.Uuid, role);
