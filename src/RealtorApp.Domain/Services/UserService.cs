@@ -81,6 +81,60 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
             UpcomingReminders = counts.UpcomingReminders
         };
     }
+
+    public async Task<DashboardQueryResponse> GetClientDashboard(long userId)
+    {
+        var counts = await _dbContext.Clients
+            .Where(i => i.UserId == userId)
+            .Select(i => new
+            {
+                CompletedTasks = i.ClientsListings.SelectMany(x => x.Listing.Tasks
+                    .Where(x => x.Status == (short)TaskStatus.Completed))
+                    .Count(),
+                TasksInProgress = i.ClientsListings.SelectMany(x => x.Listing.Tasks
+                    .Where(x => x.Status == (short)TaskStatus.InProgress))
+                    .Count(),
+                UpcomingReminders = i.User.Reminders
+                    .Where(x => x.RemindAt > DateTime.UtcNow)
+                    .OrderBy(x => x.RemindAt)
+                    .Select(x => new UpcomingReminder()
+                    {
+                        ReminderId = x.ReminderId,
+                        ReminderText = x.ReminderText,
+                        DueDate = x.RemindAt,
+                        ReminderType = x.ReminderType == null ? ReminderType.Unknown : (ReminderType)x.ReminderType
+                    }).ToArray(),
+            }).FirstOrDefaultAsync();
+        if (counts == null) 
+        {
+            return new();
+        }
+        
+        return new()
+        {
+            DashboardGlanceItems =
+            [
+                new()
+                {
+                    Id = 1,
+                    Title = "Tasks In Progress",
+                    Value = counts.TasksInProgress,
+                    SortOrder = 1,
+                    Type = "Count"
+                },
+                new()
+                {
+                    Id = 2,
+                    Title = "Tasks Completed",
+                    Value = counts.CompletedTasks,
+                    SortOrder = 2,
+                    Type = "Count"
+                },
+            ],
+            UpcomingReminders = counts.UpcomingReminders
+        };
+    }
+
     public async Task<User> GetOrCreateAgentUserAsync(string firebaseUid, string email, string? displayName)
     {
 

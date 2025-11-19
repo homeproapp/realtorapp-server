@@ -9,5 +9,6 @@ public interface IUserService
     Task<string?> GetAgentName(long agentId);
     Task<User?> GetUserByEmailAsync(string email);
     Task<DashboardQueryResponse> GetAgentDashboard(long userId);
+    Task<DashboardQueryResponse> GetClientDashboard(long userId);
     Task<UserProfileQueryResponse?> GetUserProfileAsync(long userId);
 }

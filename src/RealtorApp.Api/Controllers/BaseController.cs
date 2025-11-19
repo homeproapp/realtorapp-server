@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using RealtorApp.Domain.Constants;
 
 namespace RealtorApp.Api.Controllers;
 
@@ -23,7 +22,7 @@ public abstract class RealtorApiBaseController : ControllerBase
     {
         get
         {
-            var roleClaim = User.FindFirst(RoleConstants.Claim)?.Value;
+            var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
             
             if (string.IsNullOrEmpty(roleClaim))
             {

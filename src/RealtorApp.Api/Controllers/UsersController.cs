@@ -28,11 +28,23 @@ public class UsersController(IUserService userService) : RealtorApiBaseControlle
         return Ok(result);
     }
 
-    [HttpGet("v1/dashboard/agent")]
-    [Authorize(Policy = PolicyConstants.AgentOnly)]
+    [HttpGet("v1/dashboard")]
     public async Task<ActionResult<DashboardQueryResponse>> GetAgentDashboard()
     {
-        var result = _userService.GetAgentDashboard(RequiredCurrentUserId);
+        DashboardQueryResponse? result = null;
+        if (CurrentUserRole == RoleConstants.Client)
+        {
+            result = await _userService.GetClientDashboard(RequiredCurrentUserId);
+        }
+        else if (CurrentUserRole == RoleConstants.Agent)
+        {
+            result = await _userService.GetAgentDashboard(RequiredCurrentUserId);
+        };
+
+        if (result == null)
+        {
+            return BadRequest("Something went wrong");
+        }
 
         return Ok(result);
     }
