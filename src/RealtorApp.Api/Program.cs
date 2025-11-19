@@ -17,11 +17,6 @@ using RealtorApp.Domain.Constants;
 
 var builder = WebApplication.CreateBuilder(args);
 
-#if DEBUG
-    Environment.SetEnvironmentVariable(FirebaseConstants.EnvironmentVariableName, "/home/stew/repos/realtorApp/realtor-app-66c0d-firebase-adminsdk-fbsvc-9f28d0bc95.json");
-#endif
-
-
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();

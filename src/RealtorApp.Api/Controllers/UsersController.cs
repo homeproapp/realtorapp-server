@@ -27,4 +27,13 @@ public class UsersController(IUserService userService) : RealtorApiBaseControlle
 
         return Ok(result);
     }
+
+    [HttpGet("v1/dashboard/agent")]
+    [Authorize(Policy = PolicyConstants.AgentOnly)]
+    public async Task<ActionResult<DashboardQueryResponse>> GetAgentDashboard()
+    {
+        var result = _userService.GetAgentDashboard(RequiredCurrentUserId);
+
+        return Ok(result);
+    }
 }
