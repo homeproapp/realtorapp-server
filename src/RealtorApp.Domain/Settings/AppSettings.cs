@@ -6,8 +6,8 @@ public class AppSettings()
     public byte ConversationParticipantsCacheExpirationInMins { get; set; }
     public byte UsersAssignedToPropertyCacheExpirationInMins { get; set; }
     public int ImageCacheDurationInSeconds { get; set; } = 86400;
-    public string FrontendBaseUrl { get; set; } = string.Empty;
-    public string ApplicationName { get; set; } = "HomePro";
+    public string ClientUrl { get; set; } = string.Empty;
+    public string AppName { get; set; } = "HomePro";
     public JwtSettings Jwt { get; set; } = new();
     public FirebaseSettings Firebase { get; set; } = new();
     public required AwsSettings Aws { get; set; }

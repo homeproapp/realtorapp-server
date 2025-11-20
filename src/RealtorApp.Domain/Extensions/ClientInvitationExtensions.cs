@@ -10,6 +10,7 @@ public static class ClientInvitationExtensions
     {
         return new InvitationEmailDto
         {
+            ClientInvitationId = invitation.ClientInvitationId,
             ClientEmail = invitation.ClientEmail,
             ClientFirstName = invitation.ClientFirstName,
             AgentName = agentName,

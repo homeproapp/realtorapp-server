@@ -23,8 +23,8 @@ public class EmailService(AppSettings appSettings, ILogger<EmailService> logger)
         {
             var invitationLink = GenerateInvitationLink(encryptedData);
             var emailBody = isExistingUser
-                    ? GenerateExistingClientInvitationEmailBody(clientFirstName, agentName, invitationLink, _appSettings.ApplicationName)
-                    : GenerateNewClientInvitationEmailBody(clientFirstName, agentName, invitationLink, _appSettings.ApplicationName);
+                    ? GenerateExistingClientInvitationEmailBody(clientFirstName, agentName, invitationLink, _appSettings.AppName)
+                    : GenerateNewClientInvitationEmailBody(clientFirstName, agentName, invitationLink, _appSettings.AppName);
             var credentials = new Amazon.Runtime.BasicAWSCredentials(
                 _appSettings.Aws.AccessKey,
                 _appSettings.Aws.SecretKey
@@ -34,8 +34,8 @@ public class EmailService(AppSettings appSettings, ILogger<EmailService> logger)
             using var client = new AmazonSimpleEmailServiceV2Client(credentials, region);
 
             var htmlBody = isExistingUser
-                ? GenerateExistingClientInvitationEmailHtml(clientFirstName, agentName, invitationLink, _appSettings.ApplicationName)
-                : GenerateNewClientInvitationEmailHtml(clientFirstName, agentName, invitationLink, _appSettings.ApplicationName);
+                ? GenerateExistingClientInvitationEmailHtml(clientFirstName, agentName, invitationLink, _appSettings.AppName)
+                : GenerateNewClientInvitationEmailHtml(clientFirstName, agentName, invitationLink, _appSettings.AppName);
 
             var sendRequest = new SendEmailRequest
             {
@@ -50,7 +50,7 @@ public class EmailService(AppSettings appSettings, ILogger<EmailService> logger)
                     {
                         Subject = new Content
                         {
-                            Data = $"You've been invited to {_appSettings.ApplicationName} by {agentName}",
+                            Data = $"You've been invited to {_appSettings.AppName} by {agentName}",
                             Charset = "UTF-8"
                         },
                         Body = new Body
@@ -100,12 +100,12 @@ public class EmailService(AppSettings appSettings, ILogger<EmailService> logger)
             {
                 var invitationLink = GenerateInvitationLink(invitation.EncryptedData);
                 var emailBody = invitation.IsExistingUser
-                    ? GenerateExistingClientInvitationEmailBody(invitation.ClientFirstName, invitation.AgentName, invitationLink, _appSettings.ApplicationName)
-                    : GenerateNewClientInvitationEmailBody(invitation.ClientFirstName, invitation.AgentName, invitationLink, _appSettings.ApplicationName);
+                    ? GenerateExistingClientInvitationEmailBody(invitation.ClientFirstName, invitation.AgentName, invitationLink, _appSettings.AppName)
+                    : GenerateNewClientInvitationEmailBody(invitation.ClientFirstName, invitation.AgentName, invitationLink, _appSettings.AppName);
 
                 var htmlBody = invitation.IsExistingUser
-                    ? GenerateExistingClientInvitationEmailHtml(invitation.ClientFirstName, invitation.AgentName, invitationLink, _appSettings.ApplicationName)
-                    : GenerateNewClientInvitationEmailHtml(invitation.ClientFirstName, invitation.AgentName, invitationLink, _appSettings.ApplicationName);
+                    ? GenerateExistingClientInvitationEmailHtml(invitation.ClientFirstName, invitation.AgentName, invitationLink, _appSettings.AppName)
+                    : GenerateNewClientInvitationEmailHtml(invitation.ClientFirstName, invitation.AgentName, invitationLink, _appSettings.AppName);
 
                 var sendRequest = new SendEmailRequest
                 {
@@ -120,7 +120,7 @@ public class EmailService(AppSettings appSettings, ILogger<EmailService> logger)
                         {
                             Subject = new Content
                             {
-                                Data = $"You've been invited to {_appSettings.ApplicationName} by {invitation.AgentName}",
+                                Data = $"You've been invited to {_appSettings.AppName} by {invitation.AgentName}",
                                 Charset = "UTF-8"
                             },
                             Body = new Body
@@ -157,7 +157,7 @@ public class EmailService(AppSettings appSettings, ILogger<EmailService> logger)
 
     private string GenerateInvitationLink(string encryptedData)
     {
-        return $"{_appSettings.FrontendBaseUrl}/invitations/accept?data={HttpUtility.UrlEncode(encryptedData)}";
+        return $"{_appSettings.ClientUrl}/invitations/accept?data={HttpUtility.UrlEncode(encryptedData)}";
     }
 
     private static string GenerateNewClientInvitationEmailBody(string? clientFirstName, string agentName, string invitationLink, string applicationName)

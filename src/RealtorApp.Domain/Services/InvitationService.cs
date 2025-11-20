@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using RealtorApp.Contracts.Commands.Invitations;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Extensions;
@@ -15,7 +16,8 @@ public class InvitationService(
     IAuthProviderService authProviderService,
     ICryptoService crypto,
     IJwtService jwtService,
-    IRefreshTokenService refreshTokenService) : IInvitationService
+    IRefreshTokenService refreshTokenService,
+    ILogger<InvitationService> logger) : IInvitationService
 {
     private readonly RealtorAppDbContext _dbContext = dbContext;
     private readonly IEmailService _emailService = emailService;
@@ -24,6 +26,7 @@ public class InvitationService(
     private readonly ICryptoService _crypto = crypto;
     private readonly IJwtService _jwtService = jwtService;
     private readonly IRefreshTokenService _refreshTokenService = refreshTokenService;
+    private readonly ILogger<InvitationService> _logger = logger;
 
     public async Task<SendInvitationCommandResponse> SendInvitationsAsync(SendInvitationCommand command, long agentUserId)
     {
@@ -39,7 +42,7 @@ public class InvitationService(
 
         var response = new SendInvitationCommandResponse();
         var propertyInvites = new List<PropertyInvitation>();
-        var invitesToSend = new List<InvitationEmailDto>();
+        var invitesToSend = new List<(ClientInvitation Client, bool IsExistingUser)>();
         try
         {
             foreach (var propertyRequest in command.Properties)
@@ -61,35 +64,68 @@ public class InvitationService(
             // Create clients and process invitations
             foreach (var clientRequest in command.Clients)
             {
-                var existingUser = await _dbContext.Users
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(u => u.Email == clientRequest.Email);
+                // check if agent has already invited this client and the client hasnt accepted yet
+                var clientInvitation = await _dbContext.ClientInvitations
+                    .Include(i => i.ClientInvitationsProperties)
+                        .ThenInclude(i => i.PropertyInvitation)
+                    .FirstOrDefaultAsync(i => i.InvitedBy == agentUserId && 
+                    EF.Functions.ILike(i.ClientEmail, clientRequest.Email) &&
+                    i.AcceptedAt == null);
 
-                var clientInvitation = new ClientInvitation
+                if (clientInvitation != null)
                 {
-                    ClientEmail = clientRequest.Email,
-                    ClientFirstName = clientRequest.FirstName,
-                    ClientLastName = clientRequest.LastName,
-                    ClientPhone = clientRequest.Phone,
-                    InvitationToken = Guid.NewGuid(),
-                    InvitedBy = agentUserId,
-                    ExpiresAt = DateTime.UtcNow.AddDays(7),
-                    ClientInvitationsProperties = [.. propertyInvites.Select(i => new ClientInvitationsProperty()
+                    var existingProperties = clientInvitation.ClientInvitationsProperties.Select(i => i.PropertyInvitation.AddressLine1.ToLower());
+                    var netNewProperties = propertyInvites
+                        .Where(i =>  !existingProperties.Contains(i.AddressLine1.ToLower()));
+                    
+                    var clientInvitationProperties = netNewProperties.Select(i => new ClientInvitationsProperty()
                     {
-                        PropertyInvitation = i
-                    })]
-                };
+                       PropertyInvitation = i,
+                       ClientInvitationId = clientInvitation.ClientInvitationId 
+                    });
 
-                var encryptedData = _getEncryptedInviteData(clientInvitation.InvitationToken, existingUser is not null);
+                    await _dbContext.ClientInvitationsProperties.AddRangeAsync(clientInvitationProperties);
+                }
 
-                invitesToSend.Add(clientInvitation.ToEmailDto(agentName, encryptedData, existingUser is not null));
+                User? existingUser = null;
 
-                _dbContext.ClientInvitations.Add(clientInvitation);
+                // user may exist in system since invite could have been accepted already
+                if (clientInvitation == null)
+                {   
+                    existingUser = await _dbContext.Users
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(u => u.Email == clientRequest.Email);
+                }
+
+                if (clientInvitation == null)
+                {
+                    clientInvitation = new ClientInvitation
+                    {
+                        ClientEmail = clientRequest.Email,
+                        ClientFirstName = clientRequest.FirstName,
+                        ClientLastName = clientRequest.LastName,
+                        ClientPhone = clientRequest.Phone,
+                        InvitationToken = Guid.NewGuid(),
+                        InvitedBy = agentUserId,
+                        ExpiresAt = DateTime.UtcNow.AddDays(7),
+                        ClientInvitationsProperties = [.. propertyInvites.Select(i => new ClientInvitationsProperty()
+                        {
+                            PropertyInvitation = i
+                        })]
+                    };
+
+                    _dbContext.ClientInvitations.Add(clientInvitation);
+                }
+
+                invitesToSend.Add((clientInvitation, existingUser is not null));
+
             }
 
             await _dbContext.SaveChangesAsync();
 
-            var failedInvites = await _emailService.SendBulkInvitationEmailsAsync(invitesToSend);
+            var failedInvites = await _emailService.SendBulkInvitationEmailsAsync([.. invitesToSend
+                .Select(i => 
+                    i.Client.ToEmailDto(agentName, _getEncryptedInviteData(i.Client.InvitationToken, i.IsExistingUser), i.IsExistingUser))]);
 
             if (failedInvites.Count > 0)
             {
@@ -100,8 +136,9 @@ public class InvitationService(
 
             return response;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Something went wrong sending invite Message = {Message}", ex.Message);
             response.Errors.Add($"An unexpected error occurred");
             return response;
         }
