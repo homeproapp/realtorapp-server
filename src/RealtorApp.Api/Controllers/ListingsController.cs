@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using RealtorApp.Contracts.Queries.Listing.Responses;
+using RealtorApp.Contracts.Queries.Responses;
 using RealtorApp.Domain.Constants;
 using RealtorApp.Domain.Interfaces;
 
@@ -17,7 +18,7 @@ namespace RealtorApp.Api.Controllers
         private readonly IListingService _listingService = listingService;
         private readonly IUserAuthService _userAuth = userAuth;
 
-        [HttpGet("/v1/listings/{listingId}/slim")]
+        [HttpGet("v1/{listingId}/slim")]
         public async Task<ActionResult<ListingDetailsSlimQueryResponse>> GetListingDetails([FromRoute] long listingId)
         {
             var isAssociatedToListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
@@ -30,6 +31,12 @@ namespace RealtorApp.Api.Controllers
             var result = await _listingService.GetListingDetailsSlim(listingId);
 
             return Ok(result);
+        }
+
+        [HttpGet("v1/active")]
+        public async Task<ActionResult<ActiveListingsQueryResponse>> GetActiveListings()
+        {
+            return Ok(await _listingService.GetActiveListings(RequiredCurrentUserId));
         }
     }
 }

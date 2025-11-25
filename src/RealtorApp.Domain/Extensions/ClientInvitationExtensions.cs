@@ -58,6 +58,8 @@ public static class ClientInvitationExtensions
             ClientLastName = invitation.ClientLastName,
             ClientPhone = invitation.ClientPhone,
             ExpiresAt = invitation.ExpiresAt,
+            AgentFirstName = invitation.InvitedByNavigation.User.FirstName,
+            AgentLastName = invitation.InvitedByNavigation.User.LastName,
             Properties = invitation.ClientInvitationsProperties?.Select(p => new ValidateInvitationResponseProperties
             {
                 AddressLine1 = p.PropertyInvitation?.AddressLine1 ?? string.Empty,

@@ -1,6 +1,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using RealtorApp.Contracts.Queries.Listing.Responses;
+using RealtorApp.Contracts.Queries.Responses;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Models;
 
@@ -29,5 +30,20 @@ public class ListingService(RealtorAppDbContext context) : IListingService
                     .Distinct()
                     .ToArray()
             }).FirstAsync();
+    }
+
+    public async Task<ActiveListingsQueryResponse> GetActiveListings (long agentId)
+    {
+        var activeListings = await _context.AgentsListings
+            .Where(i => i.AgentId == agentId)
+            .Select(i => new ActiveListing()
+            {
+                ListingId = i.ListingId,
+                AddressLine1 = i.Listing.Property.AddressLine1,
+                City = i.Listing.Property.City,
+                Region = i.Listing.Property.Region
+            }).ToArrayAsync();
+
+        return new() { ActiveListings = activeListings };
     }
 }

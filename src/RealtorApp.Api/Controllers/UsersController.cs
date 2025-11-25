@@ -29,7 +29,7 @@ public class UsersController(IUserService userService) : RealtorApiBaseControlle
     }
 
     [HttpGet("v1/dashboard")]
-    public async Task<ActionResult<DashboardQueryResponse>> GetAgentDashboard()
+    public async Task<ActionResult<DashboardQueryResponse>> GetDashboard()
     {
         DashboardQueryResponse? result = null;
         if (CurrentUserRole == RoleConstants.Client)

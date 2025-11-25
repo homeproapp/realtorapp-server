@@ -165,8 +165,9 @@ public class InvitationService(
 
     public async Task<AcceptInvitationCommandResponse> AcceptInvitationAsync(AcceptInvitationCommand command)
     {
-        var clientInvitation = await _clientInvitationWithPropertiesQuery(command.InvitationToken)
-                    .FirstOrDefaultAsync(i => i.InvitationToken == command.InvitationToken &&
+        var tokenFromEncryptedData = GetTokenFromEncryptedData(command.InvitationToken);
+        var clientInvitation = await _clientInvitationWithPropertiesQuery(tokenFromEncryptedData)
+                    .FirstOrDefaultAsync(i => i.InvitationToken == tokenFromEncryptedData &&
                                                 i.AcceptedAt == null);
 
         if (!clientInvitation.IsValid())
@@ -404,9 +405,27 @@ public class InvitationService(
     private IQueryable<ClientInvitation> _clientInvitationWithPropertiesQuery(Guid invitationToken)
     {
         return _dbContext.ClientInvitations
+            .Include(i => i.InvitedByNavigation)
+                .ThenInclude(i => i.User)
             .Include(i => i.ClientInvitationsProperties)
                 .ThenInclude(cip => cip.PropertyInvitation)
             .Where(i => i.InvitationToken == invitationToken &&
                     i.AcceptedAt == null);
+    }
+
+    private Guid GetTokenFromEncryptedData(string data)
+    {
+        var decryptedData = _crypto.Decrypt(data);
+
+        var splitByAmpersand = decryptedData.Split('&');
+
+        if (splitByAmpersand.Length < 2)
+        {
+            throw new ArgumentException("Invalid encrypted data");
+        }
+
+        var token = splitByAmpersand.First(i => i.StartsWith("token=")).Replace("token=", "");
+
+        return Guid.Parse(token);
     }
 }

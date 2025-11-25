@@ -135,7 +135,7 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
         };
     }
 
-    public async Task<User> GetOrCreateAgentUserAsync(string firebaseUid, string email, string? displayName)
+    public async Task<User> GetOrCreateUserAsync(string firebaseUid, string email, string? displayName, bool isClient)
     {
 
       var existingUser = await _dbContext.Users
@@ -157,8 +157,15 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
         {
             Uuid = firebaseUid,
             Email = email,
-            Agent = new(),
         };
+
+        if (isClient)
+        {
+            user.Client = new();
+        } else
+        {
+            user.Agent = new();
+        }
 
         if (!string.IsNullOrWhiteSpace(displayName))
         {

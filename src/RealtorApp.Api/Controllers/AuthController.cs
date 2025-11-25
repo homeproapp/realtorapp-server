@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using RealtorApp.Contracts.Commands.Auth;
+using RealtorApp.Domain.Constants;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Settings;
 
@@ -39,8 +40,8 @@ public class AuthController(
 
         // Get or create agent user (idempotent)
         var displayName = $"{command.FirstName} {command.LastName}";
-        var user = await _userService.GetOrCreateAgentUserAsync(firebaseUser.Uid, firebaseUser.Email, displayName);
-        var role = user.Agent == null ? "client" : "agent";
+        var user = await _userService.GetOrCreateUserAsync(firebaseUser.Uid, firebaseUser.Email, displayName, command.IsClient);
+        var role = user.Agent == null ? RoleConstants.Client : RoleConstants.Agent;
 
         var accessToken = _jwtService.GenerateAccessToken(user.Uuid, role);
         var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(user.UserId);
