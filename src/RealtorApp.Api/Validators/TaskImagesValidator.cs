@@ -3,20 +3,16 @@ using Microsoft.AspNetCore.Http;
 
 namespace RealtorApp.Api.Validators;
 
-public class TaskImagesValidator : AbstractValidator<IFormFile[]>
+public class TaskImagesValidator : AbstractValidator<string[]>
 {
     public TaskImagesValidator()
     {
-        RuleFor(x => x.Length)
-            .LessThanOrEqualTo(20)
-            .WithMessage("Maximum 20 images allowed");
-
         RuleForEach(x => x)
             .SetValidator(new TaskImageValidator());
     }
 }
 
-public class TaskImageValidator : AbstractValidator<IFormFile>
+public class TaskImageValidator : AbstractValidator<string>
 {
     private static readonly string[] AllowedTypes = { "image/jpeg", "image/jpg", "image/png", "image/webp" };
     private const long MaxSizeBytes = 10 * 1024 * 1024;

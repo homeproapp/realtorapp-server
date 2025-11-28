@@ -70,16 +70,22 @@ public class ImagesService(RealtorAppDbContext context, IS3Service s3Service, IL
     {
         try
         {
-            var tasks = images.Select(i => _s3Service.UploadFileAsync(Guid.NewGuid().ToString(), i, FileTypes.Image.ToString()));
+            var tasks = new List<Task<FileUploadResponseDto>>();
+            
+            foreach (var image in images)
+            {
+                var task = _s3Service.UploadFileAsync(Guid.NewGuid().ToString(), image, FileTypes.Image.ToString());
+                tasks.Add(task);
+            }
 
-            var completedTasks = await System.Threading.Tasks.Task.WhenAll(tasks);
-            var successfulCompletedTasks = completedTasks.Where(i => i.Successful);
-            var failedCount = completedTasks.Length - successfulCompletedTasks.Count();
+            var completedTasks = await Task.WhenAll(tasks);
+            var successfulCompletedTasks = completedTasks.Where(i => i.Successful).ToList();
+            var failedCount = completedTasks.Length - successfulCompletedTasks.Count;
             
             if (failedCount > 0)
             {
                 response.ErrorMessage = $"{failedCount} of {completedTasks.Length} images failed to upload";
-            }
+            } 
 
             if (completedTasks != null && successfulCompletedTasks.Any())
             {

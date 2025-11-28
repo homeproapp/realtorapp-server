@@ -48,7 +48,7 @@ public class AddOrUpdateLinkRequestValidator : AbstractValidator<AddOrUpdateLink
             .MaximumLength(500)
             .Must(BeValidUrl)
             .When(x => !x.IsMarkedForDeletion)
-            .WithMessage("Valid URL is required and must not exceed 500 characters");
+            .WithMessage("One or more invalid URLs. A valid URL starts with https://");
 
         RuleFor(x => x.LinkId)
             .NotNull()

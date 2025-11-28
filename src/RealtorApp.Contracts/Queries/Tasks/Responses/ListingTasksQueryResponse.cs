@@ -34,6 +34,8 @@ public class TaskListItemResponse
     public long TaskId { get; set; }
 
     public required string Title { get; set; }
+    
+    public string? Description { get; set; } = string.Empty;
 
     public required string Room { get; set; }
 

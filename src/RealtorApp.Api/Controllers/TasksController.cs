@@ -14,10 +14,11 @@ namespace RealtorApp.Api.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    public class TasksController(ITaskService taskService, IUserAuthService userAuth) : RealtorApiBaseController
+    public class TasksController(ITaskService taskService, IUserAuthService userAuth, ILogger<TasksController> logger) : RealtorApiBaseController
     {
         private readonly ITaskService _taskService = taskService;
         private readonly IUserAuthService _userAuth = userAuth;
+        private readonly ILogger<TasksController> _logger = logger;
 
         [HttpGet("v1/clients")]
         public async Task<ActionResult<ClientGroupedTasksListQueryResponse>> GetClients([FromQuery] ClientGroupedTasksListQuery query)
@@ -63,27 +64,13 @@ namespace RealtorApp.Api.Controllers
         }
 
         [HttpPost("v1/listings/{listingId}")]
-        public async Task<ActionResult<AddOrUpdateTaskCommandResponse>> UpsertTask([FromForm] string commandJson, [FromRoute] long listingId, [FromForm] IFormFile[]? images)
+        public async Task<ActionResult<AddOrUpdateTaskCommandResponse>> UpsertTask([FromBody] AddOrUpdateTaskCommand command, [FromRoute] long listingId)
         {
             var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
 
             if (!isAssociatedWithListing)
             {
                 return BadRequest(new AddOrUpdateTaskCommandResponse() { ErrorMessage = "Not allowed" });
-            }
-
-            AddOrUpdateTaskCommand? command;
-            try
-            {
-                command = JsonSerializer.Deserialize<AddOrUpdateTaskCommand>(commandJson);
-                if (command == null)
-                {
-                    return BadRequest(new AddOrUpdateTaskCommandResponse() { ErrorMessage = "Invalid request" });
-                }
-            }
-            catch (JsonException)
-            {
-                return BadRequest(new AddOrUpdateTaskCommandResponse() { ErrorMessage = "Invalid request" });
             }
 
             var commandValidator = new Validators.AddOrUpdateTaskCommandValidator();
@@ -98,7 +85,7 @@ namespace RealtorApp.Api.Controllers
 
             FileUploadRequest[] newFiles = [];
 
-            if (images != null && images.Length > 0)
+            if (command.NewImages != null && command.NewImages.Length > 0)
             {
                 var imageValidator = new Validators.TaskImagesValidator();
                 var imageValidationResult = await imageValidator.ValidateAsync(images);
@@ -123,6 +110,26 @@ namespace RealtorApp.Api.Controllers
             var updatedTask = await _taskService.AddOrUpdateTaskAsync(command, listingId, newFiles);
 
             return Ok(updatedTask);
+        }
+
+        [HttpDelete("v1/{listingId}/{taskId}")]
+        public async Task<ActionResult> DeleteTask([FromRoute] long listingId, [FromRoute] long taskId)
+        {
+            var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
+
+            if (!isAssociatedWithListing)
+            {
+                return BadRequest(new { ErrorMessage = "Not allowed" });
+            }
+
+            var deleted = await _taskService.MarkTaskAndChildrenAsDeleted(taskId);
+
+            if (!deleted)
+            {
+                return NotFound(new { ErrorMessage = "Task not found" });
+            }
+
+            return Ok(new { Message = "Task deleted successfully" });
         }
     }
 }

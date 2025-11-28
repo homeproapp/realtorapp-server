@@ -104,6 +104,7 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
                 Title = t.Title,
                 Room = t.Room,
                 Priority = t.Priority,
+                Description = t.Description,
                 Status = t.Status,
                 FollowUpDate = t.FollowUpDate,
                 EstimatedCost = t.EstimatedCost,
@@ -195,6 +196,8 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
             link.DeletedAt = DateTime.UtcNow;
         }
 
+        await _dbContext.SaveChangesAsync();
+
         return true;
     }
 
@@ -218,7 +221,7 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
 
         foreach (var linkCommand in command.Links)
         {
-            if (linkCommand.IsMarkedForDeletion)
+            if (linkCommand.IsMarkedForDeletion && linkCommand.LinkId.HasValue)
             {
                 var linkToRemove = existingTask.Links.FirstOrDefault(l => l.LinkId == linkCommand.LinkId);
                 if (linkToRemove != null)
@@ -226,7 +229,7 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
                     linkToRemove.DeletedAt = DateTime.UtcNow;
                 }
             }
-            else
+            else if (!linkCommand.LinkId.HasValue)
             {
                 var newLink = new Link
                 {
