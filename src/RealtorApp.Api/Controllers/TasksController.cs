@@ -64,13 +64,32 @@ namespace RealtorApp.Api.Controllers
         }
 
         [HttpPost("v1/listings/{listingId}")]
-        public async Task<ActionResult<AddOrUpdateTaskCommandResponse>> UpsertTask([FromBody] AddOrUpdateTaskCommand command, [FromRoute] long listingId)
+        public async Task<ActionResult<AddOrUpdateTaskCommandResponse>> UpsertTask([FromForm] string commandJson, [FromRoute] long listingId, [FromForm] IFormFile[] newImages)
         {
             var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
 
             if (!isAssociatedWithListing)
             {
                 return BadRequest(new AddOrUpdateTaskCommandResponse() { ErrorMessage = "Not allowed" });
+            }
+
+            AddOrUpdateTaskCommand? command;
+            try
+            {
+                var options = new JsonSerializerOptions()
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                };
+                command = JsonSerializer.Deserialize<AddOrUpdateTaskCommand>(commandJson, options);
+                if (command == null)
+                {
+                    return BadRequest(new AddOrUpdateTaskCommandResponse() { ErrorMessage = "Invalid request" });
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Unable to parse command json");
+                return BadRequest(new AddOrUpdateTaskCommandResponse() { ErrorMessage = "Invalid request" });
             }
 
             var commandValidator = new Validators.AddOrUpdateTaskCommandValidator();
@@ -85,10 +104,10 @@ namespace RealtorApp.Api.Controllers
 
             FileUploadRequest[] newFiles = [];
 
-            if (command.NewImages != null && command.NewImages.Length > 0)
+            if (newImages != null && newImages.Length > 0)
             {
                 var imageValidator = new Validators.TaskImagesValidator();
-                var imageValidationResult = await imageValidator.ValidateAsync(images);
+                var imageValidationResult = await imageValidator.ValidateAsync(newImages);
                 if (!imageValidationResult.IsValid)
                 {
                     return BadRequest(new AddOrUpdateTaskCommandResponse()
@@ -97,7 +116,7 @@ namespace RealtorApp.Api.Controllers
                     });
                 }
 
-                newFiles = [.. images.Select(file => new FileUploadRequest
+                newFiles = [.. newImages.Select(file => new FileUploadRequest
                 {
                     Content = file.OpenReadStream(),
                     FileName = Path.GetFileName(file.FileName),

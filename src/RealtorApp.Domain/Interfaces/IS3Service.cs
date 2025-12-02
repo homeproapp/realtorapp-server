@@ -5,6 +5,6 @@ namespace RealtorApp.Domain.Interfaces;
 
 public interface IS3Service
 {
-    Task<FileUploadResponseDto> UploadFileAsync(string key, FileUploadRequest fileUploadRequest, string folderName = "");
-    Task<(Stream? FileStream, string? ContentType)> GetFileAsync(string key);
+    Task<FileUploadResponseDto> UploadFileAsync(string bucketNameSuffix, string key, FileUploadRequest fileUploadRequest, string folderName = "");
+    Task<(Stream? FileStream, string? ContentType)> GetFileAsync(string bucketNameSuffix, string key);
 }

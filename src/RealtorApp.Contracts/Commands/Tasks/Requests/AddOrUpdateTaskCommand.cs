@@ -11,7 +11,6 @@ public class AddOrUpdateTaskCommand
     public required string TitleString { get; set; }
     public required string Room { get; set; }
     public string? Description { get; set; }
-    public string[] NewImages { get; set; } = [];
     public UpdateImageRequest[] ImagesToRemove { get; set; } = [];
     public required TaskPriority Priority { get; set; }
     public AddOrUpdateLinkRequest[] Links { get; set; } = [];

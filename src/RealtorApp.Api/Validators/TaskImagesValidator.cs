@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace RealtorApp.Api.Validators;
 
-public class TaskImagesValidator : AbstractValidator<string[]>
+public class TaskImagesValidator : AbstractValidator<IFormFile[]>
 {
     public TaskImagesValidator()
     {
@@ -12,9 +12,9 @@ public class TaskImagesValidator : AbstractValidator<string[]>
     }
 }
 
-public class TaskImageValidator : AbstractValidator<string>
+public class TaskImageValidator : AbstractValidator<IFormFile>
 {
-    private static readonly string[] AllowedTypes = { "image/jpeg", "image/jpg", "image/png", "image/webp" };
+    private static readonly string[] AllowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     private const long MaxSizeBytes = 10 * 1024 * 1024;
 
     public TaskImageValidator()

@@ -154,21 +154,42 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
 
     public async Task<AddOrUpdateTaskCommandResponse> AddOrUpdateTaskAsync(AddOrUpdateTaskCommand command, long listingId, FileUploadRequest[] images)
     {
-        AddOrUpdateTaskCommandResponse response;
-        if (command.TaskId.HasValue)
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
         {
-            response = await UpdateExistingTaskAsync(command);
+            DbTask? response;
+            List<Link> addedLinks = [];
+            if (command.TaskId.HasValue)
+            {
+                var (dbTaskUpdated, newLinks) = await UpdateExistingTaskAsync(command);
+                response = dbTaskUpdated;
+                addedLinks = newLinks;
+
+            }
+            else
+            {
+                response = await AddNewTaskAsync(command, listingId);
+            }
+
+            if (response == null)
+            {
+                return new() { ErrorMessage = "Unable to update or add task" };
+            }
+
+
+            var (FailedCount, SucceededCount) = await _imagesService.UploadNewTaskImages(images, response);
+
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return command.TaskId.HasValue ? response.FromNewTaskToTaskCommandResponse() : response.FromExistingTaskToTaskCommandResponse(addedLinks);
         }
-        else
+        catch (Exception ex)
         {
-            response = await AddNewTaskAsync(command, listingId);
+            _logger.LogError(ex, "error during upsert task, rolling back");
+            await transaction.RollbackAsync();
+            throw;
         }
-
-        await _dbContext.SaveChangesAsync();
-
-        await _imagesService.UploadNewTaskImages(images, response);
-
-        return response;
     }
 
     public async Task<bool> MarkTaskAndChildrenAsDeleted(long taskId)
@@ -201,15 +222,18 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
         return true;
     }
 
-    private async Task<AddOrUpdateTaskCommandResponse> UpdateExistingTaskAsync(AddOrUpdateTaskCommand command)
+    private async Task<(DbTask? task, List<Link> addedLinks) > UpdateExistingTaskAsync(AddOrUpdateTaskCommand command)
     {
         var existingTask = await _dbContext.Tasks
             .Include(t => t.Links)
+            .Include(i => i.FilesTasks)
+                .ThenInclude(i => i.File)
             .FirstOrDefaultAsync(t => t.TaskId == command.TaskId);
 
         if (existingTask == null)
         {
-            return new() { ErrorMessage = "Unable to find data" };
+            return (null, []);
+            // return new() { ErrorMessage = "Unable to find data" };
         }
 
         existingTask.Title = command.TitleString;
@@ -242,11 +266,21 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
             }
         }
 
-        await _dbContext.SaveChangesAsync();
+        if (command.ImagesToRemove.Length > 0)
+        {
+            var ids = command.ImagesToRemove.Select(i => i.FileTaskId).ToHashSet();
+            var fileTasksToDelete = existingTask.FilesTasks.Where(i => ids.Contains(i.FileTaskId));
 
-        return existingTask.FromExistingTaskToTaskCommandResponse(addedLinks);
+            foreach (var fileTaskToDelete in fileTasksToDelete)
+            {
+                fileTaskToDelete.DeletedAt = DateTime.UtcNow;
+                fileTaskToDelete.File.DeletedAt = DateTime.UtcNow;
+            }
+        }
+
+        return (existingTask, addedLinks);
     }
-    private async Task<AddOrUpdateTaskCommandResponse> AddNewTaskAsync(AddOrUpdateTaskCommand command, long listingId)
+    private async Task<DbTask> AddNewTaskAsync(AddOrUpdateTaskCommand command, long listingId)
     {
         var newTask = new DbTask
         {
@@ -275,6 +309,6 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
         }
 
         await _dbContext.Tasks.AddAsync(newTask);
-        return newTask.FromNewTaskToTaskCommandResponse();
+        return newTask;
     }
 }

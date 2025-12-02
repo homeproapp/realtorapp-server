@@ -14,7 +14,7 @@ public class S3Service(AppSettings appSettings, ILogger<S3Service> logger) : IS3
     private readonly AppSettings _appSettings = appSettings;
     private readonly ILogger<S3Service> _logger = logger;
 
-    public async Task<FileUploadResponseDto> UploadFileAsync(string key, FileUploadRequest fileUploadRequest, string folderName = "")
+    public async Task<FileUploadResponseDto> UploadFileAsync(string bucketNameSuffix, string key, FileUploadRequest fileUploadRequest, string folderName = "")
     {
         try
         {
@@ -25,11 +25,12 @@ public class S3Service(AppSettings appSettings, ILogger<S3Service> logger) : IS3
 
             var region = RegionEndpoint.GetBySystemName(_appSettings.Aws.S3.Region);
             using var s3Client = new AmazonS3Client(credentials, region);
+            var bucketName = _appSettings.Aws.S3.BucketNamePrefix + bucketNameSuffix;
 
             var request = new PutObjectRequest
             {
-                BucketName = _appSettings.Aws.S3.ImagesBucketName,
-                Key = folderName + key,
+                BucketName = bucketName,
+                Key = string.IsNullOrEmpty(folderName) ? key : $"{folderName}/{key}",
                 InputStream = fileUploadRequest.Content,
                 ContentType = fileUploadRequest.ContentType,
             };
@@ -58,7 +59,7 @@ public class S3Service(AppSettings appSettings, ILogger<S3Service> logger) : IS3
 
     }
 
-    public async Task<(Stream? FileStream, string? ContentType)> GetFileAsync(string key)
+    public async Task<(Stream? FileStream, string? ContentType)> GetFileAsync(string bucketNameSuffix, string key)
     {
         try
         {
@@ -72,7 +73,7 @@ public class S3Service(AppSettings appSettings, ILogger<S3Service> logger) : IS3
 
             var request = new GetObjectRequest
             {
-                BucketName = _appSettings.Aws.S3.ImagesBucketName,
+                BucketName = _appSettings.Aws.S3.BucketNamePrefix + bucketNameSuffix,
                 Key = key
             };
 

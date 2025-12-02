@@ -13,7 +13,8 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
     private readonly RealtorAppDbContext _context = context;
     private readonly AppSettings _appSettings = appSettings;
     private const string _userIdByUuIdCachePrefix = "uuid:";
-    private const string _userListingAssignmentCachePrefix = "listing:";
+    private const string _listingIdToUserIdsCachePrefix = "listing:";
+    private const string _userIdToListingIdsCachePrefix = "user-listings:";
     private const string _conversationParticipantsCachePrefix = "participants:";
     private readonly MemoryCacheEntryOptions _userUuidEntryOptions = new()
     {
@@ -73,7 +74,7 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
     public async Task<bool> UserIsConnectedToListing(long userId, long listingId)
     {
         var assignedUserIds = await _cache.GetOrCreateAsync(
-            $"{_userListingAssignmentCachePrefix}{listingId}",
+            $"{_listingIdToUserIdsCachePrefix}{listingId}",
             async entry =>
             {
                 entry.SetOptions(_userPropertyAssignmentEntryOptions);
@@ -91,6 +92,26 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
             });
 
         return assignedUserIds?.Contains(userId) ?? false;
+    }
+
+    public async Task<long[]> GetUserToListingIdsByUserId(long userId)
+    {
+        var usersListingIds = await _cache.GetOrCreateAsync(
+            $"{_userIdToListingIdsCachePrefix}{userId}",
+            async entry =>
+            {
+                entry.SetOptions(_userPropertyAssignmentEntryOptions);
+
+                var listingUserIds = await _context.Listings
+                    .Where(i => i.AgentsListings.Any(x => x.AgentId == userId) || i.ClientsListings.Any(x => x.ClientId == userId))
+                    .AsNoTracking()
+                    .Select(i => i.ListingId)
+                    .ToArrayAsync();
+
+                return listingUserIds ?? [];
+            });
+
+        return usersListingIds ?? [];
     }
 
     public async Task<bool> IsAgentEmailValidated(long userId)
