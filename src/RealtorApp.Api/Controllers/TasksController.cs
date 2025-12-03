@@ -14,11 +14,12 @@ namespace RealtorApp.Api.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    public class TasksController(ITaskService taskService, IUserAuthService userAuth, ILogger<TasksController> logger) : RealtorApiBaseController
+    public class TasksController(ITaskService taskService, IUserAuthService userAuth, ILogger<TasksController> logger, IReminderService reminderService) : RealtorApiBaseController
     {
         private readonly ITaskService _taskService = taskService;
         private readonly IUserAuthService _userAuth = userAuth;
         private readonly ILogger<TasksController> _logger = logger;
+        private readonly IReminderService _reminderService = reminderService;
 
         [HttpGet("v1/clients")]
         public async Task<ActionResult<ClientGroupedTasksListQueryResponse>> GetClients([FromQuery] ClientGroupedTasksListQuery query)
@@ -44,8 +45,30 @@ namespace RealtorApp.Api.Controllers
             }
 
             var tasks = await _taskService.GetListingTasksAsync(query, listingId);
+            long[] taskIds = [.. tasks.Keys];
+            var taskReminders = await _reminderService.GetUsersTaskReminders(RequiredCurrentUserId, taskIds);
 
-            return Ok(tasks);
+            foreach (var taskReminder in taskReminders)
+            {
+                if (tasks.TryGetValue(taskReminder.ReferencingObjectId, out TaskListItemResponse? task) && task != null)
+                {
+                    task.TaskReminders.Add(new TaskReminderSlim()
+                    {
+                        RemindAt = taskReminder.RemindAt,
+                        ReminderText = taskReminder.ReminderText
+                    });
+                }
+            }
+
+            TaskListItemResponse[] tasksArray =  [.. tasks.Values];
+
+            var response = new ListingTasksQueryResponse()
+            {
+                Tasks = tasksArray,
+                TaskCompletionCounts = tasksArray.ToCompletionCounts()
+            };
+
+            return Ok(response);
         }
 
         [HttpGet("v1/listings/{listingId}/slim")]

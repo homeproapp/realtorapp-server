@@ -43,14 +43,14 @@ public static class TaskExtensions
     {
         if (tasks.Length == 0)
         {
-            return [new() 
-            {            
+            return [new()
+            {
                 Type = TaskCountType.Total,
                 Name = "Total Completion",
                 Completion = 0
             }];
         }
-        
+
         var roomGroupings = tasks.GroupBy(i => i.Room);
         var priorityGroupings = tasks.GroupBy(i => i.Priority);
         var result = new List<TaskCompletionCountItem>(roomGroupings.Count() + priorityGroupings.Count() + 1);
@@ -91,5 +91,17 @@ public static class TaskExtensions
         });
 
         return [.. result];
+    }
+
+    public static SlimTaskResponse ToSlimTask(this Task task)
+    {
+        return new()
+        {
+            TaskId = task.TaskId,
+            Priority = task.Priority,
+            Room = task.Room,
+            Status = task.Status,
+            Title = task.Title
+        };
     }
 }

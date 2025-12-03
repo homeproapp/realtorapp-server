@@ -29,13 +29,21 @@ public enum TaskCountType
     Total
 }
 
+public class TaskReminderSlim
+{
+    public required string ReminderText { get; set; }
+    public DateTime RemindAt { get; set; }
+}
+
 public class TaskListItemResponse
 {
     public long TaskId { get; set; }
 
     public required string Title { get; set; }
-    
+
     public string? Description { get; set; } = string.Empty;
+
+    public List<TaskReminderSlim> TaskReminders { get; set; } = [];
 
     public required string Room { get; set; }
 

@@ -24,5 +24,6 @@ public partial class RealtorAppDbContext
         modelBuilder.Entity<TaskAttachment>().HasQueryFilter(e => e.DeletedAt == null);
         modelBuilder.Entity<ThirdPartyContact>().HasQueryFilter(e => e.DeletedAt == null);
         modelBuilder.Entity<User>().HasQueryFilter(e => e.DeletedAt == null);
+        modelBuilder.Entity<Reminder>().HasQueryFilter(e => e.DeletedAt == null && (e.IsCompleted == null || e.IsCompleted == false ));
     }
 }

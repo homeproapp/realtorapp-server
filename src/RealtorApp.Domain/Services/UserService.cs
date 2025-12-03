@@ -33,7 +33,8 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
                         ReminderId = x.ReminderId,
                         ReminderText = x.ReminderText,
                         DueDate = x.RemindAt,
-                        ReminderType = x.ReminderType == null ? ReminderType.Unknown : (ReminderType)x.ReminderType
+                        ReminderType = x.ReminderType == null ? ReminderType.Unknown : (ReminderType)x.ReminderType,
+                        ReferencingObjectId = x.ReferencingObjectId
                     }).ToArray(),
             }).FirstOrDefaultAsync();
         if (counts == null) 
@@ -102,7 +103,8 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
                         ReminderId = x.ReminderId,
                         ReminderText = x.ReminderText,
                         DueDate = x.RemindAt,
-                        ReminderType = x.ReminderType == null ? ReminderType.Unknown : (ReminderType)x.ReminderType
+                        ReminderType = x.ReminderType == null ? ReminderType.Unknown : (ReminderType)x.ReminderType,
+                        ReferencingObjectId = x.ReferencingObjectId
                     }).ToArray(),
             }).FirstOrDefaultAsync();
         if (counts == null) 

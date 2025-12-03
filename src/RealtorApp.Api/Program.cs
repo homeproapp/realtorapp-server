@@ -40,6 +40,7 @@ builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IListingService, ListingService>();
 builder.Services.AddScoped<IS3Service, S3Service>();
 builder.Services.AddScoped<IImagesService, ImagesService>();
+builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IContactsService, ContactsService>();
 
 builder.Services.AddFluentValidationAutoValidation();

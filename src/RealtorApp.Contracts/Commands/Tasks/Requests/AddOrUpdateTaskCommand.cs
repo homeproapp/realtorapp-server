@@ -11,11 +11,16 @@ public class AddOrUpdateTaskCommand
     public required string TitleString { get; set; }
     public required string Room { get; set; }
     public string? Description { get; set; }
+    public RemoveReminderRequest[] RemoveReminderRequests { get; set; } = [];
     public UpdateImageRequest[] ImagesToRemove { get; set; } = [];
     public required TaskPriority Priority { get; set; }
     public AddOrUpdateLinkRequest[] Links { get; set; } = [];
 }
 
+public class RemoveReminderRequest
+{
+    public long ReminderId { get; set; }
+}
 public class AddOrUpdateLinkRequest
 {
     public long? LinkId { get; set; }

@@ -6,12 +6,10 @@ using RealtorApp.Contracts.Common.Requests;
 using RealtorApp.Contracts.Queries;
 using RealtorApp.Contracts.Queries.Tasks.Requests;
 using RealtorApp.Contracts.Queries.Tasks.Responses;
-using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Models;
 using DbTask = RealtorApp.Domain.Models.Task;
-using Task = System.Threading.Tasks.Task;
 using TaskStatus = RealtorApp.Contracts.Enums.TaskStatus;
 
 namespace RealtorApp.Domain.Services;
@@ -93,7 +91,7 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
         };
     }
 
-    public async Task<ListingTasksQueryResponse> GetListingTasksAsync(ListingTasksQuery query, long listingId)
+    public async Task<Dictionary<long, TaskListItemResponse>> GetListingTasksAsync(ListingTasksQuery query, long listingId)
     {
         var tasks = await _dbContext.Tasks
             .Where(t => t.ListingId == listingId)
@@ -123,13 +121,9 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
                     Name = l.Name,
                 }).ToArray()
             })
-            .ToArrayAsync();
+            .ToDictionaryAsync(i => i.TaskId, i => i);
 
-        return new()
-        {
-            Tasks = tasks,
-            TaskCompletionCounts = tasks.ToCompletionCounts()
-        };
+        return tasks;
     }
 
     public async Task<SlimListingTasksQueryResponse> GetSlimListingTasksAsync(long listingId)
@@ -159,6 +153,7 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
         {
             DbTask? response;
             List<Link> addedLinks = [];
+
             if (command.TaskId.HasValue)
             {
                 var (dbTaskUpdated, newLinks) = await UpdateExistingTaskAsync(command);
@@ -224,6 +219,17 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
 
     private async Task<(DbTask? task, List<Link> addedLinks) > UpdateExistingTaskAsync(AddOrUpdateTaskCommand command)
     {
+        if (command.ShouldDeleteReminder)
+        {
+            var reminder = await _dbContext.Reminders
+                .Where(i => i.ReferencingObjectId == command.TaskId).FirstOrDefaultAsync();
+
+            if (reminder != null)
+            {
+                reminder.DeletedAt = DateTime.UtcNow;
+            }
+        }
+
         var existingTask = await _dbContext.Tasks
             .Include(t => t.Links)
             .Include(i => i.FilesTasks)
