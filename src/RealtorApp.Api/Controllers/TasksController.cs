@@ -54,6 +54,7 @@ namespace RealtorApp.Api.Controllers
                 {
                     task.TaskReminders.Add(new TaskReminderSlim()
                     {
+                        ReminderId = taskReminder.ReminderId,
                         RemindAt = taskReminder.RemindAt,
                         ReminderText = taskReminder.ReminderText
                     });
@@ -65,7 +66,8 @@ namespace RealtorApp.Api.Controllers
             var response = new ListingTasksQueryResponse()
             {
                 Tasks = tasksArray,
-                TaskCompletionCounts = tasksArray.ToCompletionCounts()
+                TaskCompletionCounts = tasksArray.ToCompletionCounts(),
+                FilterOptions = tasksArray.ToFilterOptions(),
             };
 
             return Ok(response);

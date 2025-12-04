@@ -7,7 +7,14 @@ public class ListingTasksQueryResponse : ResponseWithError
 {
     public TaskCompletionCountItem[] TaskCompletionCounts { get; set; } = [];
     public TaskListItemResponse[] Tasks { get; set; } = [];
-    public Dictionary<string, TaskListFilterOptionsResponse[]> FilterOptions { get; set; } = [];
+    public Dictionary<string, List<TaskListFilterOptionsResponse>> FilterOptions { get; set; } = [];
+}
+
+public static class FilterOptions
+{
+    public const string ByRoom = "By room";
+    public const string ByPriority = "By priority";
+    public const string ByStatus = "By status";
 }
 
 public class TaskListFilterOptionsResponse
@@ -31,6 +38,7 @@ public enum TaskCountType
 
 public class TaskReminderSlim
 {
+    public long ReminderId { get; set; }
     public required string ReminderText { get; set; }
     public DateTime RemindAt { get; set; }
 }

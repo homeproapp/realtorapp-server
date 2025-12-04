@@ -104,4 +104,31 @@ public static class TaskExtensions
             Title = task.Title
         };
     }
+
+    public static Dictionary<string, List<TaskListFilterOptionsResponse>> ToFilterOptions(this TaskListItemResponse[] tasks)
+    {
+        var result = new Dictionary<string, List<TaskListFilterOptionsResponse>>
+        {
+            { FilterOptions.ByRoom, [] },
+            { FilterOptions.ByStatus, [] },
+            { FilterOptions.ByPriority, [] }
+        };
+
+        HashSet<string> rooms = [];
+        HashSet<TaskPriority> priorities = [];
+        HashSet<TaskStatus> statuses = [];
+
+        foreach (var task in tasks)
+        {
+            rooms.Add(task.Room);
+            priorities.Add((TaskPriority)task.Priority);
+            statuses.Add((TaskStatus)task.Status);
+        }
+
+        result[FilterOptions.ByRoom] = [.. rooms.Select(i => new TaskListFilterOptionsResponse() { Label = i})];
+        result[FilterOptions.ByPriority] = [.. priorities.Select(i => new TaskListFilterOptionsResponse() { Label = i.ToString() })];
+        result[FilterOptions.ByStatus] = [.. statuses.Select(i => new TaskListFilterOptionsResponse() { Label = i.ToString() })];
+
+        return result;
+    }
 }

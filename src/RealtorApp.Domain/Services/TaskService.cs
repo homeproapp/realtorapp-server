@@ -219,14 +219,15 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
 
     private async Task<(DbTask? task, List<Link> addedLinks) > UpdateExistingTaskAsync(AddOrUpdateTaskCommand command)
     {
-        if (command.ShouldDeleteReminder)
+        if (command.RemoveReminderRequests.Length > 0)
         {
-            var reminder = await _dbContext.Reminders
-                .Where(i => i.ReferencingObjectId == command.TaskId).FirstOrDefaultAsync();
+            var ids = command.RemoveReminderRequests.Select(i => i.ReminderId);
+            var reminders = await _dbContext.Reminders
+                .Where(i => ids.Contains(i.ReminderId)).ToListAsync();
 
-            if (reminder != null)
+            if (reminders != null && reminders.Count > 0)
             {
-                reminder.DeletedAt = DateTime.UtcNow;
+                reminders.ForEach(i => i.DeletedAt = DateTime.UtcNow);
             }
         }
 
