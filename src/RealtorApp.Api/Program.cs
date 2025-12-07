@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +8,16 @@ using Microsoft.IdentityModel.Tokens;
 using RealtorApp.Api.Hubs;
 using RealtorApp.Api.Middleware;
 using RealtorApp.Domain.Interfaces;
-using RealtorAppDbContext = RealtorApp.Domain.Models.RealtorAppDbContext;
+using RealtorAppDbContext = RealtorApp.Infra.Data.RealtorAppDbContext;
 using RealtorApp.Domain.Services;
 using RealtorApp.Domain.Settings;
 using System.Threading.RateLimiting;
 using FluentValidation.AspNetCore;
 using FluentValidation;
 using RealtorApp.Domain.Constants;
+
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+JwtSecurityTokenHandler.DefaultOutboundClaimTypeMap.Clear();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -103,6 +107,8 @@ builder.Services
     {
         var appSettings = builder.Configuration.Get<AppSettings>() ?? throw new InvalidOperationException("AppSettings not configured");
 
+        options.MapInboundClaims = false;
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             // Signature validation
@@ -139,6 +145,9 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy(PolicyConstants.ClientOnly, policy =>
         policy.RequireRole(RoleConstants.Client));
+
+    options.AddPolicy(PolicyConstants.ClientOrAgent, policy =>
+        policy.RequireRole([RoleConstants.Agent, RoleConstants.Client]));
 });
 
 builder.Services.AddSignalR().AddJsonProtocol(o =>

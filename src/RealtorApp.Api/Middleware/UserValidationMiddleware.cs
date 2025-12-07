@@ -1,6 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
+using RealtorApp.Domain.Constants;
 using RealtorApp.Domain.Interfaces;
 
 namespace RealtorApp.Api.Middleware;
@@ -19,7 +21,7 @@ public class UserValidationMiddleware(RequestDelegate next)
             return;
         }
 
-        var userUuidClaim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userUuidClaim = context.User.FindFirst(TokenConstants.UuidClaim)?.Value;
         if (string.IsNullOrEmpty(userUuidClaim))
         {
             await WriteErrorResponseAsync(context, "AUTH_E001");
@@ -33,7 +35,7 @@ public class UserValidationMiddleware(RequestDelegate next)
             return;
         }
 
-        var roleClaim = context.User.FindFirst(ClaimTypes.Role)?.Value;
+        var roleClaim = context.User.FindFirst(TokenConstants.RoleClaim)?.Value;
         if (string.IsNullOrEmpty(roleClaim) || (roleClaim != "agent" && roleClaim != "client"))
         {
             await WriteErrorResponseAsync(context, "AUTH_E003");

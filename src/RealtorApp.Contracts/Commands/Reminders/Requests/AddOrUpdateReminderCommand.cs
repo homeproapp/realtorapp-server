@@ -9,4 +9,5 @@ public class AddOrUpdateReminderCommand
   public ReminderType ReminderType { get; set; }
   public long ReferencingObjectId { get; set; }
   public DateTime RemindAt { get; set; }
+  public long ListingId { get; set; }
 }

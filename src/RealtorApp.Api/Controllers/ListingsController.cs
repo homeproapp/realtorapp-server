@@ -36,7 +36,17 @@ namespace RealtorApp.Api.Controllers
         [HttpGet("v1/active")]
         public async Task<ActionResult<ActiveListingsQueryResponse>> GetActiveListings()
         {
-            return Ok(await _listingService.GetActiveListings(RequiredCurrentUserId));
+            ActiveListingsQueryResponse response;
+
+            if (CurrentUserRole == RoleConstants.Agent)
+            {
+                response = await _listingService.GetAgentActiveListings(RequiredCurrentUserId);
+            } else
+            {
+                response = await _listingService.GetClientActiveListings(RequiredCurrentUserId);
+            }
+
+            return Ok(response);
         }
     }
 }

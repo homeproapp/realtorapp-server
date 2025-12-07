@@ -5,7 +5,7 @@ using RealtorApp.Contracts.Commands.Contacts.Responses;
 using RealtorApp.Contracts.Queries.Contacts.Responses;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 
 namespace RealtorApp.Domain.Services;
 

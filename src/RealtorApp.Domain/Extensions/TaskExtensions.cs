@@ -2,8 +2,8 @@ using RealtorApp.Contracts.Commands.Tasks.Responses;
 using RealtorApp.Contracts.Enums;
 using RealtorApp.Contracts.Queries.Tasks.Requests;
 using RealtorApp.Contracts.Queries.Tasks.Responses;
-using RealtorApp.Domain.Models;
-using Task = RealtorApp.Domain.Models.Task;
+using RealtorApp.Infra.Data;
+using Task = RealtorApp.Infra.Data.Task;
 using TaskStatus = RealtorApp.Contracts.Enums.TaskStatus;
 
 namespace RealtorApp.Domain.Extensions;

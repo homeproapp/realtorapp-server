@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealtorApp.Contracts.Enums;
 using RealtorApp.Contracts.Queries.User.Responses;
 using RealtorApp.Domain.Interfaces;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 using TaskStatus = RealtorApp.Contracts.Enums.TaskStatus;
 
 namespace RealtorApp.Domain.Services;
@@ -33,15 +33,16 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
                         ReminderId = x.ReminderId,
                         ReminderText = x.ReminderText,
                         DueDate = x.RemindAt,
+                        ListingId = x.ListingId,
                         ReminderType = x.ReminderType == null ? ReminderType.Unknown : (ReminderType)x.ReminderType,
                         ReferencingObjectId = x.ReferencingObjectId
                     }).ToArray(),
             }).FirstOrDefaultAsync();
-        if (counts == null) 
+        if (counts == null)
         {
             return new();
         }
-        
+
         return new()
         {
             DashboardGlanceItems =
@@ -103,15 +104,16 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
                         ReminderId = x.ReminderId,
                         ReminderText = x.ReminderText,
                         DueDate = x.RemindAt,
+                        ListingId = x.ListingId,
                         ReminderType = x.ReminderType == null ? ReminderType.Unknown : (ReminderType)x.ReminderType,
                         ReferencingObjectId = x.ReferencingObjectId
                     }).ToArray(),
             }).FirstOrDefaultAsync();
-        if (counts == null) 
+        if (counts == null)
         {
             return new();
         }
-        
+
         return new()
         {
             DashboardGlanceItems =

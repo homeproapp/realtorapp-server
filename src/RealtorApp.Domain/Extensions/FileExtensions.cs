@@ -1,4 +1,4 @@
-using File = RealtorApp.Domain.Models.File;
+using File = RealtorApp.Infra.Data.File;
 
 namespace RealtorApp.Domain.Extensions;
 

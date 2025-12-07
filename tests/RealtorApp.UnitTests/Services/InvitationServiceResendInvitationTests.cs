@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using RealtorApp.Contracts.Commands.Invitations;
 using RealtorApp.Domain.DTOs;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 using RealtorApp.UnitTests.Helpers;
 using Task = System.Threading.Tasks.Task;
 

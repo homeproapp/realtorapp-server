@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using RealtorApp.Contracts.Commands.Invitations;
 using RealtorApp.Domain.DTOs;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 using Task = System.Threading.Tasks.Task;
 
 namespace RealtorApp.UnitTests.Services;
@@ -85,7 +85,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = invitation.InvitationToken,
+            InvitationToken = invitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
@@ -129,7 +129,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = invitation.InvitationToken,
+            InvitationToken = invitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
@@ -225,7 +225,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = invitation.InvitationToken,
+            InvitationToken = invitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
@@ -332,7 +332,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = invitation.InvitationToken,
+            InvitationToken = invitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
@@ -417,7 +417,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = invitation.InvitationToken,
+            InvitationToken = invitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 

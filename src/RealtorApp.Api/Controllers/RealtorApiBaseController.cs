@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using RealtorApp.Domain.Constants;
 
 namespace RealtorApp.Api.Controllers;
 
@@ -9,7 +10,7 @@ public abstract class RealtorApiBaseController : ControllerBase
     {
         get
         {
-            var userUuidClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userUuidClaim = User.FindFirst(TokenConstants.UuidClaim)?.Value;
             if (string.IsNullOrEmpty(userUuidClaim) || !Guid.TryParse(userUuidClaim, out var userUuid))
             {
                 return null;
@@ -22,8 +23,8 @@ public abstract class RealtorApiBaseController : ControllerBase
     {
         get
         {
-            var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
-            
+            var roleClaim = User.FindFirst(TokenConstants.RoleClaim)?.Value;
+
             if (string.IsNullOrEmpty(roleClaim))
             {
                 return null;

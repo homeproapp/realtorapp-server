@@ -24,5 +24,6 @@ public class UpcomingReminder
     public required string ReminderText { get; set; }
     public DateTime DueDate { get; set; }
     public ReminderType ReminderType { get; set; }
+    public long ListingId { get; set; }
     public long ReferencingObjectId { get; set; }
 }

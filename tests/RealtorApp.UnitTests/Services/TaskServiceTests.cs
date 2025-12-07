@@ -9,7 +9,7 @@ using RealtorApp.Contracts.Queries.Tasks.Requests;
 using RealtorApp.Contracts.Queries.Tasks.Responses;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Interfaces;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 using RealtorApp.Domain.Services;
 using RealtorApp.UnitTests.Helpers;
 using TaskStatus = RealtorApp.Contracts.Enums.TaskStatus;
@@ -47,7 +47,7 @@ public class TaskServiceTests : IDisposable
         _mockLogger = new Mock<ILogger<TaskService>>();
         _mockImagesService = new Mock<IImagesService>();
 
-        _mockS3Service.Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<FileUploadRequest>(), It.IsAny<string>()))
+        _mockS3Service.Setup(x => x.UploadFileAsync(It.IsAny<string>(),It.IsAny<string>(), It.IsAny<FileUploadRequest>(), It.IsAny<string>()))
             .ReturnsAsync((string fileKey, FileUploadRequest request, string folderName) => new FileUploadResponseDto()
             {
                 FileKey = fileKey,
@@ -500,7 +500,7 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listingId);
 
         Assert.NotNull(result);
-        Assert.Equal(3, result.Tasks.Length);
+        Assert.Equal(3, result.Count);
     }
 
     [Fact]
@@ -511,8 +511,8 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listingId);
 
         Assert.NotNull(result);
-        Assert.Single(result.Tasks);
-        var task = result.Tasks[0];
+        Assert.Single(result);
+        var task = result.First().Value;
         Assert.Equal(2, task.Links.Length);
         Assert.Contains(task.Links, l => l.Name == "Link 1");
         Assert.Contains(task.Links, l => l.Name == "Link 2");
@@ -529,8 +529,7 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
 
         Assert.NotNull(result);
-        Assert.Empty(result.Tasks);
-        Assert.Equal(0, result.TaskCompletionCounts.First().Completion);
+        Assert.Empty(result);
     }
 
     private async System.Threading.Tasks.Task<long> SetupTestData_ListingWithMultipleTasks()
@@ -558,126 +557,6 @@ public class TaskServiceTests : IDisposable
     }
 
     #endregion
-
-    #region GetListingTasksAsync - TaskCompletionCounts Tests
-
-    [Fact]
-    public async System.Threading.Tasks.Task GetListingTasksAsync_WithTasksGroupedByRoom_CalculatesCompletionCorrectly()
-    {
-        var listingId = await SetupTestData_TasksGroupedByRoom();
-
-        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listingId);
-
-        Assert.NotNull(result);
-        Assert.NotEmpty(result.TaskCompletionCounts);
-
-        var kitchenCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "Kitchen Tasks" && c.Type == TaskCountType.Room);
-        Assert.NotNull(kitchenCount);
-        Assert.Equal(0.5, kitchenCount.Completion);
-
-        var bedroomCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "Bedroom Tasks" && c.Type == TaskCountType.Room);
-        Assert.NotNull(bedroomCount);
-        Assert.Equal(1.0, bedroomCount.Completion);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task GetListingTasksAsync_WithAllTasksCompleted_ReturnsFullCompletion()
-    {
-        var property = _testData.CreateProperty();
-        var listing = _testData.CreateListing(property.PropertyId);
-
-        _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.Completed);
-        _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.Completed);
-
-        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
-
-        Assert.NotNull(result);
-        Assert.All(result.TaskCompletionCounts, count => Assert.Equal(1.0, count.Completion));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task GetListingTasksAsync_WithNoTasksCompleted_ReturnsZeroCompletion()
-    {
-        var property = _testData.CreateProperty();
-        var listing = _testData.CreateListing(property.PropertyId);
-
-        _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
-        _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.InProgress);
-
-        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
-
-        Assert.NotNull(result);
-        Assert.All(result.TaskCompletionCounts, count => Assert.Equal(0.0, count.Completion));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task GetListingTasksAsync_WithTasksGroupedByPriority_CalculatesCompletionCorrectly()
-    {
-        var listingId = await SetupTestData_TasksGroupedByPriority();
-
-        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listingId);
-
-        Assert.NotNull(result);
-        Assert.NotEmpty(result.TaskCompletionCounts);
-
-        var highPriorityCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "High Priority Tasks" && c.Type == TaskCountType.Priority);
-        Assert.NotNull(highPriorityCount);
-        Assert.Equal(0.5, highPriorityCount.Completion);
-
-        var mediumPriorityCount = result.TaskCompletionCounts.FirstOrDefault(c => c.Name == "Medium Priority Tasks" && c.Type == TaskCountType.Priority);
-        Assert.NotNull(mediumPriorityCount);
-        Assert.Equal(0.0, mediumPriorityCount.Completion);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task GetListingTasksAsync_WithMixedRoomAndPriority_ReturnsAllCompletionCounts()
-    {
-        var property = _testData.CreateProperty();
-        var listing = _testData.CreateListing(property.PropertyId);
-
-        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.Completed);
-        task1.Room = "Kitchen";
-        task1.Priority = (short)TaskPriority.High;
-
-        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.NotStarted);
-        task2.Room = "Bedroom";
-        task2.Priority = (short)TaskPriority.Low;
-
-        _dbContext.SaveChanges();
-
-        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
-
-        Assert.NotNull(result);
-        Assert.NotEmpty(result.TaskCompletionCounts);
-
-        var roomCounts = result.TaskCompletionCounts.Where(c => c.Type == TaskCountType.Room).ToArray();
-        var priorityCounts = result.TaskCompletionCounts.Where(c => c.Type == TaskCountType.Priority).ToArray();
-
-        Assert.Equal(2, roomCounts.Length);
-        Assert.Equal(2, priorityCounts.Length);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task GetListingTasksAsync_WithNullRoomAndPriority_HandlesGracefully()
-    {
-        var property = _testData.CreateProperty();
-        var listing = _testData.CreateListing(property.PropertyId);
-
-        var task1 = _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.Completed);
-        task1.Room = "";
-        task1.Priority = 0;
-
-        var task2 = _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.NotStarted);
-        task2.Room = "Kitchen";
-        task2.Priority = (short)TaskPriority.High;
-
-        _dbContext.SaveChanges();
-
-        var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
-
-        Assert.NotNull(result);
-        Assert.NotEmpty(result.TaskCompletionCounts);
-    }
 
     private async System.Threading.Tasks.Task<long> SetupTestData_TasksGroupedByRoom()
     {
@@ -722,8 +601,6 @@ public class TaskServiceTests : IDisposable
 
         return await System.Threading.Tasks.Task.FromResult(listing.ListingId);
     }
-
-    #endregion
 
     #region AddOrUpdateTaskAsync Tests - Add New Task
 
@@ -1104,7 +981,7 @@ public class TaskServiceTests : IDisposable
         var listing = _testData.CreateListing(property.PropertyId);
         var task = _testData.CreateTask(listing.ListingId, "Task to Delete", "Test Room", (short)TaskStatus.NotStarted);
 
-        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
+        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId, listing.ListingId);
 
         Assert.True(result);
 
@@ -1118,7 +995,7 @@ public class TaskServiceTests : IDisposable
     [Fact]
     public async System.Threading.Tasks.Task MarkTaskAndChildrenAsDeleted_WithInvalidTaskId_ReturnsFalse()
     {
-        var result = await _taskService.MarkTaskAndChildrenAsDeleted(999999);
+        var result = await _taskService.MarkTaskAndChildrenAsDeleted(999999, 1);
 
         Assert.False(result);
     }
@@ -1132,7 +1009,7 @@ public class TaskServiceTests : IDisposable
         var link1 = _testData.CreateLink(task.TaskId, "Link 1", "https://example.com/1");
         var link2 = _testData.CreateLink(task.TaskId, "Link 2", "https://example.com/2");
 
-        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
+        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId, listing.ListingId);
 
         Assert.True(result);
 
@@ -1157,7 +1034,7 @@ public class TaskServiceTests : IDisposable
         var filesTask1 = _testData.CreateFilesTask(file1.FileId, task.TaskId);
         var filesTask2 = _testData.CreateFilesTask(file2.FileId, task.TaskId);
 
-        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
+        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId, listing.ListingId);
 
         Assert.True(result);
 
@@ -1192,7 +1069,7 @@ public class TaskServiceTests : IDisposable
         var file = _testData.CreateFile(fileType.FileTypeId, ".pdf");
         var filesTask = _testData.CreateFilesTask(file.FileId, task.TaskId);
 
-        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
+        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId, listing.ListingId);
 
         Assert.True(result);
 
@@ -1230,14 +1107,14 @@ public class TaskServiceTests : IDisposable
         var task1 = _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
         var task2 = _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.InProgress);
 
-        await _taskService.MarkTaskAndChildrenAsDeleted(task1.TaskId);
+        await _taskService.MarkTaskAndChildrenAsDeleted(task1.TaskId, listing.ListingId);
 
         var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
 
         Assert.NotNull(result);
-        Assert.Single(result.Tasks);
-        Assert.Equal(task2.TaskId, result.Tasks[0].TaskId);
-        Assert.DoesNotContain(result.Tasks, t => t.TaskId == task1.TaskId);
+        Assert.Single(result);
+        Assert.Equal(task2.TaskId, result.First().Value.TaskId);
+        Assert.DoesNotContain(result.Select(i => i.Value), t => t.TaskId == task1.TaskId);
     }
 
     [Fact]
@@ -1248,12 +1125,12 @@ public class TaskServiceTests : IDisposable
         var task = _testData.CreateTask(listing.ListingId, "Task with Links", "Test Room", (short)TaskStatus.NotStarted);
         var link = _testData.CreateLink(task.TaskId, "Link", "https://example.com");
 
-        await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
+        await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId, listing.ListingId);
 
         var result = await _taskService.GetListingTasksAsync(new ListingTasksQuery(), listing.ListingId);
 
         Assert.NotNull(result);
-        Assert.Empty(result.Tasks);
+        Assert.Empty(result);
     }
 
     [Fact]
@@ -1273,7 +1150,7 @@ public class TaskServiceTests : IDisposable
         var task1 = _testData.CreateTask(listing.ListingId, "Task 1", "Test Room", (short)TaskStatus.NotStarted);
         var task2 = _testData.CreateTask(listing.ListingId, "Task 2", "Test Room", (short)TaskStatus.Completed);
 
-        await _taskService.MarkTaskAndChildrenAsDeleted(task1.TaskId);
+        await _taskService.MarkTaskAndChildrenAsDeleted(task1.TaskId, listing.ListingId);
 
         var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agent.UserId);
 
@@ -1292,7 +1169,7 @@ public class TaskServiceTests : IDisposable
         var listing = _testData.CreateListing(property.PropertyId);
         var task = _testData.CreateTask(listing.ListingId, "Simple Task", "Test Room", (short)TaskStatus.NotStarted);
 
-        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId);
+        var result = await _taskService.MarkTaskAndChildrenAsDeleted(task.TaskId, listing.ListingId);
 
         Assert.True(result);
 

@@ -6,7 +6,7 @@ using RealtorApp.Contracts.Enums;
 using RealtorApp.Contracts.Queries.Reminders.Responses;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 
 namespace RealtorApp.Domain.Services;
 
@@ -42,7 +42,6 @@ public class ReminderService(RealtorAppDbContext dbContext) : IReminderService
         if (reminder.ReminderType == (short)ReminderType.Task)
         {
             var reminderTask = await _dbContext.Tasks.FirstOrDefaultAsync(i => i.TaskId == reminder.ReferencingObjectId);
-
             if (reminderTask != null)
             {
                 return new()
@@ -57,7 +56,14 @@ public class ReminderService(RealtorAppDbContext dbContext) : IReminderService
             }
         }
 
-        return new() { ReminderText = string.Empty, ErrorMessage = "Error finding reminder" };
+        return new()
+        {
+            ReminderId = reminder.ReminderId,
+            ReminderText = reminder.ReminderText,
+            RemindeAt = reminder.RemindAt,
+            ReminderType = reminder.ReminderType.HasValue ? (ReminderType)reminder.ReminderType : ReminderType.Unknown,
+            ListingId = reminder.ListingId
+        };
     }
 
     public async Task<Reminder[]> GetUsersTaskReminders(long userId, long[] taskIds)
@@ -77,6 +83,7 @@ public class ReminderService(RealtorAppDbContext dbContext) : IReminderService
             UserId = userId,
             ReminderType = (short)command.ReminderType,
             ReminderText = command.ReminderText,
+            ListingId = command.ListingId,
             RemindAt = command.RemindAt,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,

@@ -1,7 +1,7 @@
 using RealtorApp.Contracts.Commands.Reminders.Requests;
 using RealtorApp.Contracts.Commands.Reminders.Responses;
 using RealtorApp.Contracts.Queries.Reminders.Responses;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 
 namespace RealtorApp.Domain.Interfaces;
 

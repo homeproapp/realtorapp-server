@@ -4,11 +4,11 @@ using RealtorApp.Contracts.Common.Requests;
 using RealtorApp.Contracts.Enums;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Interfaces;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 using RealtorApp.Domain.Settings;
-using File = RealtorApp.Domain.Models.File;
+using File = RealtorApp.Infra.Data.File;
 using Task = System.Threading.Tasks.Task;
-using DbTask = RealtorApp.Domain.Models.Task;
+using DbTask = RealtorApp.Infra.Data.Task;
 
 namespace RealtorApp.Domain.Services;
 
@@ -86,13 +86,13 @@ public class ImagesService(RealtorAppDbContext context, IS3Service s3Service, IL
         await _context.SaveChangesAsync();
         return true;
     }
-    
+
     public async Task<(int SucceededCount, int FailedCount)> UploadNewTaskImages(FileUploadRequest[] images, DbTask dbTask)
     {
         try
         {
             var tasks = new List<Task<FileUploadResponseDto>>();
-            
+
             foreach (var image in images)
             {
                 var fileName = Guid.NewGuid().ToString() + Path.GetExtension(image.FileName);

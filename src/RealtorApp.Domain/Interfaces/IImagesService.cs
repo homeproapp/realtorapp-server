@@ -1,5 +1,5 @@
 using RealtorApp.Contracts.Common.Requests;
-using DbTask = RealtorApp.Domain.Models.Task;
+using DbTask = RealtorApp.Infra.Data.Task;
 
 namespace RealtorApp.Domain.Interfaces;
 

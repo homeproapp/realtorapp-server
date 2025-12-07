@@ -6,5 +6,6 @@ namespace RealtorApp.Domain.Interfaces;
 public interface IListingService
 {
     Task<ListingDetailsSlimQueryResponse> GetListingDetailsSlim(long listingId);
-    Task<ActiveListingsQueryResponse> GetActiveListings (long agentId);
+    Task<ActiveListingsQueryResponse> GetAgentActiveListings (long agentId);
+    Task<ActiveListingsQueryResponse> GetClientActiveListings(long clientId);
 }

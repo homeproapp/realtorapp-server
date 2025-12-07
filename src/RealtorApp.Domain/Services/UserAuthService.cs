@@ -2,7 +2,7 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using RealtorApp.Domain.Interfaces;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 using RealtorApp.Domain.Settings;
 
 namespace RealtorApp.Domain.Services;
@@ -41,8 +41,13 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
                 entry.SetOptions(_userUuidEntryOptions);
 
                 var user = await _context.Users
+                    .Where(i => i.Uuid == uuid)
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(u => u.Uuid == uuid);
+                    .Select(i => new
+                    {
+                        i.UserId
+                    })
+                    .FirstOrDefaultAsync();
 
                 return user?.UserId;
             });

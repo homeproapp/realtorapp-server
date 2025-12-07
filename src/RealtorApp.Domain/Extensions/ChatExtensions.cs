@@ -2,7 +2,7 @@ using RealtorApp.Contracts.Commands.Chat.Requests;
 using RealtorApp.Contracts.Commands.Chat.Responses;
 using RealtorApp.Contracts.Enums;
 using RealtorApp.Contracts.Queries.Chat.Responses;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 
 namespace RealtorApp.Domain.Extensions;
 

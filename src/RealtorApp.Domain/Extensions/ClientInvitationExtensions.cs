@@ -1,5 +1,5 @@
 using RealtorApp.Domain.DTOs;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 using RealtorApp.Contracts.Commands.Invitations;
 
 namespace RealtorApp.Domain.Extensions;

@@ -1,6 +1,6 @@
 using RealtorApp.Contracts.Commands.Contacts.Requests;
 using RealtorApp.Contracts.Commands.Contacts.Responses;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 
 namespace RealtorApp.Domain.Extensions;
 

@@ -1,11 +1,13 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RealtorApp.Contracts;
 using RealtorApp.Contracts.Commands.Tasks.Requests;
 using RealtorApp.Contracts.Commands.Tasks.Responses;
 using RealtorApp.Contracts.Common.Requests;
 using RealtorApp.Contracts.Queries.Tasks.Requests;
 using RealtorApp.Contracts.Queries.Tasks.Responses;
+using RealtorApp.Domain.Constants;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
 
@@ -13,7 +15,7 @@ namespace RealtorApp.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Policy = PolicyConstants.AgentOnly)]
     public class TasksController(ITaskService taskService, IUserAuthService userAuth, ILogger<TasksController> logger, IReminderService reminderService) : RealtorApiBaseController
     {
         private readonly ITaskService _taskService = taskService;
@@ -35,6 +37,8 @@ namespace RealtorApp.Api.Controllers
         }
 
         [HttpGet("v1/listings/{listingId}")]
+        [Authorize(Policy = PolicyConstants.ClientOrAgent)]
+
         public async Task<ActionResult<ListingTasksQueryResponse>> GetListingTasks([FromRoute] long listingId, [FromQuery] ListingTasksQuery query)
         {
             var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
@@ -157,6 +161,7 @@ namespace RealtorApp.Api.Controllers
         }
 
         [HttpDelete("v1/{listingId}/{taskId}")]
+        [Authorize(Policy = PolicyConstants.ClientOrAgent)]
         public async Task<ActionResult> DeleteTask([FromRoute] long listingId, [FromRoute] long taskId)
         {
             var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
@@ -166,7 +171,7 @@ namespace RealtorApp.Api.Controllers
                 return BadRequest(new { ErrorMessage = "Not allowed" });
             }
 
-            var deleted = await _taskService.MarkTaskAndChildrenAsDeleted(taskId);
+            var deleted = await _taskService.MarkTaskAndChildrenAsDeleted(taskId, listingId);
 
             if (!deleted)
             {
@@ -174,6 +179,28 @@ namespace RealtorApp.Api.Controllers
             }
 
             return Ok(new { Message = "Task deleted successfully" });
+        }
+
+        [HttpPatch("v1/{listingId}/{taskId}")]
+        [Authorize(Policy = PolicyConstants.ClientOnly)]
+        public async Task<ActionResult> UpdateTaskStatus([FromRoute] long listingId, [FromRoute] long taskId, [FromBody] UpdateTaskStatusCommand command)
+        {
+            var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
+
+            if (!isAssociatedWithListing)
+            {
+                return BadRequest(new { ErrorMessage = "Not allowed" });
+            }
+
+            var rowsUpdated = await _taskService.UpdateTaskStatusAsync(taskId, listingId, command.NewStatus);
+
+            if (rowsUpdated == 0)
+            {
+                _logger.LogWarning("UpdateTaskStatus updated 0 rows for listing {listingId} and task {taskId}", listingId, taskId);
+                return BadRequest("Unable to update task status");
+            }
+
+            return Ok(new { Message = "Task status updated" });
         }
     }
 }

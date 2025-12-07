@@ -4,7 +4,7 @@ using RealtorApp.Contracts.Commands.Invitations;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 using Task = System.Threading.Tasks.Task;
 
 namespace RealtorApp.Domain.Services;
@@ -68,7 +68,7 @@ public class InvitationService(
                 var clientInvitation = await _dbContext.ClientInvitations
                     .Include(i => i.ClientInvitationsProperties)
                         .ThenInclude(i => i.PropertyInvitation)
-                    .FirstOrDefaultAsync(i => i.InvitedBy == agentUserId && 
+                    .FirstOrDefaultAsync(i => i.InvitedBy == agentUserId &&
                     EF.Functions.ILike(i.ClientEmail, clientRequest.Email) &&
                     i.AcceptedAt == null);
 
@@ -77,11 +77,11 @@ public class InvitationService(
                     var existingProperties = clientInvitation.ClientInvitationsProperties.Select(i => i.PropertyInvitation.AddressLine1.ToLower());
                     var netNewProperties = propertyInvites
                         .Where(i =>  !existingProperties.Contains(i.AddressLine1.ToLower()));
-                    
+
                     var clientInvitationProperties = netNewProperties.Select(i => new ClientInvitationsProperty()
                     {
                        PropertyInvitation = i,
-                       ClientInvitationId = clientInvitation.ClientInvitationId 
+                       ClientInvitationId = clientInvitation.ClientInvitationId
                     });
 
                     await _dbContext.ClientInvitationsProperties.AddRangeAsync(clientInvitationProperties);
@@ -91,7 +91,7 @@ public class InvitationService(
 
                 // user may exist in system since invite could have been accepted already
                 if (clientInvitation == null)
-                {   
+                {
                     existingUser = await _dbContext.Users
                         .AsNoTracking()
                         .FirstOrDefaultAsync(u => u.Email == clientRequest.Email);
@@ -124,7 +124,7 @@ public class InvitationService(
             await _dbContext.SaveChangesAsync();
 
             var failedInvites = await _emailService.SendBulkInvitationEmailsAsync([.. invitesToSend
-                .Select(i => 
+                .Select(i =>
                     i.Client.ToEmailDto(agentName, _getEncryptedInviteData(i.Client.InvitationToken, i.IsExistingUser), i.IsExistingUser))]);
 
             if (failedInvites.Count > 0)
@@ -295,10 +295,10 @@ public class InvitationService(
                 {
                     AgentId = agentId,
                 };
-                
+
                 listing.ClientsListings.Add(newClientListing);
                 listing.AgentsListings.Add(agentListing);
-                
+
                 propertyInvitation.CreatedListing = listing;
 
                 await _dbContext.Listings.AddAsync(listing);

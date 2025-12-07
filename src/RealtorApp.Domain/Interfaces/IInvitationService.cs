@@ -1,5 +1,5 @@
 using RealtorApp.Contracts.Commands.Invitations;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 
 namespace RealtorApp.Domain.Interfaces;
 

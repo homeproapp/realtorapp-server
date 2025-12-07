@@ -3,8 +3,8 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Interfaces;
-using RealtorAppDbContext = RealtorApp.Domain.Models.RealtorAppDbContext;
-using RefreshToken = RealtorApp.Domain.Models.RefreshToken;
+using RealtorAppDbContext = RealtorApp.Infra.Data.RealtorAppDbContext;
+using RefreshToken = RealtorApp.Infra.Data.RefreshToken;
 using RealtorApp.Domain.Settings;
 
 namespace RealtorApp.Domain.Services;

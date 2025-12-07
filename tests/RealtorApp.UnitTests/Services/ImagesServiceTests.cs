@@ -20,7 +20,7 @@ public class ImagesServiceTests : TestBase
         _mockLogger = new Mock<ILogger<ImagesService>>();
         _mockS3Service = new Mock<IS3Service>();
 
-        _mockS3Service.Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<FileUploadRequest>(), It.IsAny<string>()))
+        _mockS3Service.Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<FileUploadRequest>(), It.IsAny<string>()))
             .ReturnsAsync((string fileKey, FileUploadRequest request, string folderName) => new FileUploadResponseDto()
             {
                 FileKey = Guid.NewGuid().ToString(),
@@ -28,10 +28,10 @@ public class ImagesServiceTests : TestBase
                 Successful = true
             });
 
-        _mockS3Service.Setup(x => x.GetFileAsync(It.IsAny<string>()))
+        _mockS3Service.Setup(x => x.GetFileAsync(It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync((null, null));
 
-        _imagesService = new ImagesService(DbContext, _mockS3Service.Object, _mockLogger.Object);
+        _imagesService = new ImagesService(DbContext, _mockS3Service.Object, _mockLogger.Object, MockAppsettings.Object);
     }
 
     [Fact]

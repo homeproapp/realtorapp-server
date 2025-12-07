@@ -1,4 +1,4 @@
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 
 namespace RealtorApp.UnitTests.Helpers;
 
@@ -264,10 +264,10 @@ public class TestDataManager : IDisposable
         return clientInvitationsProperty;
     }
 
-    public RealtorApp.Domain.Models.Task CreateTask(long listingId, string? title = "Test Task", string room = "Test Room", short? status = null, DateTime? updatedAt = null)
+    public RealtorApp.Infra.Data.Task CreateTask(long listingId, string? title = "Test Task", string room = "Test Room", short? status = null, DateTime? updatedAt = null)
     {
         var taskId = _nextUserId++;
-        var task = new RealtorApp.Domain.Models.Task
+        var task = new RealtorApp.Infra.Data.Task
         {
             TaskId = taskId,
             ListingId = listingId,
@@ -317,10 +317,10 @@ public class TestDataManager : IDisposable
         return fileType;
     }
 
-    public Domain.Models.File CreateFile(long fileTypeId, string? fileExtension = ".pdf")
+    public Infra.Data.File CreateFile(long fileTypeId, string? fileExtension = ".pdf")
     {
         var fileId = _nextUserId++;
-        var file = new Domain.Models.File
+        var file = new Infra.Data.File
         {
             FileId = fileId,
             Uuid = Guid.NewGuid(),

@@ -6,7 +6,7 @@ using RealtorApp.Contracts.Queries.Chat.Requests;
 using RealtorApp.Contracts.Queries.Chat.Responses;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Extensions;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 using RealtorApp.Domain.Comparers;
 using RealtorApp.Domain.DTOs;
 
@@ -129,7 +129,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
 
             var messageResponses = messages.Select(m => m.ToMessageResponse()).GroupMessagesByDate();
             var nextBefore = hasMore && messages.Count > 0 ? messages.Last().CreatedAt : (DateTime?)null;
-            
+
             return new MessageHistoryQueryResponse
             {
                 MessageGroups = messageResponses,

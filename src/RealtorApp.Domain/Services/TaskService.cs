@@ -8,8 +8,9 @@ using RealtorApp.Contracts.Queries.Tasks.Requests;
 using RealtorApp.Contracts.Queries.Tasks.Responses;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
-using RealtorApp.Domain.Models;
-using DbTask = RealtorApp.Domain.Models.Task;
+using RealtorApp.Infra.Data;
+using DbTask = RealtorApp.Infra.Data.Task;
+using Task = System.Threading.Tasks.Task;
 using TaskStatus = RealtorApp.Contracts.Enums.TaskStatus;
 
 namespace RealtorApp.Domain.Services;
@@ -187,13 +188,13 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
         }
     }
 
-    public async Task<bool> MarkTaskAndChildrenAsDeleted(long taskId)
+    public async Task<bool> MarkTaskAndChildrenAsDeleted(long taskId, long listingId)
     {
         var task = await _dbContext.Tasks
             .Include(i => i.FilesTasks)
                 .ThenInclude(i => i.File)
             .Include(i => i.Links)
-            .FirstOrDefaultAsync(i => i.TaskId == taskId);
+            .FirstOrDefaultAsync(i => i.TaskId == taskId && i.ListingId == listingId);
 
         if (task == null)
         {
@@ -287,6 +288,17 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
 
         return (existingTask, addedLinks);
     }
+
+    public async Task<int> UpdateTaskStatusAsync(long taskId, long listingId, TaskStatus status)
+    {
+        int rowsUpdated = await _dbContext.Tasks
+            .Where(i => i.TaskId == taskId && i.ListingId == listingId)
+            .ExecuteUpdateAsync(setter =>
+                setter.SetProperty(i => i.Status, (short)status));
+
+        return rowsUpdated;
+    }
+
     private async Task<DbTask> AddNewTaskAsync(AddOrUpdateTaskCommand command, long listingId)
     {
         var newTask = new DbTask

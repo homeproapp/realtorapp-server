@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Moq;
 using RealtorApp.Contracts.Queries.Chat.Requests;
 using RealtorApp.Domain.Interfaces;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 using RealtorApp.Domain.Services;
 using RealtorApp.UnitTests.Helpers;
 using Task = System.Threading.Tasks.Task;

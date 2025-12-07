@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Interfaces;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 using RealtorApp.Domain.Services;
+using RealtorApp.Domain.Settings;
 using RealtorApp.UnitTests.Helpers;
 
 namespace RealtorApp.UnitTests.Services;
@@ -18,8 +20,10 @@ public abstract class TestBase : IDisposable
     protected readonly Mock<IAuthProviderService> MockAuthProviderService;
     protected readonly Mock<ICryptoService> MockCryptoService;
     protected readonly Mock<IJwtService> MockJwtService;
+    protected readonly Mock<AppSettings> MockAppsettings;
     protected readonly Mock<IRefreshTokenService> MockRefreshTokenService;
     protected readonly Mock<ISqlQueryService> MockSqlQueryService;
+    protected readonly Mock<ILogger<InvitationService>> MockLogger;
     protected readonly InvitationService InvitationService;
     protected readonly TestDataManager TestDataManager;
 
@@ -44,11 +48,13 @@ public abstract class TestBase : IDisposable
         // Setup mocks
         MockEmailService = new Mock<IEmailService>();
         MockUserService = new Mock<IUserService>();
+        MockAppsettings = new Mock<AppSettings>();
         MockAuthProviderService = new Mock<IAuthProviderService>();
         MockCryptoService = new Mock<ICryptoService>();
         MockJwtService = new Mock<IJwtService>();
         MockRefreshTokenService = new Mock<IRefreshTokenService>();
         MockSqlQueryService = new Mock<ISqlQueryService>();
+        MockLogger = new Mock<ILogger<InvitationService>>();
 
         // Initialize test data manager
         TestDataManager = new TestDataManager(DbContext);
@@ -61,7 +67,8 @@ public abstract class TestBase : IDisposable
             MockAuthProviderService.Object,
             MockCryptoService.Object,
             MockJwtService.Object,
-            MockRefreshTokenService.Object);
+            MockRefreshTokenService.Object,
+            MockLogger.Object);
 
         // Setup default mock behaviors
         SetupDefaultMocks();

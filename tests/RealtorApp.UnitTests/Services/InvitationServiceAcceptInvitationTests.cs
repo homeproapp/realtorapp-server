@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using RealtorApp.Contracts.Commands.Invitations;
 using RealtorApp.Domain.DTOs;
-using RealtorApp.Domain.Models;
+using RealtorApp.Infra.Data;
 using Task = System.Threading.Tasks.Task;
 
 namespace RealtorApp.UnitTests.Services;
@@ -29,7 +29,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = invitation.InvitationToken,
+            InvitationToken = invitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
@@ -113,7 +113,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = invitation.InvitationToken,
+            InvitationToken = invitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
@@ -185,7 +185,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = invitation.InvitationToken,
+            InvitationToken = invitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
@@ -216,7 +216,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         // Arrange
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = Guid.NewGuid(),
+            InvitationToken = Guid.NewGuid().ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
@@ -246,7 +246,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = expiredInvitation.InvitationToken,
+            InvitationToken = expiredInvitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
@@ -275,7 +275,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = acceptedInvitation.InvitationToken,
+            InvitationToken = acceptedInvitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
@@ -299,7 +299,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = invitation.InvitationToken,
+            InvitationToken = invitation.InvitationToken.ToString(),
             FirebaseToken = "invalid_firebase_token"
         };
 
@@ -335,7 +335,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = invitation.InvitationToken,
+            InvitationToken = invitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
@@ -371,7 +371,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = invitation.InvitationToken,
+            InvitationToken = invitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
@@ -403,7 +403,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = invitation.InvitationToken,
+            InvitationToken = invitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
@@ -442,7 +442,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
 
         var command = new AcceptInvitationCommand
         {
-            InvitationToken = invitation.InvitationToken,
+            InvitationToken = invitation.InvitationToken.ToString(),
             FirebaseToken = "valid_firebase_token"
         };
 
