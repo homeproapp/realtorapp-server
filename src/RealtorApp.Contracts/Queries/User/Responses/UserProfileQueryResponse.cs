@@ -10,6 +10,7 @@ public class UserProfileQueryResponse : ResponseWithError
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? Phone { get; set; }
+    public long? ListingId { get; set; }
     public long? ProfileImageId { get; set; }
     public required string Role { get; set; }
 }

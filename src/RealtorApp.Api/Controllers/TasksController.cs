@@ -15,7 +15,6 @@ namespace RealtorApp.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Policy = PolicyConstants.AgentOnly)]
     public class TasksController(ITaskService taskService, IUserAuthService userAuth, ILogger<TasksController> logger, IReminderService reminderService) : RealtorApiBaseController
     {
         private readonly ITaskService _taskService = taskService;
@@ -24,6 +23,7 @@ namespace RealtorApp.Api.Controllers
         private readonly IReminderService _reminderService = reminderService;
 
         [HttpGet("v1/clients")]
+        [Authorize(Policy = PolicyConstants.AgentOnly)]
         public async Task<ActionResult<ClientGroupedTasksListQueryResponse>> GetClients([FromQuery] ClientGroupedTasksListQuery query)
         {
             var clients = await _taskService.GetClientGroupedTasksListAsync(query, RequiredCurrentUserId);
@@ -37,8 +37,7 @@ namespace RealtorApp.Api.Controllers
         }
 
         [HttpGet("v1/listings/{listingId}")]
-        [Authorize(Policy = PolicyConstants.ClientOrAgent)]
-
+        [Authorize(Policy = PolicyConstants.ClientOnly)]
         public async Task<ActionResult<ListingTasksQueryResponse>> GetListingTasks([FromRoute] long listingId, [FromQuery] ListingTasksQuery query)
         {
             var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
@@ -78,6 +77,7 @@ namespace RealtorApp.Api.Controllers
         }
 
         [HttpGet("v1/listings/{listingId}/slim")]
+        [Authorize(Policy = PolicyConstants.AgentOnly)]
         public async Task<ActionResult<SlimListingTasksQueryResponse>> GetListingTasksSlim([FromRoute] long listingId, [FromQuery] ListingTasksQuery query)
         {
             var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
@@ -93,6 +93,7 @@ namespace RealtorApp.Api.Controllers
         }
 
         [HttpPost("v1/listings/{listingId}")]
+        [Authorize(Policy = PolicyConstants.AgentOnly)]
         public async Task<ActionResult<AddOrUpdateTaskCommandResponse>> UpsertTask([FromForm] string commandJson, [FromRoute] long listingId, [FromForm] IFormFile[] newImages)
         {
             var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
@@ -161,7 +162,7 @@ namespace RealtorApp.Api.Controllers
         }
 
         [HttpDelete("v1/{listingId}/{taskId}")]
-        [Authorize(Policy = PolicyConstants.ClientOrAgent)]
+        [Authorize(Policy = PolicyConstants.AgentOnly)]
         public async Task<ActionResult> DeleteTask([FromRoute] long listingId, [FromRoute] long taskId)
         {
             var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);

@@ -15,6 +15,8 @@ using System.Threading.RateLimiting;
 using FluentValidation.AspNetCore;
 using FluentValidation;
 using RealtorApp.Domain.Constants;
+using RealtorApp.Api.Policies;
+using Microsoft.AspNetCore.Authorization;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 JwtSecurityTokenHandler.DefaultOutboundClaimTypeMap.Clear();
@@ -50,6 +52,8 @@ builder.Services.AddScoped<IContactsService, ContactsService>();
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
+builder.Services.AddSingleton<IAuthorizationHandler, OneOfRolesHandler>();
 
 var allowClientCorsDev = "allowClientDev";
 var allowClientCors = "allowClient";
@@ -138,6 +142,7 @@ builder.Services
         };
     });
 
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(PolicyConstants.AgentOnly, policy =>
@@ -147,7 +152,7 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole(RoleConstants.Client));
 
     options.AddPolicy(PolicyConstants.ClientOrAgent, policy =>
-        policy.RequireRole([RoleConstants.Agent, RoleConstants.Client]));
+        policy.AddRequirements(new OneOfRolesRequirement([RoleConstants.Agent, RoleConstants.Client])));
 });
 
 builder.Services.AddSignalR().AddJsonProtocol(o =>

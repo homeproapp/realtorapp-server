@@ -208,11 +208,21 @@ public class InvitationService(
 
         foreach (var propertyToAdd in propertiesToAdd)
         {
-            var listing = new Listing()
+            Listing listing;
+            if (!propertyToAdd.CreatedListingId.HasValue)
             {
-                Property = propertyToAdd.ToProperty(),
-                Conversation = new(),
-            };
+                listing = new Listing()
+                {
+                    Property = propertyToAdd.ToProperty(),
+                    Conversation = new(),
+                };
+                await _dbContext.Listings.AddAsync(listing);
+                propertyToAdd.CreatedListing = listing;
+            }
+            else
+            {
+                listing = propertyToAdd.CreatedListing!;
+            }
 
             var agentListing = new AgentsListing()
             {
@@ -232,10 +242,6 @@ public class InvitationService(
 
             listing.AgentsListings.Add(agentListing);
             listing.ClientsListings.Add(clientListing);
-            propertyToAdd.CreatedListing = listing;
-
-            await _dbContext.Listings.AddAsync(listing);
-
         }
 
         clientInvitation.AcceptedAt = DateTime.UtcNow;
@@ -409,6 +415,7 @@ public class InvitationService(
                 .ThenInclude(i => i.User)
             .Include(i => i.ClientInvitationsProperties)
                 .ThenInclude(cip => cip.PropertyInvitation)
+                    .ThenInclude(i => i.CreatedListing)
             .Where(i => i.InvitationToken == invitationToken &&
                     i.AcceptedAt == null);
     }
