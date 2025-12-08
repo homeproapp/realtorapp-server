@@ -217,6 +217,11 @@ public class InvitationService(
                     Conversation = new(),
                 };
                 await _dbContext.Listings.AddAsync(listing);
+                var agentListing = new AgentsListing()
+                {
+                    AgentId = clientInvitation.InvitedBy,
+                };
+                listing.AgentsListings.Add(agentListing);
                 propertyToAdd.CreatedListing = listing;
             }
             else
@@ -224,10 +229,7 @@ public class InvitationService(
                 listing = propertyToAdd.CreatedListing!;
             }
 
-            var agentListing = new AgentsListing()
-            {
-                AgentId = clientInvitation.InvitedBy,
-            };
+
 
             var clientListing = new ClientsListing();
 
@@ -240,7 +242,6 @@ public class InvitationService(
                 clientListing.ClientId = clientUser.UserId;
             }
 
-            listing.AgentsListings.Add(agentListing);
             listing.ClientsListings.Add(clientListing);
         }
 

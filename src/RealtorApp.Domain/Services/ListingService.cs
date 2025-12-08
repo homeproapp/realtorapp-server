@@ -18,6 +18,7 @@ public class ListingService(RealtorAppDbContext context) : IListingService
             .Select(l => new ListingDetailsSlimQueryResponse()
             {
                 ClientNames = l.ClientsListings.Select(cl => cl.Client.User.FirstName + " " + cl.Client.User.LastName).ToArray(),
+                AgentNames = l.AgentsListings.Select(al => al.Agent.User.FirstName + " " + al.Agent.User.LastName).ToArray(),
                 Address = l.Property.AddressLine1,
                 OtherListings = l.ClientsListings
                     .SelectMany(cl => cl.Client.ClientsListings)

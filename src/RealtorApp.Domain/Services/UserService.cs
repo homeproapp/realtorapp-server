@@ -23,7 +23,7 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
                 TasksInProgress = i.AgentsListings.SelectMany(x => x.Listing.Tasks
                     .Where(x => x.Status == (short)TaskStatus.InProgress))
                     .Count(),
-                ActiveClients = i.AgentsListings.Select(x => x.Listing.ClientsListings).Count(),
+                ActiveClients = i.AgentsListings.SelectMany(x => x.Listing.ClientsListings).Count(),
                 ActiveListings = i.AgentsListings.Count,
                 UpcomingReminders = i.User.Reminders
                     .Where(x => x.RemindAt > DateTime.UtcNow)

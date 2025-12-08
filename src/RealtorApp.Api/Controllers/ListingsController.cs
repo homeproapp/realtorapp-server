@@ -25,7 +25,7 @@ namespace RealtorApp.Api.Controllers
 
             if (!isAssociatedToListing)
             {
-                return BadRequest(new ListingDetailsSlimQueryResponse() { ClientNames = [], Address = "", ErrorMessage = "Request not allowed." });
+                return BadRequest(new ListingDetailsSlimQueryResponse() { ClientNames = [], Address = "", ErrorMessage = "Request not allowed.", AgentNames = [] });
             }
 
             var result = await _listingService.GetListingDetailsSlim(listingId);
