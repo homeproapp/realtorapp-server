@@ -70,7 +70,7 @@ builder.Services.AddCors(options =>
     //TODO: update
     options.AddPolicy(allowClientCors, policy =>
     {
-        policy.WithOrigins("ADD-URL-HERE.OMOEGMOGMOA")
+        policy.WithOrigins(builder.Configuration["ClientUrl"] ?? throw new ArgumentException("Client url not set"))
             .AllowAnyMethod()
             .AllowAnyHeader();
     });
