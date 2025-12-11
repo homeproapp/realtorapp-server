@@ -27,9 +27,8 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8080
-EXPOSE 8081
 
-ENV ASPNETCORE_URLS=http://+:8080;https://+:8081
+ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
 ENTRYPOINT ["dotnet", "RealtorApp.Api.dll"]
