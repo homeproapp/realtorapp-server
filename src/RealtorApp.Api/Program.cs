@@ -55,22 +55,13 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 builder.Services.AddSingleton<IAuthorizationHandler, OneOfRolesHandler>();
 
-var allowClientCorsDev = "allowClientDev";
-var allowClientCors = "allowClient";
-// Add CORS
+var allowAll = "allowAll";
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(allowClientCorsDev, policy =>
+    options.AddPolicy(allowAll, policy =>
     {
         policy.AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
-    });
-
-    //TODO: update
-    options.AddPolicy(allowClientCors, policy =>
-    {
-        policy.WithOrigins(builder.Configuration["ClientUrl"] ?? throw new ArgumentException("Client url not set"))
             .AllowAnyMethod()
             .AllowAnyHeader();
     });
@@ -169,7 +160,7 @@ if (isDev)
     app.MapOpenApi();
 }
 
-app.UseCors(isDev ? allowClientCorsDev : allowClientCors);
+app.UseCors(allowAll);
 
 if (!isDev)
 {
