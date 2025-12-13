@@ -37,7 +37,7 @@ namespace RealtorApp.Api.Controllers
         }
 
         [HttpGet("v1/listings/{listingId}")]
-        [Authorize(Policy = PolicyConstants.ClientOnly)]
+        [Authorize(Policy = PolicyConstants.ClientOrAgent)]
         public async Task<ActionResult<ListingTasksQueryResponse>> GetListingTasks([FromRoute] long listingId, [FromQuery] ListingTasksQuery query)
         {
             var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
