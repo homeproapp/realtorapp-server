@@ -86,7 +86,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = invitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act - Simulate first acceptance
@@ -130,7 +130,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = invitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act
@@ -226,7 +226,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = invitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act
@@ -333,7 +333,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = invitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act & Assert
@@ -418,7 +418,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = invitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act

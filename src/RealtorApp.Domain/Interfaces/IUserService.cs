@@ -5,7 +5,7 @@ namespace RealtorApp.Domain.Interfaces;
 
 public interface IUserService
 {
-    Task<User> GetOrCreateUserAsync(string firebaseUid, string email, string? displayName, bool isClient);
+    Task<User?> GetOrCreateUserAsync(string firebaseUid, string email, string? displayName = null);
     Task<string?> GetAgentName(long agentId);
     Task<User?> GetUserByEmailAsync(string email);
     Task<DashboardQueryResponse> GetAgentDashboard(long userId);

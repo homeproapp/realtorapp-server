@@ -178,13 +178,46 @@ public class InvitationService(
             };
         }
 
-        var authUserDto = await _authProviderService.ValidateTokenAsync(command.FirebaseToken);
+        var existingUser = await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Email == clientInvitation!.ClientEmail);
 
-        if (authUserDto == null || authUserDto.Email != clientInvitation!.ClientEmail) // second case should never happen, but just incase...
+        AuthProviderUserDto? authUserDto;
+
+        if (existingUser != null)
+        {
+            authUserDto = await _authProviderService.SignInWithEmailAndPasswordAsync(clientInvitation!.ClientEmail, command.Password);
+        }
+        else
+        {
+            var displayName = $"{clientInvitation!.ClientFirstName} {clientInvitation.ClientLastName}";
+            var firebaseUser = await _authProviderService.RegisterWithEmailAndPasswordAsync(
+                clientInvitation.ClientEmail,
+                command.Password,
+                emailVerified: false
+            );
+
+            if (firebaseUser == null)
+            {
+                return new()
+                {
+                    ErrorMessage = "Failed to create user account"
+                };
+            }
+
+            authUserDto = new AuthProviderUserDto
+            {
+                Uid = firebaseUser.Uid,
+                Email = firebaseUser.Email!,
+                DisplayName = displayName
+            };
+        }
+
+        if (authUserDto == null)
         {
             return new()
             {
-                ErrorMessage = "Invalid invite"
+                ErrorMessage = "Authentication failed"
             };
         }
 

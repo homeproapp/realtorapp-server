@@ -29,30 +29,71 @@ public class AuthController(
     [AllowAnonymous]
     [HttpPost("v1/login")]
     [EnableRateLimiting("Anonymous")]
-    public async Task<ActionResult<LoginCommandResponse>> LoginAsync([FromBody] LoginCommand command)
+    public async Task<ActionResult<TokenResponse>> LoginAsync([FromBody] LoginCommand command)
     {
-        // Validate Firebase token
-        var firebaseUser = await _authProviderService.ValidateTokenAsync(command.FirebaseToken);
+        var firebaseUser = await _authProviderService.SignInWithEmailAndPasswordAsync(command.Email, command.Password);
         if (firebaseUser == null)
         {
             return Unauthorized(new { error = "Authentication failed", code = "AUTH_E009" });
         }
 
-        // Get or create agent user (idempotent)
-        var displayName = $"{command.FirstName} {command.LastName}";
-        var user = await _userService.GetOrCreateUserAsync(firebaseUser.Uid, firebaseUser.Email, displayName, command.IsClient);
+        var user = await _userService.GetOrCreateUserAsync(firebaseUser.Uid, firebaseUser.Email);
+
+        if (user == null)
+        {
+            return BadRequest("Login failed");
+        }
+
         var role = user.Agent == null ? RoleConstants.Client : RoleConstants.Agent;
 
         var accessToken = _jwtService.GenerateAccessToken(user.Uuid, role);
         var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(user.UserId);
 
-        return Ok(new LoginCommandResponse
+        return Ok(new TokenResponse
         {
             AccessToken = accessToken,
             RefreshToken = refreshToken,
             ExpiresIn = _appSettings.Jwt.AccessTokenExpirationMinutes * 60
         });
     }
+
+    [AllowAnonymous]
+    [HttpPost("v1/register")]
+    [EnableRateLimiting("Anonymous")]
+    public async Task<ActionResult<TokenResponse>> RegisterAsync([FromBody] RegisterCommand command)
+    {
+        var firebaseUser = await _authProviderService.RegisterWithEmailAndPasswordAsync(
+            command.Email,
+            command.Password,
+            emailVerified: false
+        );
+
+        if (firebaseUser == null)
+        {
+            return BadRequest(new { error = "Registration failed", code = "AUTH_E010" });
+        }
+
+        var displayName = $"{command.FirstName} {command.LastName}";
+        var user = await _userService.GetOrCreateUserAsync(firebaseUser.Uid, firebaseUser.Email!, displayName);
+
+        if (user == null)
+        {
+            return BadRequest("Please fill in all required fields and try again.");
+        }
+
+        var role = user.Agent == null ? RoleConstants.Client : RoleConstants.Agent;
+
+        var accessToken = _jwtService.GenerateAccessToken(user.Uuid, role);
+        var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(user.UserId);
+
+        return Ok(new TokenResponse
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresIn = _appSettings.Jwt.AccessTokenExpirationMinutes * 60
+        });
+    }
+
 
     [HttpPost("v1/refresh")]
     [AllowAnonymous]

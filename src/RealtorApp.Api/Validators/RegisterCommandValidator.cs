@@ -1,15 +1,29 @@
 using FluentValidation;
-using RealtorApp.Contracts.Commands.Invitations;
+using RealtorApp.Contracts.Commands.Auth;
 
 namespace RealtorApp.Api.Validators;
 
-public class AcceptInvitationCommandValidator : AbstractValidator<AcceptInvitationCommand>
+public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
 {
-    public AcceptInvitationCommandValidator()
+    public RegisterCommandValidator()
     {
-        RuleFor(x => x.InvitationToken)
+        RuleFor(x => x.FirstName)
             .NotEmpty()
-            .WithMessage("Invitation token is required");
+            .WithMessage("First name is required")
+            .MaximumLength(100)
+            .WithMessage("First name cannot exceed 100 characters");
+
+        RuleFor(x => x.LastName)
+            .NotEmpty()
+            .WithMessage("Last name is required")
+            .MaximumLength(100)
+            .WithMessage("Last name cannot exceed 100 characters");
+
+        RuleFor(x => x.Email)
+            .NotEmpty()
+            .WithMessage("Email is required")
+            .EmailAddress()
+            .WithMessage("Invalid email format");
 
         RuleFor(x => x.Password)
             .NotEmpty()

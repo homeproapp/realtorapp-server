@@ -139,7 +139,7 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
         };
     }
 
-    public async Task<User> GetOrCreateUserAsync(string firebaseUid, string email, string? displayName, bool isClient)
+    public async Task<User?> GetOrCreateUserAsync(string firebaseUid, string email, string? displayName = null)
     {
 
       var existingUser = await _dbContext.Users
@@ -161,22 +161,17 @@ public class UserService(RealtorAppDbContext dbContext) : IUserService
         {
             Uuid = firebaseUid,
             Email = email,
+            Agent = new(),
         };
 
-        if (isClient)
+        if (existingUser == null && (string.IsNullOrEmpty(displayName) || string.IsNullOrWhiteSpace(displayName)))
         {
-            user.Client = new();
-        } else
-        {
-            user.Agent = new();
+            return null;
         }
 
-        if (!string.IsNullOrWhiteSpace(displayName))
-        {
-            var nameParts = displayName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-            user.FirstName = nameParts.Length > 0 ? nameParts[0] : string.Empty;
-            user.LastName = nameParts.Length > 1 ? nameParts[1] : string.Empty;
-        }
+        var nameParts = displayName!.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        user.FirstName = nameParts.Length > 0 ? nameParts[0] : string.Empty;
+        user.LastName = nameParts.Length > 1 ? nameParts[1] : string.Empty;
 
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync();

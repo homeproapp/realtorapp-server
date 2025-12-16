@@ -30,7 +30,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = invitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act
@@ -114,7 +114,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = invitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         var initialUserCount = await DbContext.Users.CountAsync();
@@ -186,7 +186,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = invitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act
@@ -217,7 +217,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = Guid.NewGuid().ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act
@@ -247,7 +247,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = expiredInvitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act
@@ -276,7 +276,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = acceptedInvitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act
@@ -300,7 +300,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = invitation.InvitationToken.ToString(),
-            FirebaseToken = "invalid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act
@@ -336,7 +336,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = invitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act
@@ -372,7 +372,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = invitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act
@@ -404,7 +404,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = invitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act
@@ -443,7 +443,7 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var command = new AcceptInvitationCommand
         {
             InvitationToken = invitation.InvitationToken.ToString(),
-            FirebaseToken = "valid_firebase_token"
+            Password = "TestPass123!@#"
         };
 
         // Act

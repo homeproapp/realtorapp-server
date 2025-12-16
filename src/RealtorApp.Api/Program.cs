@@ -32,6 +32,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     });
 builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient();
 builder.Services.Configure<AppSettings>(builder.Configuration);
 builder.Services.AddSingleton(serviceCollection => serviceCollection.GetRequiredService<IOptions<AppSettings>>().Value);
 builder.Services.AddScoped<IUserAuthService, UserAuthService>();
