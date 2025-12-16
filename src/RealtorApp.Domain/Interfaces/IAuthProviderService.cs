@@ -8,4 +8,5 @@ public interface IAuthProviderService
     Task<AuthProviderUserDto?> ValidateTokenAsync(string providerToken);
     Task<UserRecord?> RegisterWithEmailAndPasswordAsync(string email, string password, bool emailVerified);
     Task<AuthProviderUserDto?> SignInWithEmailAndPasswordAsync(string email, string password);
+    Task<bool> DeleteUserAsync(string uid);
 }

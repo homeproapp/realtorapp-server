@@ -138,6 +138,26 @@ public class FirebaseAuthProviderService(
             return null;
         }
     }
+
+    public async Task<bool> DeleteUserAsync(string uid)
+    {
+        try
+        {
+            var auth = FirebaseAuth.GetAuth(GetFirebaseApp());
+            await auth.DeleteUserAsync(uid);
+            return true;
+        }
+        catch (FirebaseAuthException ex)
+        {
+            _logger.LogError(ex, "Firebase error deleting user: {ErrorCode}", ex.AuthErrorCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting user: {Message}", ex.Message);
+            return false;
+        }
+    }
 }
 
 internal class FirebaseSignInResponse

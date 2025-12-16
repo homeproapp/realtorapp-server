@@ -73,25 +73,34 @@ public class AuthController(
             return BadRequest(new { error = "Registration failed", code = "AUTH_E010" });
         }
 
-        var displayName = $"{command.FirstName} {command.LastName}";
-        var user = await _userService.GetOrCreateUserAsync(firebaseUser.Uid, firebaseUser.Email!, displayName);
-
-        if (user == null)
+        try
         {
-            return BadRequest("Please fill in all required fields and try again.");
+            var displayName = $"{command.FirstName} {command.LastName}";
+            var user = await _userService.GetOrCreateUserAsync(firebaseUser.Uid, firebaseUser.Email!, displayName);
+
+            if (user == null)
+            {
+                await _authProviderService.DeleteUserAsync(firebaseUser.Uid);
+                return BadRequest(new { error = "Registration failed", code = "AUTH_E013" });
+            }
+
+            var role = user.Agent == null ? RoleConstants.Client : RoleConstants.Agent;
+
+            var accessToken = _jwtService.GenerateAccessToken(user.Uuid, role);
+            var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(user.UserId);
+
+            return Ok(new TokenResponse
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ExpiresIn = _appSettings.Jwt.AccessTokenExpirationMinutes * 60
+            });
         }
-
-        var role = user.Agent == null ? RoleConstants.Client : RoleConstants.Agent;
-
-        var accessToken = _jwtService.GenerateAccessToken(user.Uuid, role);
-        var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(user.UserId);
-
-        return Ok(new TokenResponse
+        catch (Exception)
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            ExpiresIn = _appSettings.Jwt.AccessTokenExpirationMinutes * 60
-        });
+            await _authProviderService.DeleteUserAsync(firebaseUser.Uid);
+            throw;
+        }
     }
 
 

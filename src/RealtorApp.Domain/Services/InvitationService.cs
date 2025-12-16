@@ -183,6 +183,7 @@ public class InvitationService(
             .FirstOrDefaultAsync(u => u.Email == clientInvitation!.ClientEmail);
 
         AuthProviderUserDto? authUserDto;
+        bool isNewFirebaseUser = false;
 
         if (existingUser != null)
         {
@@ -205,6 +206,7 @@ public class InvitationService(
                 };
             }
 
+            isNewFirebaseUser = true;
             authUserDto = new AuthProviderUserDto
             {
                 Uid = firebaseUser.Uid,
@@ -221,75 +223,86 @@ public class InvitationService(
             };
         }
 
-        var clientUser = await _dbContext.Clients
-            .Include(i => i.User)
-            .FirstOrDefaultAsync(i => i.User.Uuid == authUserDto.Uid);
-
-        var propertiesToAdd = clientInvitation.ClientInvitationsProperties.Select(i => i.PropertyInvitation);
-
-        if (clientUser == null) // create client if htey dont exist
+        try
         {
-            clientUser = clientInvitation.ToClientUser(authUserDto.Uid);
-            _dbContext.Clients.Add(clientUser);
-        }
-        else
-        {
-            var propertyAddressesMap = clientInvitation.ClientInvitationsProperties
-                .ToDictionary(i => i.PropertyInvitation.AddressLine1.ToLower(), i => i.PropertyInvitation);
-            propertiesToAdd = await _checkIfPropertiesExistOnExistingUser(clientUser, clientInvitation.InvitedBy, propertyAddressesMap);
-        }
+            var clientUser = await _dbContext.Clients
+                .Include(i => i.User)
+                .FirstOrDefaultAsync(i => i.User.Uuid == authUserDto.Uid);
 
-        foreach (var propertyToAdd in propertiesToAdd)
-        {
-            Listing listing;
-            if (!propertyToAdd.CreatedListingId.HasValue)
+            var propertiesToAdd = clientInvitation.ClientInvitationsProperties.Select(i => i.PropertyInvitation);
+
+            if (clientUser == null)
             {
-                listing = new Listing()
-                {
-                    Property = propertyToAdd.ToProperty(),
-                    Conversation = new(),
-                };
-                await _dbContext.Listings.AddAsync(listing);
-                var agentListing = new AgentsListing()
-                {
-                    AgentId = clientInvitation.InvitedBy,
-                };
-                listing.AgentsListings.Add(agentListing);
-                propertyToAdd.CreatedListing = listing;
+                clientUser = clientInvitation.ToClientUser(authUserDto.Uid);
+                _dbContext.Clients.Add(clientUser);
             }
             else
             {
-                listing = propertyToAdd.CreatedListing!;
+                var propertyAddressesMap = clientInvitation.ClientInvitationsProperties
+                    .ToDictionary(i => i.PropertyInvitation.AddressLine1.ToLower(), i => i.PropertyInvitation);
+                propertiesToAdd = await _checkIfPropertiesExistOnExistingUser(clientUser, clientInvitation.InvitedBy, propertyAddressesMap);
             }
 
-
-
-            var clientListing = new ClientsListing();
-
-            if (clientUser.UserId == 0)
+            foreach (var propertyToAdd in propertiesToAdd)
             {
-                clientListing.Client = clientUser;
-            }
-            else
-            {
-                clientListing.ClientId = clientUser.UserId;
+                Listing listing;
+                if (!propertyToAdd.CreatedListingId.HasValue)
+                {
+                    listing = new Listing()
+                    {
+                        Property = propertyToAdd.ToProperty(),
+                        Conversation = new(),
+                    };
+                    await _dbContext.Listings.AddAsync(listing);
+                    var agentListing = new AgentsListing()
+                    {
+                        AgentId = clientInvitation.InvitedBy,
+                    };
+                    listing.AgentsListings.Add(agentListing);
+                    propertyToAdd.CreatedListing = listing;
+                }
+                else
+                {
+                    listing = propertyToAdd.CreatedListing!;
+                }
+
+
+
+                var clientListing = new ClientsListing();
+
+                if (clientUser.UserId == 0)
+                {
+                    clientListing.Client = clientUser;
+                }
+                else
+                {
+                    clientListing.ClientId = clientUser.UserId;
+                }
+
+                listing.ClientsListings.Add(clientListing);
             }
 
-            listing.ClientsListings.Add(clientListing);
+            clientInvitation.AcceptedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync();
+
+            var accessToken = _jwtService.GenerateAccessToken(authUserDto.Uid, "Client");
+            var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(clientUser.UserId);
+
+            return new()
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken
+            };
         }
-
-        clientInvitation.AcceptedAt = DateTime.UtcNow;
-
-        await _dbContext.SaveChangesAsync();
-
-        var accessToken = _jwtService.GenerateAccessToken(authUserDto.Uid, "Client");
-        var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(clientUser.UserId);
-
-        return new()
+        catch (Exception)
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken
-        };
+            if (isNewFirebaseUser)
+            {
+                await _authProviderService.DeleteUserAsync(authUserDto.Uid);
+            }
+            throw;
+        }
     }
 
     private string _getEncryptedInviteData(Guid inviteToken, bool isExistingUser)
