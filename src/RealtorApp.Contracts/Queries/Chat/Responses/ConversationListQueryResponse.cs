@@ -2,24 +2,24 @@ using RealtorApp.Contracts.Common;
 
 namespace RealtorApp.Contracts.Queries.Chat.Responses;
 
-public class AgentConversationListQueryResponse : ResponseWithError
+public class ConversationListQueryResponse : ResponseWithError
 {
-    public List<AgentConversationResponse> Conversations { get; set; } = [];
+    public List<ConversationResponse> Conversations { get; set; } = [];
     public int TotalCount { get; set; }
     public bool HasMore { get; set; }
 }
 
-public class AgentConversationResponse
+public class ConversationResponse
 {
     public long ClickThroughConversationId { get; set; }
     public required DateTime ConversationUpdatedAt { get; set; }
-    public ClientDetailsConversationResponse[] Clients { get; set; } = [];
+    public UserDetailsConversationResponse[] OtherUsers { get; set; } = [];
     public MessageResponse? LastMessage { get; set; }
     public byte UnreadConversationCount { get; set; }
 }
 
-public class ClientDetailsConversationResponse
+public class UserDetailsConversationResponse
 {
-    public long ClientId { get; set; }
-    public string ClientName { get; set; } = string.Empty;
+    public long UserId { get; set; }
+    public string Name { get; set; } = string.Empty;
 }

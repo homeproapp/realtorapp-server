@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using RealtorApp.Contracts.Commands.Chat.Requests;
 using RealtorApp.Contracts.Commands.Chat.Responses;
-using RealtorApp.Contracts.Common;
 using RealtorApp.Contracts.Queries.Chat.Requests;
 using RealtorApp.Contracts.Queries.Chat.Responses;
 using RealtorApp.Domain.Constants;
@@ -21,8 +20,8 @@ namespace RealtorApp.Api.Controllers
     {
         private readonly IChatService _chatService = chatService;
 
-        [HttpGet("/v1/conversations")]
-        public async Task<IActionResult> ConversationsQuery([FromQuery] ConversationListQuery query)
+        [HttpGet("v1/conversations")]
+        public async Task<ActionResult<ConversationListQueryResponse>> ConversationsQuery([FromQuery] ConversationListQuery query)
         {
             if (CurrentUserRole == null)
             {

@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using RealtorApp.Contracts.Commands.Chat.Requests;
 using RealtorApp.Contracts.Commands.Chat.Responses;
 using RealtorApp.Contracts.Queries.Chat.Requests;
@@ -7,22 +6,22 @@ using RealtorApp.Contracts.Queries.Chat.Responses;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Infra.Data;
-using RealtorApp.Domain.Comparers;
-using RealtorApp.Domain.DTOs;
+using Microsoft.Extensions.Logging;
 
 namespace RealtorApp.Domain.Services;
 
-public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthService) : IChatService
+public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthService, ILogger<ChatService> logger) : IChatService
 {
     private readonly RealtorAppDbContext _context = context;
     private readonly IUserAuthService _userAuthService = userAuthService;
+    private readonly ILogger<ChatService> _logger = logger;
 
     public async Task<SendMessageCommandResponse> SendMessageAsync(SendMessageCommand command)
     {
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
-            if (!await _userAuthService.IsConversationParticipant(command.ConversationId, command.SenderId))
+            if (!await _userAuthService.IsConversationParticipant(command.SenderId, command.ConversationId))
             {
                 return new SendMessageCommandResponse { ErrorMessage = "Access denied" };
             }
@@ -51,9 +50,10 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
             await transaction.CommitAsync();
             return message.ToSendMessageResponse();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             await transaction.RollbackAsync();
+            _logger.LogError(ex, "Failed saving message - {Message}", ex.Message);
             return new SendMessageCommandResponse { ErrorMessage = "Failed to send message" };
         }
     }
@@ -71,7 +71,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
 
     //         foreach (var message in messages)
     //         {
-    //             if (await _userAuthService.IsConversationParticipant(message.ConversationId, userId))
+    //             if (await _userAuthService.IsConversationParticipant(userId,message.ConversationId))
     //             {
     //                 message.UpdatedAt = DateTime.UtcNow;
     //                 validMessageIds.Add(message.MessageId);
@@ -86,7 +86,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
     //             TotalMarkedCount = validMessageIds.Count
     //         };
     //     }
-    //     catch (Exception)
+    //     catch (Exception ex)
     //     {
     //         return new MarkMessagesAsReadCommandResponse { ErrorMessage = "Failed to mark messages as read" };
     //     }
@@ -97,7 +97,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
         try
         {
             // Validate conversation participant
-            if (!await _userAuthService.IsConversationParticipant(conversationId, userId))
+            if (!await _userAuthService.IsConversationParticipant(userId, conversationId))
             {
                 return new MessageHistoryQueryResponse { ErrorMessage = "Access denied" };
             }
@@ -137,13 +137,14 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
                 NextBefore = nextBefore
             };
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Failed loading message history - {Message}", ex.Message);
             return new MessageHistoryQueryResponse { ErrorMessage = "Failed to retrieve message history" };
         }
     }
 
-    public async Task<ClientConversationListQueryResponse> GetClientConversationList(ConversationListQuery query, long clientId)
+    public async Task<ConversationListQueryResponse> GetClientConversationList(ConversationListQuery query, long clientId)
     {
         try
         {
@@ -160,7 +161,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
             var clientListingsGroupedByAgents = clientListingsQuery.GroupBy(i => string.Join('|', i.AgentUsers
                 .OrderByDescending(i => i.UserId).Select(i => i.UserId)));
             var groupedAgentConvosCount = clientListingsGroupedByAgents.Count();
-            var conversations = new List<ClientConversationResponse>();
+            var conversations = new List<ConversationResponse>();
 
             foreach (var group in clientListingsGroupedByAgents.Skip(query.Offset).Take(query.Limit))
             {
@@ -169,9 +170,13 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
 
                 if (latestConversationGroup == null || latestConversationGroup.Conversation == null) continue;
 
-                var conversation = new ClientConversationResponse()
+                var conversation = new ConversationResponse()
                 {
-                    AgentNames = [.. latestConversationGroup.AgentUsers.Select(i => i.FirstName + " " + i.LastName)],
+                    OtherUsers = [.. latestConversationGroup.AgentUsers.Select(i => new UserDetailsConversationResponse()
+                        {
+                            Name = i.FirstName + " " + i.LastName,
+                            UserId = i.UserId
+                        })],
                     ConversationUpdatedAt = latestConversationGroup.Conversation.UpdatedAt,
                     ClickThroughConversationId = latestConversationGroup.Conversation.ListingId,
                     LastMessage = latestConversationGroup.LastMessage?.ToMessageResponse(),
@@ -181,7 +186,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
                 conversations.Add(conversation);
             }
 
-            return new ClientConversationListQueryResponse()
+            return new ConversationListQueryResponse()
             {
                 HasMore = query.Offset + conversations.Count < groupedAgentConvosCount,
                 Conversations = [.. conversations.OrderByDescending(i => i.ConversationUpdatedAt) ],
@@ -190,12 +195,12 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
-            return new ClientConversationListQueryResponse { ErrorMessage = "Failed to retrieve conversations" };
+            _logger.LogError(ex, "Failed loading convo list for client - {Message}", ex.Message);
+            return new ConversationListQueryResponse { ErrorMessage = "Failed to retrieve conversations" };
         }
     }
 
-    public async Task<AgentConversationListQueryResponse> GetAgentConversationListAsync(ConversationListQuery query, long agentId)
+    public async Task<ConversationListQueryResponse> GetAgentConversationListAsync(ConversationListQuery query, long agentId)
     {
         try
         {
@@ -215,7 +220,7 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
 
             var count = convosGrouped.Count();
 
-            var convosGroupedByClients = new List<AgentConversationResponse>();
+            var convosGroupedByClients = new List<ConversationResponse>();
 
             foreach (var group in convosGrouped.Skip(query.Offset).Take(query.Limit))
             {
@@ -225,12 +230,12 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
 
                 if (latestConversation == null || latestConversation.Conversation == null) continue;
 
-                var conversation = new AgentConversationResponse()
+                var conversation = new ConversationResponse()
                 {
                     ConversationUpdatedAt = latestConversation.Conversation.UpdatedAt,
                     ClickThroughConversationId = latestConversation.Conversation.ListingId,
-                    Clients = group.FirstOrDefault()?.ClientData?
-                        .Select(i => new ClientDetailsConversationResponse() { ClientId = i.ClientId, ClientName = i.ClientName })
+                    OtherUsers = group.FirstOrDefault()?.ClientData?
+                        .Select(i => new UserDetailsConversationResponse() { UserId = i.ClientId, Name = i.ClientName })
                         .ToArray() ?? [],
                     LastMessage = latestConversation.LastMessage?.ToMessageResponse(),
                     UnreadConversationCount = (byte)unreadConvoCount
@@ -241,16 +246,17 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
 
             var hasMore = query.Offset + convosGroupedByClients.Count < count;
 
-            return new AgentConversationListQueryResponse
+            return new ConversationListQueryResponse
             {
                 Conversations = [.. convosGroupedByClients.OrderByDescending(i => i.ConversationUpdatedAt)],
                 TotalCount = count,
                 HasMore = hasMore
             };
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return new AgentConversationListQueryResponse { ErrorMessage = "Failed to retrieve conversations" };
+            _logger.LogError(ex, "Failed loading convo list for agent - {Message}", ex.Message);
+            return new ConversationListQueryResponse { ErrorMessage = "Failed to retrieve conversations" };
         }
     }
 }

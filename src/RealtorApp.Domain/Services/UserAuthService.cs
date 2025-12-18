@@ -63,7 +63,6 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
 
                 var ids = await _context.Conversations
                     .Where(i => i.ListingId == conversationId)
-                    .AsNoTracking()
                     .SelectMany(i => i.Listing.AgentsListings
                         .Select(al => al.AgentId)
                         .Union(i.Listing.ClientsListings
@@ -74,6 +73,22 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
             });
 
         return participants?.Contains(userId) ?? false;
+    }
+
+    public void InvalidateConversationParticipantsCache(long conversationId)
+    {
+        _cache.Remove($"{_conversationParticipantsCachePrefix}{conversationId}");
+    }
+
+    public void InvalidateUserIsConnectedToListingCache(long listingId)
+    {
+        _cache.Remove($"{_listingIdToUserIdsCachePrefix}{listingId}");
+    }
+
+
+    public void InvalidateUserToListingIdsCache(long userId)
+    {
+        _cache.Remove($"{_userIdToListingIdsCachePrefix}{userId}");
     }
 
     public async Task<bool> UserIsConnectedToListing(long userId, long listingId)

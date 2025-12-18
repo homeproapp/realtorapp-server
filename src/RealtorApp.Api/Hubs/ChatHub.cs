@@ -57,7 +57,7 @@ public sealed class ChatHub(IUserAuthService userAuthService, IChatService chatS
             return;
         }
 
-        if (!await _userAuthService.IsConversationParticipant(conversationId, (long)userId))
+        if (!await _userAuthService.IsConversationParticipant((long)userId, conversationId))
             throw new HubException("Not a participant.");
 
         await Groups.AddToGroupAsync(Context.ConnectionId, conversationId.ToString());
@@ -66,7 +66,7 @@ public sealed class ChatHub(IUserAuthService userAuthService, IChatService chatS
     public Task LeaveConversation(long conversationId) =>
         Groups.RemoveFromGroupAsync(Context.ConnectionId, conversationId.ToString());
 
-    public async Task SendMessage(SendMessageCommand command) 
+    public async Task SendMessage(SendMessageCommand command)
     {
         var userId = await _userAuthService.GetUserIdByUuid(_uuid);
 
@@ -78,7 +78,7 @@ public sealed class ChatHub(IUserAuthService userAuthService, IChatService chatS
         if (string.IsNullOrWhiteSpace(command.MessageText))
             throw new HubException("Invalid payload.");
 
-        if (!await _userAuthService.IsConversationParticipant(command.ConversationId, (long)userId))
+        if (!await _userAuthService.IsConversationParticipant((long)userId, command.ConversationId))
             throw new HubException("Not a participant.");
 
         // Persist + produce canonical server payload
@@ -107,7 +107,7 @@ public sealed class ChatHub(IUserAuthService userAuthService, IChatService chatS
 
         var user = await _userService.GetUserProfileAsync((long)userId);
 
-        if (!await _userAuthService.IsConversationParticipant(conversationId, (long)userId) || user == null)
+        if (!await _userAuthService.IsConversationParticipant((long)userId, conversationId) || user == null)
             throw new HubException("Not a participant.");
 
         await Clients.OthersInGroup(conversationId.ToString())

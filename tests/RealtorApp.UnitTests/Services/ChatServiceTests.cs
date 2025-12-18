@@ -8,6 +8,7 @@ using RealtorApp.Infra.Data;
 using RealtorApp.Domain.Services;
 using RealtorApp.UnitTests.Helpers;
 using Task = System.Threading.Tasks.Task;
+using Microsoft.Extensions.Logging;
 
 namespace RealtorApp.UnitTests.Services;
 
@@ -17,6 +18,7 @@ public class ChatServiceTests : IDisposable
     private readonly Mock<IMemoryCache> _mockCache;
     private readonly Mock<IUserAuthService> _mockUserAuthService;
     private readonly Mock<ISqlQueryService> _mockSqlQueryService;
+    private readonly Mock<ILogger<ChatService>> _mockLogger;
     private readonly ChatService _chatService;
     private TestDataManager _testData;
 
@@ -41,10 +43,11 @@ public class ChatServiceTests : IDisposable
         _testData = new TestDataManager(_dbContext);
 
         _mockCache = new Mock<IMemoryCache>();
+        _mockLogger = new Mock<ILogger<ChatService>>();
         _mockUserAuthService = new Mock<IUserAuthService>();
         _mockSqlQueryService = new Mock<ISqlQueryService>();
 
-        _chatService = new ChatService(_dbContext, _mockUserAuthService.Object);
+        _chatService = new ChatService(_dbContext, _mockUserAuthService.Object, _mockLogger.Object);
     }
 
     private void CleanupAllTestData()
@@ -95,9 +98,9 @@ public class ChatServiceTests : IDisposable
         Assert.Single(result.Conversations); // Should be grouped into 1 conversation
 
         var conversation = result.Conversations[0];
-        Assert.Equal(2, conversation.Clients.Length); // Should contain both clients
-        Assert.Contains(conversation.Clients, c => c.ClientName == "Client One");
-        Assert.Contains(conversation.Clients, c => c.ClientName == "Client Two");
+        Assert.Equal(2, conversation.OtherUsers.Length); // Should contain both clients
+        Assert.Contains(conversation.OtherUsers, c => c.Name == "Client One");
+        Assert.Contains(conversation.OtherUsers, c => c.Name == "Client Two");
     }
 
     [Fact]
@@ -119,9 +122,9 @@ public class ChatServiceTests : IDisposable
         // Both groups should have the same clients but different properties
         foreach (var conversation in result.Conversations)
         {
-            Assert.Equal(2, conversation.Clients.Length);
-            Assert.Contains(conversation.Clients, c => c.ClientName == "Client One");
-            Assert.Contains(conversation.Clients, c => c.ClientName == "Client Two");
+            Assert.Equal(2, conversation.OtherUsers.Length);
+            Assert.Contains(conversation.OtherUsers, c => c.Name == "Client One");
+            Assert.Contains(conversation.OtherUsers, c => c.Name == "Client Two");
         }
     }
 
@@ -354,7 +357,7 @@ public class ChatServiceTests : IDisposable
         Assert.Single(result.Conversations); // Should be grouped into 1 conversation
 
         var conversation = result.Conversations[0];
-        Assert.Contains("Agent One", conversation.AgentNames);
+        Assert.Contains("Agent One", conversation.OtherUsers.Select(i => i.Name));
     }
 
     [Fact]
@@ -371,7 +374,7 @@ public class ChatServiceTests : IDisposable
         // Assert
         Assert.NotNull(result);
         Assert.Single(result.Conversations); // Should be 1 group for same agent
-        Assert.Contains("Agent One", result.Conversations[0].AgentNames);
+        Assert.Contains("Agent One", result.Conversations[0].OtherUsers.Select(i => i.Name));
     }
 
     [Fact]
@@ -468,9 +471,9 @@ public class ChatServiceTests : IDisposable
         Assert.Equal(3, result.Conversations.Count);
 
         // Should be ordered by conversation updated_at, newest first
-        Assert.Contains("Agent Three", result.Conversations[0].AgentNames); // Most recent
-        Assert.Contains("Agent Two", result.Conversations[1].AgentNames); // Middle
-        Assert.Contains("Agent One", result.Conversations[2].AgentNames); // Oldest
+        Assert.Contains("Agent Three", result.Conversations[0].OtherUsers.Select(i => i.Name)); // Most recent
+        Assert.Contains("Agent Two", result.Conversations[1].OtherUsers.Select(i => i.Name)); // Middle
+        Assert.Contains("Agent One", result.Conversations[2].OtherUsers.Select(i => i.Name)); // Oldest
     }
 
     [Fact]
@@ -504,7 +507,7 @@ public class ChatServiceTests : IDisposable
         // Assert
         Assert.NotNull(result);
         Assert.Single(result.Conversations); // Should be 1 group for the agent
-        Assert.Contains("Agent One", result.Conversations[0].AgentNames);
+        Assert.Contains("Agent One", result.Conversations[0].OtherUsers.Select(i => i.Name));
     }
 
     [Fact]

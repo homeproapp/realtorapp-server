@@ -13,6 +13,7 @@ public class InvitationService(
     RealtorAppDbContext dbContext,
     IEmailService emailService,
     IUserService userService,
+    IUserAuthService userAuthService,
     IAuthProviderService authProviderService,
     ICryptoService crypto,
     IJwtService jwtService,
@@ -22,6 +23,7 @@ public class InvitationService(
     private readonly RealtorAppDbContext _dbContext = dbContext;
     private readonly IEmailService _emailService = emailService;
     private readonly IUserService _userService = userService;
+    private readonly IUserAuthService _userAuthService = userAuthService;
     private readonly IAuthProviderService _authProviderService = authProviderService;
     private readonly ICryptoService _crypto = crypto;
     private readonly IJwtService _jwtService = jwtService;
@@ -285,6 +287,8 @@ public class InvitationService(
             clientInvitation.AcceptedAt = DateTime.UtcNow;
 
             await _dbContext.SaveChangesAsync();
+
+            _userAuthService.InvalidateUserToListingIdsCache(clientInvitation.InvitedBy);
 
             var accessToken = _jwtService.GenerateAccessToken(authUserDto.Uid, "Client");
             var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(clientUser.UserId);

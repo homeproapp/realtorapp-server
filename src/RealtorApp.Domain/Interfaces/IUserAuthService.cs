@@ -7,4 +7,7 @@ public interface IUserAuthService
     Task<bool> UserIsConnectedToListing(long userId, long listingId);
     Task<bool> IsAgentEmailValidated(long userId);
     Task<long[]> GetUserToListingIdsByUserId(long userId);
+    void InvalidateConversationParticipantsCache(long conversationId);
+    void InvalidateUserIsConnectedToListingCache(long listingId);
+    void InvalidateUserToListingIdsCache(long userId);
 }

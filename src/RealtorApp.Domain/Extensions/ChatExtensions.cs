@@ -83,15 +83,3 @@ public static class AttachmentExtensions
         };
     }
 }
-
-public static class ClientExtensions
-{
-    public static ClientDetailsConversationResponse[] ToClientConversationResponses(this IEnumerable<Client> clients)
-    {
-        return clients.Select(c => new ClientDetailsConversationResponse
-        {
-            ClientId = c.UserId,
-            ClientName = $"{c.User.FirstName} {c.User.LastName}".Trim()
-        }).ToArray();
-    }
-}

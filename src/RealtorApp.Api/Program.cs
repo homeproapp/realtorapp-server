@@ -17,6 +17,8 @@ using FluentValidation;
 using RealtorApp.Domain.Constants;
 using RealtorApp.Api.Policies;
 using Microsoft.AspNetCore.Authorization;
+using RealtorApp.Api.Providers;
+using Microsoft.AspNetCore.SignalR;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 JwtSecurityTokenHandler.DefaultOutboundClaimTypeMap.Clear();
@@ -49,6 +51,7 @@ builder.Services.AddScoped<IS3Service, S3Service>();
 builder.Services.AddScoped<IImagesService, ImagesService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IContactsService, ContactsService>();
+builder.Services.AddScoped<IChatService, ChatService>();
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
@@ -62,7 +65,14 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(allowAll, policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins(
+                "http://localhost:4200",
+                "http://localhost:8100",
+                "capacitor://localhost",
+                "ionic://localhost",
+                "http://localhost"
+            )
+            .AllowCredentials()
             .AllowAnyMethod()
             .AllowAnyHeader();
     });
@@ -147,6 +157,7 @@ builder.Services.AddAuthorization(options =>
         policy.AddRequirements(new OneOfRolesRequirement([RoleConstants.Agent, RoleConstants.Client])));
 });
 
+builder.Services.AddSingleton<IUserIdProvider, SubClaimUserIdProvider>();
 builder.Services.AddSignalR().AddJsonProtocol(o =>
     {
         o.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
