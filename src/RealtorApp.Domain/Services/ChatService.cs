@@ -7,6 +7,7 @@ using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Infra.Data;
 using Microsoft.Extensions.Logging;
+using RealtorApp.Contracts.Enums;
 
 namespace RealtorApp.Domain.Services;
 
@@ -24,11 +25,36 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
 
             if (command.AttachmentRequests.Length > 0)
             {
-                var attachments = command.AttachmentRequests.Select(ar => new Attachment
-                {
-                    MessageId = message.MessageId,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                var attachments = command.AttachmentRequests.Select((ar) => {
+                    var attachment = new Attachment
+                    {
+                        MessageId = message.MessageId,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+
+                    };
+
+                    if (ar.Type == AttachmentType.Task)
+                    {
+                        attachment.TaskAttachment = new()
+                        {
+                          TaskId = ar.AttachmentObjectId,
+                          CreatedAt = DateTime.UtcNow,
+                          UpdatedAt = DateTime.UtcNow
+                        };
+                    }
+
+                    if (ar.Type == AttachmentType.Contact)
+                    {
+                        attachment.ContactAttachment = new()
+                        {
+                          ThirdPartyContactId = ar.AttachmentObjectId,
+                          CreatedAt = DateTime.UtcNow,
+                          UpdatedAt = DateTime.UtcNow
+                        };
+                    }
+
+                    return attachment;
                 });
 
                 message.Attachments = [.. attachments];
@@ -110,8 +136,10 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
                 .Take(limit + 1)
                 .Include(m => m.Attachments)
                     .ThenInclude(a => a.TaskAttachment)
+                        .ThenInclude(i => i!.Task)
                 .Include(m => m.Attachments)
                     .ThenInclude(a => a.ContactAttachment)
+                        .ThenInclude(i => i!.ThirdPartyContact)
                 .ToListAsync();
 
             var hasMore = messages.Count > limit;

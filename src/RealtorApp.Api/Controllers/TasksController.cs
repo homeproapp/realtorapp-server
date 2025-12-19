@@ -92,6 +92,35 @@ namespace RealtorApp.Api.Controllers
             return Ok(tasks);
         }
 
+        [HttpGet("v1/{listingId}/{taskId}")]
+        [Authorize(Policy = PolicyConstants.ClientOrAgent)]
+        public async Task<ActionResult<TaskListItemResponse>> GetTask([FromRoute] long listingId, [FromRoute] long taskId)
+        {
+            var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
+
+            if (!isAssociatedWithListing)
+            {
+                return BadRequest(new { ErrorMessage = "Not allowed" });
+            }
+
+            var task = await _taskService.GetTaskByIdAsync(taskId, listingId);
+
+            if (task == null)
+            {
+                return NotFound(new { ErrorMessage = "Task not found" });
+            }
+
+            var taskReminders = await _reminderService.GetUsersTaskReminders(RequiredCurrentUserId, [taskId]);
+            task.TaskReminders.AddRange(taskReminders.Select(tr => new TaskReminderSlim()
+            {
+                ReminderId = tr.ReminderId,
+                RemindAt = tr.RemindAt,
+                ReminderText = tr.ReminderText
+            }));
+
+            return Ok(task);
+        }
+
         [HttpPost("v1/listings/{listingId}")]
         [Authorize(Policy = PolicyConstants.AgentOnly)]
         public async Task<ActionResult<AddOrUpdateTaskCommandResponse>> UpsertTask([FromForm] string commandJson, [FromRoute] long listingId, [FromForm] IFormFile[] newImages)

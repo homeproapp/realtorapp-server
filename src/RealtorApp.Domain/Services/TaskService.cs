@@ -125,6 +125,41 @@ public class TaskService(RealtorAppDbContext dbContext, ILogger<TaskService> log
         return tasks;
     }
 
+    public async Task<TaskListItemResponse?> GetTaskByIdAsync(long taskId, long listingId)
+    {
+        var task = await _dbContext.Tasks
+            .Where(t => t.TaskId == taskId && t.ListingId == listingId)
+            .AsNoTracking()
+            .Select(t => new TaskListItemResponse
+            {
+                TaskId = t.TaskId,
+                Title = t.Title,
+                Room = t.Room,
+                Priority = t.Priority,
+                Description = t.Description,
+                Status = t.Status,
+                FollowUpDate = t.FollowUpDate,
+                EstimatedCost = t.EstimatedCost,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                TaskFiles = t.FilesTasks.Select(tf => new TaskFilesResponse
+                {
+                    FileId = tf.FileId,
+                    FileTaskId = tf.FileTaskId,
+                    FileTypeName = tf.File.FileType.Name,
+                }).ToArray(),
+                Links = t.Links.Select(l => new LinkResponse
+                {
+                    LinkId = l.LinkId,
+                    Url = l.Url,
+                    Name = l.Name,
+                }).ToArray()
+            })
+            .FirstOrDefaultAsync();
+
+        return task;
+    }
+
     public async Task<SlimListingTasksQueryResponse> GetSlimListingTasksAsync(long listingId)
     {
         var tasks = await _dbContext.Tasks

@@ -10,6 +10,7 @@ public interface ITaskService
 {
     Task<ListingTasksListDetailsQueryResponse> GetClientGroupedTasksListAsync(ListingsTaskListQuery query, long agentId);
     Task<Dictionary<long, TaskListItemResponse>> GetListingTasksAsync(ListingTasksQuery query, long listingId);
+    Task<TaskListItemResponse?> GetTaskByIdAsync(long taskId, long listingId);
     Task<AddOrUpdateTaskCommandResponse> AddOrUpdateTaskAsync(AddOrUpdateTaskCommand command, long listingId, FileUploadRequest[] images);
     Task<bool> MarkTaskAndChildrenAsDeleted(long taskId, long listingId);
     Task<SlimListingTasksQueryResponse> GetSlimListingTasksAsync(long listingId);

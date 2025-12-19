@@ -81,7 +81,48 @@ public static class AttachmentExtensions
             AttachmentId = attachment.AttachmentId,
             AttachmentType = attachmentValues.Type,
             MessageId = attachment.MessageId,
-            ReferenceId = attachmentValues.ReferenceId
+            ReferenceId = attachmentValues.ReferenceId,
+            Text = GetAttachmentText(attachment, attachmentValues.Type)
         };
+    }
+
+    private static Dictionary<AttachmentTextType, string> GetAttachmentText(Attachment attachment, AttachmentType type)
+    {
+        return new()
+        {
+            { AttachmentTextType.Header, type.ToString() },
+            { AttachmentTextType.Content, GetAttachmentContent(attachment) },
+            { AttachmentTextType.Footer, GetAttachmentFooter(attachment) }
+        };
+    }
+
+    private static string GetAttachmentContent(Attachment attachment)
+    {
+        if (attachment.ContactAttachment != null)
+        {
+            return attachment.ContactAttachment?.ThirdPartyContact.Name ?? string.Empty;
+        }
+
+        if (attachment.TaskAttachment != null)
+        {
+            return attachment.TaskAttachment?.Task.Title ?? string.Empty;
+        }
+
+        return string.Empty;
+    }
+
+    private static string GetAttachmentFooter(Attachment attachment)
+    {
+        if (attachment.ContactAttachment != null)
+        {
+            return attachment.ContactAttachment.ThirdPartyContact.Trade ?? string.Empty;
+        }
+
+        if (attachment.TaskAttachment != null)
+        {
+            return ((Contracts.Enums.TaskStatus)attachment.TaskAttachment.Task.Status).ToString();
+        }
+
+        return string.Empty;
     }
 }
