@@ -101,12 +101,12 @@ public static class AttachmentExtensions
     {
         if (attachment.ContactAttachment != null)
         {
-            return attachment.ContactAttachment?.ThirdPartyContact.Name ?? string.Empty;
+            return attachment.ContactAttachment.ThirdPartyContact?.Name ?? string.Empty;
         }
 
         if (attachment.TaskAttachment != null)
         {
-            return attachment.TaskAttachment?.Task.Title ?? string.Empty;
+            return attachment.TaskAttachment.Task?.Title ?? string.Empty;
         }
 
         return string.Empty;
@@ -116,7 +116,7 @@ public static class AttachmentExtensions
     {
         if (attachment.ContactAttachment != null)
         {
-            return attachment.ContactAttachment?.ThirdPartyContact.Trade ?? string.Empty;
+            return attachment.ContactAttachment.ThirdPartyContact?.Trade ?? string.Empty;
         }
 
         if (attachment.TaskAttachment != null)
