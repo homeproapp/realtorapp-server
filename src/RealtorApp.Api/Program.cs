@@ -70,7 +70,8 @@ builder.Services.AddCors(options =>
                 "http://localhost:8100",
                 "capacitor://localhost",
                 "ionic://localhost",
-                "http://localhost"
+                "http://localhost",
+                "https://app.homep.ro"
             )
             .AllowCredentials()
             .AllowAnyMethod()
