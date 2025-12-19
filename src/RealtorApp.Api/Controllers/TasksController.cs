@@ -22,9 +22,9 @@ namespace RealtorApp.Api.Controllers
         private readonly ILogger<TasksController> _logger = logger;
         private readonly IReminderService _reminderService = reminderService;
 
-        [HttpGet("v1/clients")]
+        [HttpGet("v1/listings")]
         [Authorize(Policy = PolicyConstants.AgentOnly)]
-        public async Task<ActionResult<ClientGroupedTasksListQueryResponse>> GetClients([FromQuery] ClientGroupedTasksListQuery query)
+        public async Task<ActionResult<ListingTasksListDetailsQueryResponse>> GetListings([FromQuery] ListingsTaskListQuery query)
         {
             var clients = await _taskService.GetClientGroupedTasksListAsync(query, RequiredCurrentUserId);
 

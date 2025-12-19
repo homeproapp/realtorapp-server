@@ -94,7 +94,7 @@ public class TaskServiceTests : IDisposable
     {
         var agentId = await SetupTestData_MultipleClientsOneListing();
 
-        var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
+        var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
         Assert.Single(result.ClientGroupedTasksDetails);
@@ -110,7 +110,7 @@ public class TaskServiceTests : IDisposable
     {
         var agentId = await SetupTestData_SameClientsDifferentListings();
 
-        var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
+        var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
         Assert.Single(result.ClientGroupedTasksDetails);
@@ -127,7 +127,7 @@ public class TaskServiceTests : IDisposable
     {
         var agentId = await SetupTestData_DifferentClientGroups();
 
-        var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
+        var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
         Assert.Equal(2, result.ClientGroupedTasksDetails.Count);
@@ -138,7 +138,7 @@ public class TaskServiceTests : IDisposable
     {
         var agentId = await SetupTestData_WithVariousTaskStatuses();
 
-        var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
+        var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
         Assert.Single(result.ClientGroupedTasksDetails);
@@ -154,7 +154,7 @@ public class TaskServiceTests : IDisposable
     {
         var agentId = await SetupTestData_ListingWithNoTasks();
 
-        var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
+        var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
         Assert.Single(result.ClientGroupedTasksDetails);
@@ -169,7 +169,7 @@ public class TaskServiceTests : IDisposable
     {
         var agentId = await SetupTestData_MultipleListingsWithTasks();
 
-        var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
+        var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
         Assert.Single(result.ClientGroupedTasksDetails);
@@ -183,7 +183,7 @@ public class TaskServiceTests : IDisposable
     {
         var agentId = await SetupTestData_MultipleListingsSameClients();
 
-        var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
+        var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
         Assert.Single(result.ClientGroupedTasksDetails);
@@ -198,7 +198,7 @@ public class TaskServiceTests : IDisposable
         var agentUser = _testData.CreateUser("agent@test.com", "Agent", "One");
         var agent = _testData.CreateAgent(agentUser);
 
-        var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agent.UserId);
+        var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agent.UserId);
 
         Assert.NotNull(result);
         Assert.Empty(result.ClientGroupedTasksDetails);
@@ -209,7 +209,7 @@ public class TaskServiceTests : IDisposable
     {
         var agentId = await SetupTestData_ClientsInDifferentOrder();
 
-        var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
+        var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
         Assert.Single(result.ClientGroupedTasksDetails);
@@ -220,7 +220,7 @@ public class TaskServiceTests : IDisposable
     {
         var agentId = await SetupTestData_MixedTasksAcrossListings();
 
-        var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agentId);
+        var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
         Assert.Single(result.ClientGroupedTasksDetails);
@@ -1152,7 +1152,7 @@ public class TaskServiceTests : IDisposable
 
         await _taskService.MarkTaskAndChildrenAsDeleted(task1.TaskId, listing.ListingId);
 
-        var result = await _taskService.GetClientGroupedTasksListAsync(new ClientGroupedTasksListQuery(), agent.UserId);
+        var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agent.UserId);
 
         Assert.NotNull(result);
         Assert.Single(result.ClientGroupedTasksDetails);

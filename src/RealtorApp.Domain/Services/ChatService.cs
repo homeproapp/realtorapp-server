@@ -10,10 +10,9 @@ using Microsoft.Extensions.Logging;
 
 namespace RealtorApp.Domain.Services;
 
-public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthService, ILogger<ChatService> logger) : IChatService
+public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logger) : IChatService
 {
     private readonly RealtorAppDbContext _context = context;
-    private readonly IUserAuthService _userAuthService = userAuthService;
     private readonly ILogger<ChatService> _logger = logger;
 
     public async Task<SendMessageCommandResponse> SendMessageAsync(SendMessageCommand command)
@@ -21,11 +20,6 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
-            if (!await _userAuthService.IsConversationParticipant(command.SenderId, command.ConversationId))
-            {
-                return new SendMessageCommandResponse { ErrorMessage = "Access denied" };
-            }
-
             var message = command.ToDbModel();
 
             if (command.AttachmentRequests.Length > 0)
@@ -58,51 +52,50 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
         }
     }
 
-    //TODO: marking message as read is using new table
-    // public async Task<MarkMessagesAsReadCommandResponse> MarkMessagesAsReadAsync(MarkMessagesAsReadCommand command, long userId)
-    // {
-    //     try
-    //     {
-    //         var messages = await _context.Messages
-    //             .Where(m => command.MessageIds.Contains(m.MessageId))
-    //             .ToListAsync();
+    public async Task<MarkMessagesAsReadCommandResponse> MarkMessagesAsReadAsync(MarkMessagesAsReadCommand command, long userId)
+    {
+        try
+        {
+            var messages = await _context.Messages
+                .Where(m => command.MessageIds.Contains(m.MessageId))
+                .ToListAsync();
 
-    //         var validMessageIds = new List<long>();
+            var messageReads = new List<MessageRead>();
 
-    //         foreach (var message in messages)
-    //         {
-    //             if (await _userAuthService.IsConversationParticipant(userId,message.ConversationId))
-    //             {
-    //                 message.UpdatedAt = DateTime.UtcNow;
-    //                 validMessageIds.Add(message.MessageId);
-    //             }
-    //         }
+            foreach (var message in messages)
+            {
+                var messageRead = new MessageRead()
+                {
+                    MessageId = message.MessageId,
+                    ReaderId = userId,
+                };
 
-    //         await _context.SaveChangesAsync();
+                messageReads.Add(messageRead);
+            }
 
-    //         return new MarkMessagesAsReadCommandResponse
-    //         {
-    //             MarkedMessageIds = validMessageIds.ToArray(),
-    //             TotalMarkedCount = validMessageIds.Count
-    //         };
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         return new MarkMessagesAsReadCommandResponse { ErrorMessage = "Failed to mark messages as read" };
-    //     }
-    // }
+            await _context.MessageReads.AddRangeAsync(messageReads);
+
+            await _context.SaveChangesAsync();
+
+            return new MarkMessagesAsReadCommandResponse
+            {
+                MarkedMessageIds = [.. command.MessageIds],
+                TotalMarkedCount = messages.Count
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error marking messages as read - {Message}", ex.Message);
+            return new MarkMessagesAsReadCommandResponse { ErrorMessage = "Failed to mark messages as read" };
+        }
+    }
 
     public async Task<MessageHistoryQueryResponse> GetMessageHistoryAsync(MessageHistoryQuery query, long userId, long conversationId)
     {
         try
         {
-            // Validate conversation participant
-            if (!await _userAuthService.IsConversationParticipant(userId, conversationId))
-            {
-                return new MessageHistoryQueryResponse { ErrorMessage = "Access denied" };
-            }
-
             var messagesQuery = _context.Messages
+                .Include(i => i.Sender)
                 .Where(m => m.ConversationId == conversationId)
                 .AsNoTracking();
 
@@ -148,39 +141,37 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
     {
         try
         {
-            var clientListingsQuery = await _context.ClientsListings.Where(i => i.ClientId == clientId)
+            var clientListings = await _context.ClientsListings.Where(i => i.ClientId == clientId)
+                .Skip(query.Offset)
+                .Take(query.Limit)
                 .Select(i => new
                 {
                     AgentUsers = i.Listing.AgentsListings.Select(al => al.Agent.User),
                     i.Listing.Conversation,
+                    Address = i.Listing.Property.AddressLine1 + " " + i.Listing.Property.AddressLine2,
                     LastMessage = i.Listing.Conversation!.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault(),
                     LatestMessageIsReadByUser = i.Listing.Conversation.Messages.OrderByDescending(i => i.CreatedAt).Take(1).Any(i => i.MessageReads.Any(x => x.ReaderId == clientId))
 
                 }).ToListAsync();
 
-            var clientListingsGroupedByAgents = clientListingsQuery.GroupBy(i => string.Join('|', i.AgentUsers
-                .OrderByDescending(i => i.UserId).Select(i => i.UserId)));
-            var groupedAgentConvosCount = clientListingsGroupedByAgents.Count();
+            var totalCount = await _context.ClientsListings.Where(i => i.ClientId == clientId).CountAsync();
+
             var conversations = new List<ConversationResponse>();
 
-            foreach (var group in clientListingsGroupedByAgents.Skip(query.Offset).Take(query.Limit))
+            foreach (var clientListing in clientListings)
             {
-                var latestConversationGroup = group.OrderByDescending(i => i.Conversation?.UpdatedAt ?? DateTime.MinValue).FirstOrDefault();
-                var unreadConvoCount = group.Where(i => !i.LatestMessageIsReadByUser).Count();
-
-                if (latestConversationGroup == null || latestConversationGroup.Conversation == null) continue;
-
                 var conversation = new ConversationResponse()
                 {
-                    OtherUsers = [.. latestConversationGroup.AgentUsers.Select(i => new UserDetailsConversationResponse()
+                    OtherUsers = [.. clientListing.AgentUsers.Select(i => new UserDetailsConversationResponse()
                         {
                             Name = i.FirstName + " " + i.LastName,
                             UserId = i.UserId
                         })],
-                    ConversationUpdatedAt = latestConversationGroup.Conversation.UpdatedAt,
-                    ClickThroughConversationId = latestConversationGroup.Conversation.ListingId,
-                    LastMessage = latestConversationGroup.LastMessage?.ToMessageResponse(),
-                    UnreadConversationCount = (byte)unreadConvoCount
+                    Address = clientListing.Address,
+                    ConversationUpdatedAt = clientListing.Conversation!.UpdatedAt,
+                    ConversationId = clientListing.Conversation.ListingId,
+                    LastMessage = clientListing.LastMessage?.ToMessageResponse(),
+                    HasUnreadMessage = clientListing.LastMessage != null && !clientListing.LatestMessageIsReadByUser
                 };
 
                 conversations.Add(conversation);
@@ -188,9 +179,9 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
 
             return new ConversationListQueryResponse()
             {
-                HasMore = query.Offset + conversations.Count < groupedAgentConvosCount,
+                HasMore = query.Offset + conversations.Count < totalCount,
                 Conversations = [.. conversations.OrderByDescending(i => i.ConversationUpdatedAt) ],
-                TotalCount = groupedAgentConvosCount
+                TotalCount = totalCount
             };
         }
         catch (Exception ex)
@@ -205,51 +196,50 @@ public class ChatService(RealtorAppDbContext context, IUserAuthService userAuthS
         try
         {
             var convosList = await _context.Conversations
+                .Include(i => i.Messages)
+                    .ThenInclude(i => i.Sender)
                 .Where(i => i.Listing.AgentsListings.Any(i => i.AgentId == agentId && i.DeletedAt == null))
+                .Skip(query.Offset)
+                .Take(query.Limit)
                 .Select(i => new
                 {
                     ClientIds = i.Listing.ClientsListings.Select(i => i.ClientId).OrderByDescending(i => i).ToList(),
                     ClientData = i.Listing.ClientsListings.Select(x => new { x.ClientId, ClientName = x.Client.User.FirstName + " " + x.Client.User.LastName }).ToList(),
                     Conversation = i,
+                    Address = i.Listing.Property.AddressLine1 + " " + i.Listing.Property.AddressLine2,
                     LastMessage = i.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault(),
                     LatestMessageIsReadByUser = i.Messages.OrderByDescending(i => i.CreatedAt).Take(1).Any(i => i.MessageReads.Any(x => x.ReaderId == agentId))
                 })
                 .ToListAsync();
 
-            var convosGrouped = convosList.GroupBy(i => string.Join(",", i.ClientIds.OrderByDescending(i => i)), x => x);
+            var totalCount = await _context.Conversations
+                .Where(i => i.Listing.AgentsListings.Any(i => i.AgentId == agentId && i.DeletedAt == null)).CountAsync();
 
-            var count = convosGrouped.Count();
+            var mappedConvos = new List<ConversationResponse>();
 
-            var convosGroupedByClients = new List<ConversationResponse>();
-
-            foreach (var group in convosGrouped.Skip(query.Offset).Take(query.Limit))
+            foreach (var convo in convosList)
             {
-                var latestConversation = group.OrderByDescending(i => i.Conversation.UpdatedAt).FirstOrDefault();
-                var unreadConvoCount = group.Where(i => !i.LatestMessageIsReadByUser).Count();
-                // group.Where(i => i.Conversation.Messages?.Any(i => !i.IsRead ?? false) ?? false).Count();
-
-                if (latestConversation == null || latestConversation.Conversation == null) continue;
-
                 var conversation = new ConversationResponse()
                 {
-                    ConversationUpdatedAt = latestConversation.Conversation.UpdatedAt,
-                    ClickThroughConversationId = latestConversation.Conversation.ListingId,
-                    OtherUsers = group.FirstOrDefault()?.ClientData?
+                    ConversationUpdatedAt = convo.Conversation.UpdatedAt,
+                    ConversationId = convo.Conversation.ListingId,
+                    Address = convo.Address,
+                    OtherUsers = convo.ClientData?
                         .Select(i => new UserDetailsConversationResponse() { UserId = i.ClientId, Name = i.ClientName })
                         .ToArray() ?? [],
-                    LastMessage = latestConversation.LastMessage?.ToMessageResponse(),
-                    UnreadConversationCount = (byte)unreadConvoCount
+                    LastMessage = convo.LastMessage?.ToMessageResponse(),
+                    HasUnreadMessage = convo.LastMessage != null && !convo.LatestMessageIsReadByUser
                 };
 
-                convosGroupedByClients.Add(conversation);
+                mappedConvos.Add(conversation);
             }
 
-            var hasMore = query.Offset + convosGroupedByClients.Count < count;
+            var hasMore = query.Offset + mappedConvos.Count < totalCount;
 
             return new ConversationListQueryResponse
             {
-                Conversations = [.. convosGroupedByClients.OrderByDescending(i => i.ConversationUpdatedAt)],
-                TotalCount = count,
+                Conversations = [.. mappedConvos.OrderByDescending(i => i.ConversationUpdatedAt)],
+                TotalCount = totalCount,
                 HasMore = hasMore
             };
         }

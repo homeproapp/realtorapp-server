@@ -1,19 +1,18 @@
 using RealtorApp.Contracts.Common;
-using RealtorApp.Contracts.Queries;
 using TaskStatus = RealtorApp.Contracts.Enums.TaskStatus;
 namespace RealtorApp.Contracts.Queries.Tasks.Responses;
 
-public class ClientGroupedTasksListQueryResponse : ResponseWithError
+public class ListingTasksListDetailsQueryResponse : ResponseWithError
 {
-    public List<ClientGroupedTasksDetailItem> ClientGroupedTasksDetails { get; set; } = [];
+    public List<ListingTaskDetailItem> ListingTaskDetails { get; set; } = [];
     public int TotalCount { get; set; }
     public bool HasMore { get; set; }
 }
 
-public class ClientGroupedTasksDetailItem
+public class ListingTaskDetailItem
 {
     public ClientListItemResponse[] Clients { get; set; } = [];
-    public long ClickThroughListingId { get; set; }
+    public long ListingId { get; set; }
+    public required string Address { get; set; }
     public Dictionary<TaskStatus, int> TaskStatusCounts { get; set; } = [];
-    public byte TotalListings { get; set; }
 }

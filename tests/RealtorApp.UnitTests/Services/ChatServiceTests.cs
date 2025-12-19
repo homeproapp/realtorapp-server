@@ -166,7 +166,7 @@ public class ChatServiceTests : IDisposable
         Assert.Single(result.Conversations);
 
         var conversation = result.Conversations[0];
-        Assert.Equal(2, conversation.UnreadConversationCount); // 2 properties with unread messages
+        Assert.Equal(2, conversation.HasUnreadMessage); // 2 properties with unread messages
     }
 
     [Fact]
@@ -413,7 +413,7 @@ public class ChatServiceTests : IDisposable
         Assert.Single(result.Conversations);
 
         var conversation = result.Conversations[0];
-        Assert.Equal(2, conversation.UnreadConversationCount); // 2 properties with unread messages
+        Assert.Equal(2, conversation.HasUnreadMessage); // 2 properties with unread messages
     }
 
     [Fact]

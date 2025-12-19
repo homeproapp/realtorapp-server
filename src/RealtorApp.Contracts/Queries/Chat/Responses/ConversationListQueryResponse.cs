@@ -11,11 +11,12 @@ public class ConversationListQueryResponse : ResponseWithError
 
 public class ConversationResponse
 {
-    public long ClickThroughConversationId { get; set; }
+    public long ConversationId { get; set; }
     public required DateTime ConversationUpdatedAt { get; set; }
     public UserDetailsConversationResponse[] OtherUsers { get; set; } = [];
     public MessageResponse? LastMessage { get; set; }
-    public byte UnreadConversationCount { get; set; }
+    public required string Address { get; set; }
+    public bool HasUnreadMessage { get; set; }
 }
 
 public class UserDetailsConversationResponse

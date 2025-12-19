@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -16,9 +17,10 @@ namespace RealtorApp.Api.Controllers
     [ApiController]
     [Authorize]
     [EnableRateLimiting(RateLimitConstants.Authenticated)]
-    public class ChatController(IChatService chatService) : RealtorApiBaseController
+    public class ChatController(IChatService chatService, IUserAuthService userAuthService) : RealtorApiBaseController
     {
         private readonly IChatService _chatService = chatService;
+        private readonly IUserAuthService _userAuthService = userAuthService;
 
         [HttpGet("v1/conversations")]
         public async Task<ActionResult<ConversationListQueryResponse>> ConversationsQuery([FromQuery] ConversationListQuery query)
@@ -56,6 +58,13 @@ namespace RealtorApp.Api.Controllers
         [HttpGet("v1/conversations/{conversationId}/messages")]
         public async Task<ActionResult<MessageHistoryQueryResponse>> MessagesQuery([FromQuery] MessageHistoryQuery query, [FromRoute] long conversationId)
         {
+            var isAllowed = await _userAuthService.IsConversationParticipant(RequiredCurrentUserId, conversationId);
+
+            if (!isAllowed)
+            {
+                return BadRequest("Not allowed");
+            }
+
             var messages = await _chatService.GetMessageHistoryAsync(query, RequiredCurrentUserId, conversationId);
 
             if (!string.IsNullOrEmpty(messages.ErrorMessage))
@@ -70,8 +79,15 @@ namespace RealtorApp.Api.Controllers
         [HttpPost("v1/conversations/{conversationId}/messages/read")]
         public async Task<ActionResult<MarkMessagesAsReadCommandResponse>> MarkMessagesAsReadCommand([FromBody] MarkMessagesAsReadCommand command, [FromRoute] long conversationId)
         {
-            await Task.CompletedTask;
-            return Ok();
+            var isAllowed = await _userAuthService.IsConversationParticipant(RequiredCurrentUserId, conversationId);
+
+            if (!isAllowed)
+            {
+                return BadRequest("Not allowed");
+            }
+
+            var response = await _chatService.MarkMessagesAsReadAsync(command, RequiredCurrentUserId);
+            return Ok(response);
         }
     }
 }

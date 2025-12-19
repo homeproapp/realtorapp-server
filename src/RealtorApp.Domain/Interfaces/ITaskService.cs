@@ -8,7 +8,7 @@ namespace RealtorApp.Domain.Interfaces;
 
 public interface ITaskService
 {
-    Task<ClientGroupedTasksListQueryResponse> GetClientGroupedTasksListAsync(ClientGroupedTasksListQuery query, long agentId);
+    Task<ListingTasksListDetailsQueryResponse> GetClientGroupedTasksListAsync(ListingsTaskListQuery query, long agentId);
     Task<Dictionary<long, TaskListItemResponse>> GetListingTasksAsync(ListingTasksQuery query, long listingId);
     Task<AddOrUpdateTaskCommandResponse> AddOrUpdateTaskAsync(AddOrUpdateTaskCommand command, long listingId, FileUploadRequest[] images);
     Task<bool> MarkTaskAndChildrenAsDeleted(long taskId, long listingId);

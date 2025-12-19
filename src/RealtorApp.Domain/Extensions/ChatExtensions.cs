@@ -15,6 +15,7 @@ public static class ChatExtensions
             ConversationId = command.ConversationId,
             SenderId = command.SenderId,
             MessageText = command.MessageText,
+            MessageReads = [new() { ReaderId = command.SenderId }]
         };
     }
 
@@ -41,6 +42,7 @@ public static class ChatExtensions
             MessageId = message.MessageId,
             ConversationId = message.ConversationId,
             SenderId = message.SenderId,
+            SenderName = message.Sender.FirstName + " " + message.Sender.LastName,
             MessageText = message.MessageText,
             CreatedAt = message.CreatedAt,
             UpdatedAt = message.UpdatedAt,

@@ -10,50 +10,48 @@ using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Infra.Data;
 using DbTask = RealtorApp.Infra.Data.Task;
-using Task = System.Threading.Tasks.Task;
 using TaskStatus = RealtorApp.Contracts.Enums.TaskStatus;
 
 namespace RealtorApp.Domain.Services;
 
-public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, ILogger<TaskService> logger, IImagesService imagesService) : ITaskService
+public class TaskService(RealtorAppDbContext dbContext, ILogger<TaskService> logger, IImagesService imagesService) : ITaskService
 {
     private readonly RealtorAppDbContext _dbContext = dbContext;
-    private readonly IS3Service _s3Service = s3Service;
     private readonly ILogger<TaskService> _logger = logger;
     private readonly IImagesService _imagesService = imagesService;
 
-    public async Task<ClientGroupedTasksListQueryResponse> GetClientGroupedTasksListAsync(ClientGroupedTasksListQuery query, long agentId)
+    public async Task<ListingTasksListDetailsQueryResponse> GetClientGroupedTasksListAsync(ListingsTaskListQuery query, long agentId)
     {
-        var clientsList = await _dbContext.AgentsListings
+        var listingsTaskDetails = await _dbContext.AgentsListings
             .Where(i => i.AgentId == agentId)
+            .Skip(query.Offset)
+            .Take(query.Limit)
             .AsNoTracking()
             .Select(i => new
             {
                 ClientIds = i.Listing.ClientsListings.Select(cl => cl.ClientId).ToList(),
                 Clients = i.Listing.ClientsListings.Select(cl => cl.Client.User).ToList(),
                 i.ListingId,
+                Address = i.Listing.Property.AddressLine1 + " " + i.Listing.Property.AddressLine2,
                 TaskStatuses = i.Listing.Tasks.Select(t => t.Status).ToList(),
-                MaxTaskUpdatedAt = i.Listing.Tasks.Any() ? i.Listing.Tasks.Max(t => t.UpdatedAt) : DateTime.MinValue
+                MaxTaskUpdatedAt = i.Listing.Tasks.Any() ? i.Listing.Tasks.Max(t => t.UpdatedAt) : DateTime.MinValue,
             })
             .ToListAsync();
 
-        var allGroups = clientsList.GroupBy(i => string.Join("|", i.ClientIds.OrderByDescending(x => x))).ToList();
-        var totalCount = allGroups.Count;
+        var totalCount = await _dbContext.AgentsListings.Where(i => i.AgentId == agentId).CountAsync();
 
-        var clientsGroupedTasks = allGroups.Skip(query.Offset).Take(query.Limit);
-        var detailItems = new List<ClientGroupedTasksDetailItem>();
+        var detailItems = new List<ListingTaskDetailItem>();
 
-        foreach (var group in clientsGroupedTasks)
+        foreach (var listingTaskDetail in listingsTaskDetails)
         {
-            var latestListing = group.OrderByDescending(g => g.MaxTaskUpdatedAt).FirstOrDefault() ?? group.First();
 
-            var hasTasks = group.Any(i => i.TaskStatuses.Count != 0);
+            var hasTasks = listingTaskDetail.TaskStatuses.Count != 0;
 
             Dictionary<TaskStatus, int> statusCounts = [];
 
             if (hasTasks)
             {
-                foreach (var status in group.SelectMany(i => i.TaskStatuses))
+                foreach (var status in listingTaskDetail.TaskStatuses)
                 {
                     var statusEnum = (TaskStatus)status;
                     if (statusCounts.TryGetValue(statusEnum, out int value))
@@ -67,26 +65,26 @@ public class TaskService(RealtorAppDbContext dbContext, IS3Service s3Service, IL
                 }
             }
 
-            var clientsGroupedTask = new ClientGroupedTasksDetailItem
+            var listingDetails = new ListingTaskDetailItem
             {
-                ClickThroughListingId = latestListing.ListingId,
-                Clients = [.. latestListing.Clients.Select(c => new ClientListItemResponse
+                ListingId = listingTaskDetail.ListingId,
+                Address = listingTaskDetail.Address,
+                Clients = [.. listingTaskDetail.Clients.Select(c => new ClientListItemResponse
                 {
                     ClientId = c.UserId,
                     FirstName = c.FirstName ?? string.Empty,
                     LastName = c.LastName ?? string.Empty,
                     ProfileImageId = c.ProfileImageId
                 })],
-                TotalListings = (byte)group.Select(g => g.ListingId).Distinct().Count(),
                 TaskStatusCounts = statusCounts
             };
 
-            detailItems.Add(clientsGroupedTask);
+            detailItems.Add(listingDetails);
         }
 
-        return new ClientGroupedTasksListQueryResponse
+        return new ListingTasksListDetailsQueryResponse
         {
-            ClientGroupedTasksDetails = detailItems,
+            ListingTaskDetails = detailItems,
             TotalCount = totalCount,
             HasMore = query.Offset + query.Limit < totalCount
         };
