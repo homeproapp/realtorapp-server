@@ -96,6 +96,7 @@ public static class AttachmentExtensions
         };
     }
 
+    // client will saturate this data on init message send
     private static string GetAttachmentContent(Attachment attachment)
     {
         if (attachment.ContactAttachment != null)
@@ -115,12 +116,12 @@ public static class AttachmentExtensions
     {
         if (attachment.ContactAttachment != null)
         {
-            return attachment.ContactAttachment.ThirdPartyContact.Trade ?? string.Empty;
+            return attachment.ContactAttachment?.ThirdPartyContact.Trade ?? string.Empty;
         }
 
         if (attachment.TaskAttachment != null)
         {
-            return ((Contracts.Enums.TaskStatus)attachment.TaskAttachment.Task.Status).ToString();
+            return attachment.TaskAttachment.Task == null ? string.Empty : ((Contracts.Enums.TaskStatus)attachment.TaskAttachment.Task.Status).ToString();
         }
 
         return string.Empty;
