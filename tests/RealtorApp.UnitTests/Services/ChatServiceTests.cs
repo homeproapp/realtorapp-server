@@ -47,7 +47,7 @@ public class ChatServiceTests : IDisposable
         _mockUserAuthService = new Mock<IUserAuthService>();
         _mockSqlQueryService = new Mock<ISqlQueryService>();
 
-        _chatService = new ChatService(_dbContext, _mockUserAuthService.Object, _mockLogger.Object);
+        _chatService = new ChatService(_dbContext, _mockLogger.Object);
     }
 
     private void CleanupAllTestData()
@@ -166,7 +166,7 @@ public class ChatServiceTests : IDisposable
         Assert.Single(result.Conversations);
 
         var conversation = result.Conversations[0];
-        Assert.Equal(2, conversation.HasUnreadMessage); // 2 properties with unread messages
+        Assert.True(conversation.HasUnreadMessage);
     }
 
     [Fact]
@@ -413,7 +413,7 @@ public class ChatServiceTests : IDisposable
         Assert.Single(result.Conversations);
 
         var conversation = result.Conversations[0];
-        Assert.Equal(2, conversation.HasUnreadMessage); // 2 properties with unread messages
+        Assert.True(conversation.HasUnreadMessage);
     }
 
     [Fact]
@@ -452,7 +452,7 @@ public class ChatServiceTests : IDisposable
         var conversation = result.Conversations[0];
         // Should select conversation 2 as it was updated more recently
         // Note: We can't assert exact ID since it's generated dynamically
-        Assert.True(conversation.ClickThroughConversationId > 0);
+        Assert.True(conversation.ConversationId > 0);
     }
 
     [Fact]

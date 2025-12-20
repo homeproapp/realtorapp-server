@@ -17,6 +17,7 @@ public abstract class TestBase : IDisposable
     protected readonly RealtorAppDbContext DbContext;
     protected readonly Mock<IEmailService> MockEmailService;
     protected readonly Mock<IUserService> MockUserService;
+    protected readonly Mock<IUserAuthService> MockUserAuthService;
     protected readonly Mock<IAuthProviderService> MockAuthProviderService;
     protected readonly Mock<ICryptoService> MockCryptoService;
     protected readonly Mock<IJwtService> MockJwtService;
@@ -48,6 +49,7 @@ public abstract class TestBase : IDisposable
         // Setup mocks
         MockEmailService = new Mock<IEmailService>();
         MockUserService = new Mock<IUserService>();
+        MockUserAuthService = new Mock<IUserAuthService>();
         MockAppsettings = new Mock<AppSettings>();
         MockAuthProviderService = new Mock<IAuthProviderService>();
         MockCryptoService = new Mock<ICryptoService>();
@@ -64,6 +66,7 @@ public abstract class TestBase : IDisposable
             DbContext,
             MockEmailService.Object,
             MockUserService.Object,
+            MockUserAuthService.Object,
             MockAuthProviderService.Object,
             MockCryptoService.Object,
             MockJwtService.Object,

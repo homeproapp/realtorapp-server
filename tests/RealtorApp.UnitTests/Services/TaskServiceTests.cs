@@ -55,7 +55,7 @@ public class TaskServiceTests : IDisposable
                 Successful = true
             });
 
-        _taskService = new TaskService(_dbContext, _mockS3Service.Object, _mockLogger.Object, _mockImagesService.Object);
+        _taskService = new TaskService(_dbContext, _mockLogger.Object, _mockImagesService.Object);
     }
 
     private void CleanupAllTestData()
@@ -97,9 +97,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result.ClientGroupedTasksDetails);
+        Assert.Single(result.ListingTaskDetails);
 
-        var group = result.ClientGroupedTasksDetails[0];
+        var group = result.ListingTaskDetails[0];
         Assert.Equal(2, group.Clients.Length);
         Assert.Contains(group.Clients, c => c.FirstName == "Client" && c.LastName == "One");
         Assert.Contains(group.Clients, c => c.FirstName == "Client" && c.LastName == "Two");
@@ -113,10 +113,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result.ClientGroupedTasksDetails);
+        Assert.Single(result.ListingTaskDetails);
 
-        var group = result.ClientGroupedTasksDetails[0];
-        Assert.Equal(2, group.TotalListings);
+        var group = result.ListingTaskDetails[0];
         Assert.Equal(2, group.Clients.Length);
         Assert.Contains(group.Clients, c => c.FirstName == "Client" && c.LastName == "One");
         Assert.Contains(group.Clients, c => c.FirstName == "Client" && c.LastName == "Two");
@@ -130,7 +129,7 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Equal(2, result.ClientGroupedTasksDetails.Count);
+        Assert.Equal(2, result.ListingTaskDetails.Count);
     }
 
     [Fact]
@@ -141,9 +140,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result.ClientGroupedTasksDetails);
+        Assert.Single(result.ListingTaskDetails);
 
-        var group = result.ClientGroupedTasksDetails[0];
+        var group = result.ListingTaskDetails[0];
         Assert.Equal(2, group.TaskStatusCounts[TaskStatus.NotStarted]);
         Assert.Equal(1, group.TaskStatusCounts[TaskStatus.InProgress]);
         Assert.Equal(1, group.TaskStatusCounts[TaskStatus.Completed]);
@@ -157,11 +156,11 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result.ClientGroupedTasksDetails);
+        Assert.Single(result.ListingTaskDetails);
 
-        var group = result.ClientGroupedTasksDetails[0];
+        var group = result.ListingTaskDetails[0];
         Assert.Empty(group.TaskStatusCounts);
-        Assert.True(group.ClickThroughListingId > 0);
+        Assert.True(group.ListingId > 0);
     }
 
     [Fact]
@@ -172,10 +171,10 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result.ClientGroupedTasksDetails);
+        Assert.Single(result.ListingTaskDetails);
 
-        var group = result.ClientGroupedTasksDetails[0];
-        Assert.True(group.ClickThroughListingId > 0);
+        var group = result.ListingTaskDetails[0];
+        Assert.True(group.ListingId > 0);
     }
 
     [Fact]
@@ -186,10 +185,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result.ClientGroupedTasksDetails);
+        Assert.Single(result.ListingTaskDetails);
 
-        var group = result.ClientGroupedTasksDetails[0];
-        Assert.Equal(3, group.TotalListings);
+        var group = result.ListingTaskDetails[0];
     }
 
     [Fact]
@@ -201,7 +199,7 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agent.UserId);
 
         Assert.NotNull(result);
-        Assert.Empty(result.ClientGroupedTasksDetails);
+        Assert.Empty(result.ListingTaskDetails);
     }
 
     [Fact]
@@ -212,7 +210,7 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result.ClientGroupedTasksDetails);
+        Assert.Single(result.ListingTaskDetails);
     }
 
     [Fact]
@@ -223,12 +221,11 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agentId);
 
         Assert.NotNull(result);
-        Assert.Single(result.ClientGroupedTasksDetails);
+        Assert.Single(result.ListingTaskDetails);
 
-        var group = result.ClientGroupedTasksDetails[0];
+        var group = result.ListingTaskDetails[0];
         Assert.Equal(3, group.TaskStatusCounts[TaskStatus.NotStarted]);
         Assert.Equal(2, group.TaskStatusCounts[TaskStatus.Completed]);
-        Assert.Equal(2, group.TotalListings);
     }
 
     #region Test Data Setup
@@ -1155,9 +1152,9 @@ public class TaskServiceTests : IDisposable
         var result = await _taskService.GetClientGroupedTasksListAsync(new ListingsTaskListQuery(), agent.UserId);
 
         Assert.NotNull(result);
-        Assert.Single(result.ClientGroupedTasksDetails);
+        Assert.Single(result.ListingTaskDetails);
 
-        var group = result.ClientGroupedTasksDetails[0];
+        var group = result.ListingTaskDetails[0];
         Assert.False(group.TaskStatusCounts.ContainsKey(TaskStatus.NotStarted));
         Assert.Equal(1, group.TaskStatusCounts[TaskStatus.Completed]);
     }

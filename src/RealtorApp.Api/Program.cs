@@ -138,7 +138,7 @@ builder.Services
             {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/api/websockets/chat"))
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/api/websockets/liveupdates"))
                     context.Token = accessToken;
                 return Task.CompletedTask;
             }
@@ -190,6 +190,6 @@ app.UseAuthorization();
 app.UseMiddleware<UserValidationMiddleware>();
 
 app.MapControllers();
-app.MapHub<ChatHub>("/api/websockets/chat");
+app.MapHub<LiveUpdatesHub>("/api/websockets/liveupdates");
 
 app.Run();
