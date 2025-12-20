@@ -20,7 +20,7 @@ public sealed class LiveUpdatesHub(IUserAuthService userAuthService, IChatServic
     private static class GroupNames
     {
         public static string Conversation(long conversationId) => $"conversation-{conversationId}";
-        public static string ConversationsList(long userId) => $"conversations-list-{userId}";
+        public static string LiveUpdates(long userId) => $"live-updates-{userId}";
     }
 
     public override async Task OnConnectedAsync()
@@ -120,7 +120,7 @@ public sealed class LiveUpdatesHub(IUserAuthService userAuthService, IChatServic
             .SendAsync("onTyping", new { userId, name = user.FirstName + " " + user.LastName?.FirstOrDefault() , isTyping });
     }
 
-    public async Task JoinConversationsList()
+    public async Task JoinLiveUpdatesGroup()
     {
         var userId = await _userAuthService.GetUserIdByUuid(_uuid);
 
@@ -129,10 +129,10 @@ public sealed class LiveUpdatesHub(IUserAuthService userAuthService, IChatServic
             return;
         }
 
-        await Groups.AddToGroupAsync(Context.ConnectionId, GroupNames.ConversationsList((long)userId));
+        await Groups.AddToGroupAsync(Context.ConnectionId, GroupNames.LiveUpdates((long)userId));
     }
 
-    public async Task LeaveConversationsList()
+    public async Task LeaveLiveUpdatesGroup()
     {
         var userId = await _userAuthService.GetUserIdByUuid(_uuid);
 
@@ -141,7 +141,7 @@ public sealed class LiveUpdatesHub(IUserAuthService userAuthService, IChatServic
             return;
         }
 
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, GroupNames.ConversationsList((long)userId));
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, GroupNames.LiveUpdates((long)userId));
     }
 
     #endregion

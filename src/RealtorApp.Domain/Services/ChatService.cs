@@ -68,6 +68,14 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
                 .ExecuteUpdateAsync(i => i.SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
 
             await transaction.CommitAsync();
+
+            var senderDetails = await _context.Users.FindAsync(message.SenderId);
+
+            if (senderDetails != null)
+            {
+                message.Sender = senderDetails;
+            }
+
             return message.ToSendMessageResponse();
         }
         catch (Exception ex)
@@ -169,7 +177,10 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
     {
         try
         {
-            var clientListings = await _context.ClientsListings.Where(i => i.ClientId == clientId)
+            var clientListings = await _context.Conversations
+                .Include(i => i.Messages)
+                    .ThenInclude(i => i.Sender)
+                .Where(i => i.Listing.ClientsListings.Any(i => i.ClientId == clientId && i.DeletedAt == null))
                 .Skip(query.Offset)
                 .Take(query.Limit)
                 .Select(i => new
@@ -177,8 +188,8 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
                     AgentUsers = i.Listing.AgentsListings.Select(al => al.Agent.User),
                     i.Listing.Conversation,
                     Address = i.Listing.Property.AddressLine1 + " " + i.Listing.Property.AddressLine2,
-                    LastMessage = i.Listing.Conversation!.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault(),
-                    LatestMessageIsReadByUser = i.Listing.Conversation.Messages.OrderByDescending(i => i.CreatedAt).Take(1).Any(i => i.MessageReads.Any(x => x.ReaderId == clientId))
+                    LastMessage = i.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault(),
+                    LatestMessageIsReadByUser = i.Messages.OrderByDescending(i => i.CreatedAt).Take(1).Any(i => i.MessageReads.Any(x => x.ReaderId == clientId))
 
                 }).ToListAsync();
 
