@@ -114,6 +114,29 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
         return assignedUserIds?.Contains(userId) ?? false;
     }
 
+    public async Task<HashSet<long>> GetUsersAssignedToListing(long listingId)
+    {
+        var assignedUserIds = await _cache.GetOrCreateAsync(
+            $"{_listingIdToUserIdsCachePrefix}{listingId}",
+            async entry =>
+            {
+                entry.SetOptions(_userPropertyAssignmentEntryOptions);
+
+                var listingUserIds = await _context.Conversations
+                    .Where(i => i.ListingId == listingId)
+                    .AsNoTracking()
+                    .SelectMany(i => i.Listing.AgentsListings
+                        .Select(al => al.AgentId)
+                        .Union(i.Listing.ClientsListings
+                            .Select(cl => cl.ClientId)))
+                    .ToArrayAsync();
+
+                return new HashSet<long>(listingUserIds ?? []);
+            });
+
+        return assignedUserIds ?? [];
+    }
+
     public async Task<long[]> GetUserToListingIdsByUserId(long userId)
     {
         var usersListingIds = await _cache.GetOrCreateAsync(
