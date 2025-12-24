@@ -11,3 +11,10 @@
 
 - check cache invalidation
     especially for user associations to listings
+
+- add limits to text areas
+    - chat
+        - send as multiple messages
+    - task description
+    - reminder text
+    - find some way to set a global limit
