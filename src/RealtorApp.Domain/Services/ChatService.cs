@@ -8,6 +8,7 @@ using RealtorApp.Domain.Extensions;
 using RealtorApp.Infra.Data;
 using Microsoft.Extensions.Logging;
 using RealtorApp.Contracts.Enums;
+using Task = System.Threading.Tasks.Task;
 
 namespace RealtorApp.Domain.Services;
 
@@ -16,7 +17,7 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
     private readonly RealtorAppDbContext _context = context;
     private readonly ILogger<ChatService> _logger = logger;
 
-    public async Task<SendMessageCommandResponse> SendMessageAsync(SendMessageCommand command)
+    public async Task<SendMessageCommandResponse> SendMessageAsync(SendMessageCommand command, HashSet<long> userIds)
     {
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
@@ -62,6 +63,8 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
 
             await _context.Messages.AddAsync(message);
 
+            await MarkMessageAsReadByUsersAsync(message, userIds);
+
             await _context.SaveChangesAsync();
 
             await _context.Conversations.Where(i => i.ListingId == command.ConversationId)
@@ -70,6 +73,29 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
             await transaction.CommitAsync();
 
             var senderDetails = await _context.Users.FindAsync(message.SenderId);
+
+            message.Attachments = await _context.Attachments
+                .Where(i => i.MessageId == message.MessageId)
+                .Select(i => new Attachment()
+                {
+                    TaskAttachment = i.TaskAttachment == null ? null : new()
+                    {
+                        TaskId = i.TaskAttachment.Task.TaskId,
+                        Task = new()
+                        {
+                            Title = i.TaskAttachment.Task.Title
+                        }
+                    },
+                    ContactAttachment = i.ContactAttachment == null ? null : new()
+                    {
+                        ThirdPartyContactId = i.ContactAttachment.ThirdPartyContact.ThirdPartyContactId,
+                        ThirdPartyContact = new()
+                        {
+                            Name = i.ContactAttachment.ThirdPartyContact.Name,
+                        }
+                    }
+                })
+                .ToListAsync();
 
             if (senderDetails != null)
             {
@@ -122,6 +148,26 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
             _logger.LogError(ex, "Error marking messages as read - {Message}", ex.Message);
             return new MarkMessagesAsReadCommandResponse { ErrorMessage = "Failed to mark messages as read" };
         }
+    }
+
+    public async Task MarkMessageAsReadByUsersAsync(Message message, HashSet<long> userIds)
+    {
+        List<MessageRead> messageReads = [];
+
+        foreach (var userId in userIds)
+        {
+            var messageRead = new MessageRead()
+            {
+              Message = message,
+              ReaderId = userId,
+              CreatedAt = DateTime.UtcNow,
+              UpdatedAt = DateTime.UtcNow,
+            };
+
+            messageReads.Add(messageRead);
+        }
+
+        await _context.MessageReads.AddRangeAsync(messageReads);
     }
 
     public async Task<MessageHistoryQueryResponse> GetMessageHistoryAsync(MessageHistoryQuery query, long userId, long conversationId)

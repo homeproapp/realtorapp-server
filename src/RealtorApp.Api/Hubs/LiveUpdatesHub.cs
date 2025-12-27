@@ -168,7 +168,8 @@ public sealed class LiveUpdatesHub(IUserAuthService userAuthService, IChatServic
         if (!await _userAuthService.IsConversationParticipant((long)userId, command.ConversationId))
             throw new HubException("Not a participant.");
 
-        var saved = await _chatService.SendMessageAsync(command);
+        HashSet<long> activeUserIds = await SafeGetActiveUsersInConversation(command.ConversationId);
+        var saved = await _chatService.SendMessageAsync(command, activeUserIds);
 
         if (saved == null || !string.IsNullOrEmpty(saved.ErrorMessage))
         {
@@ -177,33 +178,17 @@ public sealed class LiveUpdatesHub(IUserAuthService userAuthService, IChatServic
 
         saved.LocalId = command.LocalId;
 
-        var groups = GroupNames.Conversation(command.ConversationId);
-        await Clients.Group(groups)
+        await Clients.Group(GroupNames.Conversation(command.ConversationId))
             .SendAsync("onMessage", saved);
 
-       await TryBroadcastLiveUpdate(command.SenderId, command.ConversationId, saved);
+        await TryBroadcastLiveUpdate(command.SenderId, command.ConversationId, saved);
     }
 
     private async Task TryBroadcastLiveUpdate(long initiatingUserId, long listingId, SendMessageCommandResponse message)
     {
         var assignedUserIds = await _userAuthService.GetUsersAssignedToListing(listingId);
 
-        HashSet<long> activeUserIds = new();
-        if (_conversationLocks.TryGetValue(listingId, out var semaphore))
-        {
-            await semaphore.WaitAsync();
-            try
-            {
-                if (_activeConversationUsers.TryGetValue(listingId, out var active))
-                {
-                    activeUserIds = active.ToHashSet();
-                }
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        }
+        HashSet<long> activeUserIds = await SafeGetActiveUsersInConversation(listingId);
 
         var liveUpdateRecipients = assignedUserIds
             .Except(activeUserIds)
@@ -216,6 +201,28 @@ public sealed class LiveUpdatesHub(IUserAuthService userAuthService, IChatServic
             await Clients.Groups(liveUpdateRecipients)
                 .SendAsync("onConversationHasNewMessage", message);
         }
+    }
+
+    private async Task<HashSet<long>> SafeGetActiveUsersInConversation(long listingId)
+    {
+        HashSet<long> activeUserIds = [];
+        if (_conversationLocks.TryGetValue(listingId, out var semaphore))
+        {
+            await semaphore.WaitAsync();
+            try
+            {
+                if (_activeConversationUsers.TryGetValue(listingId, out var active))
+                {
+                    activeUserIds = [.. active];
+                }
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        }
+
+        return activeUserIds;
     }
 
     public async Task SetTyping(long conversationId, bool isTyping)
