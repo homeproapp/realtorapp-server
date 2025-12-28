@@ -18,3 +18,5 @@
     - task description
     - reminder text
     - find some way to set a global limit
+
+- links redirect to app
