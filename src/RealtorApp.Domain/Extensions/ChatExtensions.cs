@@ -122,7 +122,7 @@ public static class AttachmentExtensions
 
         if (attachment.TaskAttachment != null)
         {
-            return attachment.TaskAttachment.Task == null ? string.Empty : ((Contracts.Enums.TaskStatus)attachment.TaskAttachment.Task.Status).ToString();
+            return attachment.TaskAttachment.Task == null ? string.Empty : ((Contracts.Enums.TaskStatus)attachment.TaskAttachment.Task.Status).ToFormattedString();
         }
 
         return string.Empty;

@@ -77,7 +77,7 @@ namespace RealtorApp.Api.Controllers
         }
 
         [HttpGet("v1/listings/{listingId}/slim")]
-        [Authorize(Policy = PolicyConstants.AgentOnly)]
+        [Authorize(Policy = PolicyConstants.ClientOrAgent)]
         public async Task<ActionResult<SlimListingTasksQueryResponse>> GetListingTasksSlim([FromRoute] long listingId, [FromQuery] ListingTasksQuery query)
         {
             var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
