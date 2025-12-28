@@ -141,11 +141,9 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
                 Phone = i.ClientPhone,
                 HasAcceptedInvite = i.AcceptedAt != null,
                 InviteHasExpired = i.ExpiresAt < DateTime.UtcNow,
-                ActiveListingsCount = i.CreatedUser == null ? 0 :
-                    i.CreatedUser.ClientsListings
-                        .Select(x => x.Listing.AgentsListings)
-                        .Where(i => i.Any(i => i.AgentId == agentId))
-                        .Count()
+                ActiveListingsCount = i.ClientInvitationsProperties
+                    .Where(i => i.PropertyInvitation.CreatedListingId != null && i.PropertyInvitation.CreatedListing!.DeletedAt == null)
+                    .Select(i => i.PropertyInvitation.CreatedListingId).Count()
             })
             .ToArrayAsync();
 

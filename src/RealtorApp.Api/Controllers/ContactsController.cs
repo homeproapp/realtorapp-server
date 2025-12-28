@@ -25,6 +25,21 @@ namespace RealtorApp.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("v1/clients")]
+        public async Task<ActionResult<GetClientContactsSlimQueryResponse>> GetClientContacts()
+        {
+            var result = await _contactsService.GetClientContactsSlimAsync(RequiredCurrentUserId);
+            return Ok(result);
+        }
+
+        [HttpGet("v1/clients/{clientId}")]
+        public async Task<ActionResult<GetClientContactDetailsQueryResponse>> GetClientContactDetails(long clientId)
+        {
+            var result = await _contactsService.GetClientContactDetailsAsync(clientId, RequiredCurrentUserId);
+
+            return Ok(result);
+        }
+
         [HttpGet("v1/third-parties/{id}")]
         public async Task<ActionResult<GetThirdPartyContactQueryResponse>> GetThirdPartyContact([FromRoute] long id)
         {

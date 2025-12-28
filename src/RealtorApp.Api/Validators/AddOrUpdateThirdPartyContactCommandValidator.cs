@@ -8,10 +8,20 @@ public class AddOrUpdateThirdPartyContactCommandValidator : AbstractValidator<Ad
     public AddOrUpdateThirdPartyContactCommandValidator()
     {
         RuleFor(x => x.Name)
+            .MaximumLength(255)
+            .When(x => !string.IsNullOrEmpty(x.Name) && !x.IsMarkedForDeletion)
+            .WithMessage("Name must not exceed 255 characters");
+
+        RuleFor(x => x.Service)
             .NotEmpty()
             .MaximumLength(255)
             .When(x => !x.IsMarkedForDeletion)
-            .WithMessage("Name is required and must not exceed 255 characters");
+            .WithMessage("Service is required and must not exceed 255 characters");
+
+        RuleFor(x => x)
+            .Must(x => !string.IsNullOrWhiteSpace(x.Email) || !string.IsNullOrWhiteSpace(x.PhoneNumber))
+            .When(x => !x.IsMarkedForDeletion)
+            .WithMessage("Either email or phone number is required");
 
         RuleFor(x => x.Email)
             .EmailAddress()
@@ -23,11 +33,6 @@ public class AddOrUpdateThirdPartyContactCommandValidator : AbstractValidator<Ad
             .MaximumLength(20)
             .When(x => !string.IsNullOrEmpty(x.PhoneNumber) && !x.IsMarkedForDeletion)
             .WithMessage("Phone number must not exceed 20 characters");
-
-        RuleFor(x => x.Service)
-            .MaximumLength(255)
-            .When(x => !string.IsNullOrEmpty(x.Service) && !x.IsMarkedForDeletion)
-            .WithMessage("Service must not exceed 255 characters");
 
         RuleFor(x => x.ThirdPartyId)
             .NotNull()
