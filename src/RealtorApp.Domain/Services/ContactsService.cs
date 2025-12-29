@@ -192,6 +192,9 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
                         ListingInvitationId = x.PropertyInvitationId,
                         ListingId = x.PropertyInvitation.CreatedListingId,
                         Address = x.PropertyInvitation.AddressLine1,
+                        IsLeadAgent = x.PropertyInvitation.CreatedListing == null && x.ClientInvitation.InvitedBy == agentId ||
+                            x.PropertyInvitation.CreatedListing != null &&
+                            x.PropertyInvitation.CreatedListing.AgentsListings.FirstOrDefault(i => i.AgentId == agentId && i.IsLeadAgent) != null,
                         Agents = x.PropertyInvitation.CreatedListing == null ?
                             Array.Empty<ClientContactListingAgentDetailResponse>() :
                             x.PropertyInvitation.CreatedListing.AgentsListings.Where(y => y.AgentId != agentId)

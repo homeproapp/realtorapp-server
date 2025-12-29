@@ -256,10 +256,16 @@ public class InvitationService(
                         Conversation = new(),
                     };
                     await _dbContext.Listings.AddAsync(listing);
+
+                    // lead agent is set when the listing is first being created
+                    // this is the first agent to "own" the listing
+                    // other agents can be added later, in which case this value will be false.
                     var agentListing = new AgentsListing()
                     {
                         AgentId = clientInvitation.InvitedBy,
+                        IsLeadAgent = true
                     };
+
                     listing.AgentsListings.Add(agentListing);
                     propertyToAdd.CreatedListing = listing;
                 }
