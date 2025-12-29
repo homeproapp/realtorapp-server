@@ -848,7 +848,7 @@ public class ChatServiceTests : IDisposable
         };
 
         // Act
-        var result = await _chatService.SendMessageAsync(command);
+        var result = await _chatService.SendMessageAsync(command, [agentUser.UserId, clientUser.UserId]);
 
         // Assert
         Assert.NotNull(result);
