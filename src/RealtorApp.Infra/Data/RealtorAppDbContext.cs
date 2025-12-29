@@ -122,6 +122,7 @@ public partial class RealtorAppDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.IsLeadAgent).HasColumnName("is_lead_agent");
             entity.Property(e => e.ListingId).HasColumnName("listing_id");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
