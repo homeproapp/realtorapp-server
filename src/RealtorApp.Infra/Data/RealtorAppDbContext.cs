@@ -201,7 +201,7 @@ public partial class RealtorAppDbContext : DbContext
 
             entity.HasIndex(e => e.InvitationToken, "ix_client_invitations_token_active").HasFilter("((deleted_at IS NULL) AND (accepted_at IS NULL))");
 
-            entity.HasIndex(e => e.ClientEmail, "ux_client_invitations_email_active")
+            entity.HasIndex(e => new { e.ClientEmail, e.InvitedBy }, "ux_client_invitations_email_active")
                 .IsUnique()
                 .HasFilter("((deleted_at IS NULL) AND (accepted_at IS NULL))");
 

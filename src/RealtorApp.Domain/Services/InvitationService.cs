@@ -4,6 +4,7 @@ using RealtorApp.Contracts.Commands.Invitations;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
+using RealtorApp.Domain.Settings;
 using RealtorApp.Infra.Data;
 using Task = System.Threading.Tasks.Task;
 
@@ -18,6 +19,7 @@ public class InvitationService(
     ICryptoService crypto,
     IJwtService jwtService,
     IRefreshTokenService refreshTokenService,
+    AppSettings settings,
     ILogger<InvitationService> logger) : IInvitationService
 {
     private readonly RealtorAppDbContext _dbContext = dbContext;
@@ -28,6 +30,7 @@ public class InvitationService(
     private readonly ICryptoService _crypto = crypto;
     private readonly IJwtService _jwtService = jwtService;
     private readonly IRefreshTokenService _refreshTokenService = refreshTokenService;
+    private readonly AppSettings _settings = settings;
     private readonly ILogger<InvitationService> _logger = logger;
 
     public async Task<SendInvitationCommandResponse> SendInvitationsAsync(SendInvitationCommand command, long agentUserId)
@@ -64,6 +67,8 @@ public class InvitationService(
             }
 
             // Create clients and process invitations
+            // TODO: can we do this in a batch operation, always spooky seeing dbcontext in a loop
+            //// I anticpate, most invites will contain a few clients at most.
             foreach (var clientRequest in command.Clients)
             {
                 // check if agent has already invited this client and the client hasnt accepted yet
@@ -76,6 +81,8 @@ public class InvitationService(
 
                 if (clientInvitation != null)
                 {
+                    //re-up the expiration if it's an existing clientInvitation
+                    clientInvitation.ExpiresAt = DateTime.UtcNow.AddDaysAndSetToEndOfDay(_settings.ClientInvitationExpirationDays);
                     var existingProperties = clientInvitation.ClientInvitationsProperties.Select(i => i.PropertyInvitation.AddressLine1.ToLower());
                     var netNewProperties = propertyInvites
                         .Where(i =>  !existingProperties.Contains(i.AddressLine1.ToLower()));
@@ -109,7 +116,7 @@ public class InvitationService(
                         ClientPhone = clientRequest.Phone,
                         InvitationToken = Guid.NewGuid(),
                         InvitedBy = agentUserId,
-                        ExpiresAt = DateTime.UtcNow.AddDays(7),
+                        ExpiresAt = DateTime.UtcNow.AddDaysAndSetToEndOfDay(_settings.ClientInvitationExpirationDays),
                         ClientInvitationsProperties = [.. propertyInvites.Select(i => new ClientInvitationsProperty()
                         {
                             PropertyInvitation = i
@@ -182,7 +189,7 @@ public class InvitationService(
 
         var existingUser = await _dbContext.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email == clientInvitation!.ClientEmail);
+            .FirstOrDefaultAsync(u => EF.Functions.ILike(u.Email, clientInvitation!.ClientEmail));
 
         AuthProviderUserDto? authUserDto;
         bool isNewFirebaseUser = false;
@@ -244,6 +251,8 @@ public class InvitationService(
                     .ToDictionary(i => i.PropertyInvitation.AddressLine1.ToLower(), i => i.PropertyInvitation);
                 propertiesToAdd = await _checkIfPropertiesExistOnExistingUser(clientUser, clientInvitation.InvitedBy, propertyAddressesMap);
             }
+
+            clientInvitation.CreatedUser = clientUser;
 
             foreach (var propertyToAdd in propertiesToAdd)
             {
@@ -395,29 +404,24 @@ public class InvitationService(
                 };
             }
 
-            // Update client details
             clientInvitation.ClientEmail = command.ClientDetails.Email;
             clientInvitation.ClientFirstName = command.ClientDetails.FirstName;
             clientInvitation.ClientLastName = command.ClientDetails.LastName;
             clientInvitation.ClientPhone = command.ClientDetails.Phone;
 
-            // Generate new token and extend expiry
+            // unique index prevents inserting new records, so we update instead
             clientInvitation.InvitationToken = Guid.NewGuid();
-            clientInvitation.ExpiresAt = DateTime.UtcNow.AddDays(7);
+            clientInvitation.ExpiresAt = DateTime.UtcNow.AddDaysAndSetToEndOfDay(_settings.ClientInvitationExpirationDays);
             clientInvitation.UpdatedAt = DateTime.UtcNow;
 
             await _dbContext.SaveChangesAsync();
 
-            // Check if user already exists for email type determination
             var existingUser = await _userService.GetUserByEmailAsync(command.ClientDetails.Email);
 
-            // Get agent name for email
             var agentName = $"{clientInvitation.InvitedByNavigation.User.FirstName} {clientInvitation.InvitedByNavigation.User.LastName}".Trim();
 
-            // Generate encrypted invitation data
             var encryptedData = _getEncryptedInviteData(clientInvitation.InvitationToken, existingUser != null);
 
-            // Create email DTO and send
             var emailDto = clientInvitation.ToEmailDto(agentName, encryptedData, existingUser != null);
             var failedInvites = await _emailService.SendBulkInvitationEmailsAsync([emailDto]);
 

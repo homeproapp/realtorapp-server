@@ -8,6 +8,7 @@ public class AppSettings()
     public int ImageCacheDurationInSeconds { get; set; } = 86400;
     public string ClientUrl { get; set; } = string.Empty;
     public string AppName { get; set; } = "HomePro";
+    public int ClientInvitationExpirationDays { get; set; } = 14;
     public JwtSettings Jwt { get; set; } = new();
     public FirebaseSettings Firebase { get; set; } = new();
     public required AwsSettings Aws { get; set; }
