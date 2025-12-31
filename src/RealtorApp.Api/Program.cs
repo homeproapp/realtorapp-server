@@ -126,7 +126,7 @@ builder.Services
             ValidateAudience = true,
             ValidAudience = appSettings.Jwt.Audience,
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(5),
+            ClockSkew = TimeSpan.FromMinutes(appSettings.Jwt.AccessTokenClockSkewMinutes),
             RequireExpirationTime = true,
             NameClaimType = "sub",
             RoleClaimType = "role"
