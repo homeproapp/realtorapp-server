@@ -32,10 +32,23 @@ namespace RealtorApp.Api.Controllers
             return Ok(result);
         }
 
-        [HttpGet("v1/clients/{clientId}")]
-        public async Task<ActionResult<GetClientContactDetailsQueryResponse>> GetClientContactDetails(long clientId)
+        [HttpGet("v1/clients/{contactId}")]
+        public async Task<ActionResult<GetClientContactDetailsQueryResponse>> GetClientContactDetails(long contactId)
         {
-            var result = await _contactsService.GetClientContactDetailsAsync(clientId, RequiredCurrentUserId);
+            var result = await _contactsService.GetClientContactDetailsAsync(contactId, RequiredCurrentUserId);
+
+            return Ok(result);
+        }
+
+        [HttpDelete("v1/clients/{contactId}")]
+        public async Task<ActionResult<DeleteClientContactCommandResponse>> DeleteClientContactDetails(long contactId)
+        {
+            var result = await _contactsService.DeleteClientContact(contactId, RequiredCurrentUserId);
+
+            if (!string.IsNullOrEmpty(result.ErrorMessage))
+            {
+                return BadRequest(result);
+            }
 
             return Ok(result);
         }

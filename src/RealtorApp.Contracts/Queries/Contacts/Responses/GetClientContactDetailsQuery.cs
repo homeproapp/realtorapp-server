@@ -26,6 +26,7 @@ public class ClientContactListingDetailsResponse
     public long ListingInvitationId { get; set; }
     public long? ListingId { get; set; }
     public bool IsLeadAgent { get; set; }
+    public int NumberOfActiveClients { get; set; }
     public ClientContactListingAgentDetailResponse[] Agents { get; set; } = [];
     public bool IsActive { get; set; }
     public required string Address { get; set; }

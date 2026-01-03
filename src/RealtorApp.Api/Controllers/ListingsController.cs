@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using RealtorApp.Contracts.Listings.Responses;
 using RealtorApp.Contracts.Queries.Listing.Responses;
 using RealtorApp.Contracts.Queries.Responses;
 using RealtorApp.Domain.Constants;
@@ -47,6 +48,26 @@ namespace RealtorApp.Api.Controllers
             }
 
             return Ok(response);
+        }
+
+        [HttpDelete("v1/{listingId}")]
+        public async Task<ActionResult<DeleteListingCommandResponse>> DeleteListing(long listingId)
+        {
+            var isAssociatedToListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
+
+            if (!isAssociatedToListing)
+            {
+                return BadRequest("Not Allowed");
+            }
+
+            var result = await _listingService.DeleteListing(listingId, RequiredCurrentUserId);
+
+            if (!string.IsNullOrEmpty(result.ErrorMessage))
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
         }
     }
 }

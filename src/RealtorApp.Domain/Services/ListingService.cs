@@ -1,5 +1,6 @@
 using System;
 using Microsoft.EntityFrameworkCore;
+using RealtorApp.Contracts.Listings.Responses;
 using RealtorApp.Contracts.Queries.Listing.Responses;
 using RealtorApp.Contracts.Queries.Responses;
 using RealtorApp.Domain.Interfaces;
@@ -61,5 +62,33 @@ public class ListingService(RealtorAppDbContext context) : IListingService
             }).ToArrayAsync();
 
         return new() { ActiveListings = activeListings };
+    }
+
+    public async Task<DeleteListingCommandResponse> DeleteListing(long listingId, long agentId)
+    {
+        var isLeadAgent = await _context.AgentsListings
+            .FirstOrDefaultAsync(i => i.AgentId == agentId && i.ListingId == listingId && i.IsLeadAgent);
+
+        if (isLeadAgent == null)
+        {
+            return new() { ErrorMessage = "Not lead" };
+        }
+
+        await _context.Listings.Where(i => i.ListingId == listingId)
+            .ExecuteUpdateAsync(setter => setter.SetProperty(i => i.DeletedAt, DateTime.UtcNow));
+
+        await _context.AgentsListings.Where(i => i.ListingId == listingId)
+            .ExecuteUpdateAsync(setter => setter.SetProperty(i => i.DeletedAt, DateTime.UtcNow));
+
+        await _context.ClientsListings.Where(i => i.ListingId == listingId)
+            .ExecuteUpdateAsync(setter => setter.SetProperty(i => i.DeletedAt, DateTime.UtcNow));
+
+        await _context.PropertyInvitations.Where(i => i.CreatedListingId == listingId)
+            .ExecuteUpdateAsync(setter => setter.SetProperty(i => i.DeletedAt, DateTime.UtcNow));
+
+        await _context.ClientInvitationsProperties.Where(i => i.PropertyInvitation.CreatedListingId == listingId)
+            .ExecuteUpdateAsync(setter => setter.SetProperty(i => i.DeletedAt, DateTime.UtcNow));
+
+        return new() { Success = true };
     }
 }

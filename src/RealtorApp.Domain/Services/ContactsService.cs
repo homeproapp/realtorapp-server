@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
 using RealtorApp.Contracts.Commands.Contacts.Requests;
 using RealtorApp.Contracts.Commands.Contacts.Responses;
@@ -142,8 +143,7 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
                 HasAcceptedInvite = i.AcceptedAt != null,
                 InviteHasExpired = i.ExpiresAt < DateTime.UtcNow,
                 ActiveListingsCount = i.ClientInvitationsProperties
-                    .Where(i => i.PropertyInvitation.CreatedListingId != null && i.PropertyInvitation.CreatedListing!.DeletedAt == null)
-                    .Select(i => i.PropertyInvitation.CreatedListingId).Count()
+                    .Where(i => i.PropertyInvitation.CreatedListing != null && i.PropertyInvitation.CreatedListing.DeletedAt == null).Count()
             })
             .ToArrayAsync();
 
@@ -151,6 +151,74 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
         {
             ClientContacts = contacts
         };
+    }
+
+    public async Task<DeleteClientContactCommandResponse> DeleteClientContact(long contactId, long agentId)
+    {
+        var clientContact = await _context.ClientInvitations
+            .Where(i => i.ClientInvitationId == contactId && i.InvitedBy == agentId)
+            .Select(i => new
+            {
+                ClientInvitation = i,
+                PropertyInvitations = i.ClientInvitationsProperties.All(x => x.ClientInvitationId == contactId) ?
+                    i.ClientInvitationsProperties.Select(x => x.PropertyInvitation) :
+                    Array.Empty<PropertyInvitation>(),
+                ClientInvitationsProperty = i.ClientInvitationsProperties.Where(i => i.ClientInvitationId == contactId),
+                ActiveListings = i.ClientInvitationsProperties
+                    .Where(i => i.PropertyInvitation.CreatedListing != null &&
+                        i.PropertyInvitation.CreatedListing!.ClientsListings.All(x => x.ClientId == i.ClientInvitation.CreatedUserId))
+                    .Select(i => new
+                    {
+                        Listing = i.PropertyInvitation.CreatedListing,
+                        LeadAgents = i.PropertyInvitation.CreatedListing!.AgentsListings.Where(x => x.IsLeadAgent).Select(x => x.AgentId),
+                        AgentListings = i.PropertyInvitation.CreatedListing!.AgentsListings,
+                        ClientListings = i.PropertyInvitation.CreatedListing!.AgentsListings
+                    })
+            })
+            .AsSplitQuery()
+            .FirstOrDefaultAsync();
+
+        if (clientContact == null)
+        {
+            return new() { ErrorMessage = "No contact found" };
+        }
+
+        clientContact.ClientInvitation.DeletedAt = DateTime.UtcNow;
+
+        foreach (var propertyInvitation in clientContact.PropertyInvitations)
+        {
+            propertyInvitation.DeletedAt = DateTime.UtcNow;
+        }
+
+        foreach (var clientInvitationProperty in clientContact.ClientInvitationsProperty)
+        {
+            clientInvitationProperty.DeletedAt = DateTime.UtcNow;
+        }
+
+        foreach (var activeListing in clientContact.ActiveListings)
+        {
+            if (activeListing == null || activeListing.Listing == null) continue;
+
+            // I think this is fine and I dont need to 'delete' all the child tables
+            // TODO: verify this assumption
+            if (activeListing.LeadAgents.Contains(agentId))
+            {
+                activeListing.Listing.DeletedAt = DateTime.UtcNow;
+                foreach (var agentListing in activeListing.AgentListings)
+                {
+                    agentListing.DeletedAt = DateTime.UtcNow;
+                }
+
+                foreach (var clientListing in activeListing.ClientListings)
+                {
+                    clientListing.DeletedAt = DateTime.UtcNow;
+                }
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        return new() { Success = true };
     }
 
     public async Task<GetClientContactDetailsQueryResponse> GetClientContactDetailsAsync(long contactId, long agentId)
@@ -192,12 +260,14 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
                         ListingInvitationId = x.PropertyInvitationId,
                         ListingId = x.PropertyInvitation.CreatedListingId,
                         Address = x.PropertyInvitation.AddressLine1,
-                        IsLeadAgent = x.PropertyInvitation.CreatedListing == null && x.ClientInvitation.InvitedBy == agentId ||
+                        NumberOfActiveClients = x.PropertyInvitation.CreatedListingId == null ? 0 :
+                            x.PropertyInvitation.CreatedListing!.ClientsListings.Count,
+                        IsLeadAgent = x.PropertyInvitation.CreatedListingId == null && x.ClientInvitation.InvitedBy == agentId ||
                             x.PropertyInvitation.CreatedListing != null &&
-                            x.PropertyInvitation.CreatedListing.AgentsListings.FirstOrDefault(i => i.AgentId == agentId && i.IsLeadAgent) != null,
-                        Agents = x.PropertyInvitation.CreatedListing == null ?
+                            x.PropertyInvitation.CreatedListing!.AgentsListings.FirstOrDefault(i => i.AgentId == agentId && i.IsLeadAgent) != null,
+                        Agents = x.PropertyInvitation.CreatedListingId == null ?
                             Array.Empty<ClientContactListingAgentDetailResponse>() :
-                            x.PropertyInvitation.CreatedListing.AgentsListings.Where(y => y.AgentId != agentId)
+                            x.PropertyInvitation.CreatedListing!.AgentsListings.Where(y => y.AgentId != agentId)
                                 .Select(y => new ClientContactListingAgentDetailResponse()
                                 {
                                     Name = y.Agent.User.FirstName + ' ' + y.Agent.User.LastName.First() + '.',
