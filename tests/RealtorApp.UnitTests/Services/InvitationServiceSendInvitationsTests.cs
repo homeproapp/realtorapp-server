@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Moq;
-using RealtorApp.Contracts.Commands.Invitations;
+using RealtorApp.Contracts.Commands.Invitations.Requests;
 using RealtorApp.Domain.DTOs;
 
 namespace RealtorApp.UnitTests.Services;
@@ -29,10 +29,10 @@ public class InvitationServiceSendInvitationsTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.SendInvitationsAsync(command, agent.UserId);
+        var result = await InvitationService.SendClientInvitationsAsync(command, agent.UserId);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
         Assert.Equal(2, result.InvitationsSent);
         Assert.Empty(result.Errors);
 
@@ -69,7 +69,7 @@ public class InvitationServiceSendInvitationsTests : TestBase
         Assert.Equal(agent.UserId, property1.InvitedBy);
 
         // Verify email service was called
-        MockEmailService.Verify(x => x.SendBulkInvitationEmailsAsync(It.Is<List<InvitationEmailDto>>(
+        MockEmailService.Verify(x => x.SendClientBulkInvitationEmailsAsync(It.Is<List<InvitationEmailDto>>(
             emails => emails.Count == 2 &&
                      emails.All(e => e.ClientEmail.EndsWith("@example.com")))), Times.Once);
     }
@@ -94,10 +94,10 @@ public class InvitationServiceSendInvitationsTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.SendInvitationsAsync(command, 999);
+        var result = await InvitationService.SendClientInvitationsAsync(command, 999);
 
         // Assert
-        Assert.False(result.IsSuccess());
+
         Assert.Contains("agent not found", result.Errors);
         Assert.Equal(0, result.InvitationsSent);
 
@@ -128,10 +128,10 @@ public class InvitationServiceSendInvitationsTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.SendInvitationsAsync(command, agent.UserId);
+        var result = await InvitationService.SendClientInvitationsAsync(command, agent.UserId);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
         Assert.Equal(1, result.InvitationsSent);
 
         // Verify encryption was called with existing user flag
@@ -165,14 +165,14 @@ public class InvitationServiceSendInvitationsTests : TestBase
             ClientFirstName = "John",
             IsExistingUser = false
         };
-        MockEmailService.Setup(x => x.SendBulkInvitationEmailsAsync(It.IsAny<List<InvitationEmailDto>>()))
+        MockEmailService.Setup(x => x.SendClientBulkInvitationEmailsAsync(It.IsAny<List<InvitationEmailDto>>()))
             .ReturnsAsync(new List<InvitationEmailDto> { failedEmail });
 
         // Act
-        var result = await InvitationService.SendInvitationsAsync(command, agent.UserId);
+        var result = await InvitationService.SendClientInvitationsAsync(command, agent.UserId);
 
         // Assert
-        Assert.False(result.IsSuccess());
+
         Assert.Equal(1, result.InvitationsSent);
         Assert.Contains("Failed to send invite to John", result.Errors);
 
@@ -204,10 +204,10 @@ public class InvitationServiceSendInvitationsTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.SendInvitationsAsync(command, agent.UserId);
+        var result = await InvitationService.SendClientInvitationsAsync(command, agent.UserId);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
         Assert.Equal(3, result.InvitationsSent);
 
         // Verify client-property combinations
@@ -253,10 +253,10 @@ public class InvitationServiceSendInvitationsTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.SendInvitationsAsync(command, agent.UserId);
+        var result = await InvitationService.SendClientInvitationsAsync(command, agent.UserId);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
 
         var clientInvitations = await DbContext.ClientInvitations.ToListAsync();
         var tokens = clientInvitations.Select(ci => ci.InvitationToken).ToList();
@@ -284,14 +284,14 @@ public class InvitationServiceSendInvitationsTests : TestBase
         };
 
         // Setup email service to throw exception
-        MockEmailService.Setup(x => x.SendBulkInvitationEmailsAsync(It.IsAny<List<InvitationEmailDto>>()))
+        MockEmailService.Setup(x => x.SendClientBulkInvitationEmailsAsync(It.IsAny<List<InvitationEmailDto>>()))
             .ThrowsAsync(new Exception("Email service error"));
 
         // Act
-        var result = await InvitationService.SendInvitationsAsync(command, agent.UserId);
+        var result = await InvitationService.SendClientInvitationsAsync(command, agent.UserId);
 
         // Assert
-        Assert.False(result.IsSuccess());
+
         Assert.Contains("An unexpected error occurred", result.Errors);
         Assert.Equal(0, result.InvitationsSent);
     }

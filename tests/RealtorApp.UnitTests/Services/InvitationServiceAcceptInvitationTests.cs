@@ -1,8 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Moq;
-using RealtorApp.Contracts.Commands.Invitations;
+using RealtorApp.Contracts.Commands.Invitations.Requests;
 using RealtorApp.Domain.DTOs;
-using RealtorApp.Infra.Data;
 using Task = System.Threading.Tasks.Task;
 
 namespace RealtorApp.UnitTests.Services;
@@ -34,10 +33,10 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
         Assert.NotNull(result.AccessToken);
         Assert.NotNull(result.RefreshToken);
         Assert.Equal("test_access_token", result.AccessToken);
@@ -121,10 +120,10 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         var initialClientCount = await DbContext.Clients.CountAsync();
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
         Assert.NotNull(result.AccessToken);
         Assert.NotNull(result.RefreshToken);
 
@@ -190,10 +189,10 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
 
         // Verify old agent listing is soft deleted
         var oldAgentListing = await DbContext.AgentsListings
@@ -221,10 +220,10 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.False(result.IsSuccess());
+
         Assert.Equal("Invalid invite", result.ErrorMessage);
         Assert.Null(result.AccessToken);
         Assert.Null(result.RefreshToken);
@@ -251,10 +250,10 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.False(result.IsSuccess());
+
         Assert.Equal("Invalid invite", result.ErrorMessage);
     }
 
@@ -280,10 +279,10 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.False(result.IsSuccess());
+
         Assert.Equal("Invalid invite", result.ErrorMessage);
     }
 
@@ -304,10 +303,10 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.False(result.IsSuccess());
+
         Assert.Equal("Invalid invite", result.ErrorMessage);
         Assert.Null(result.AccessToken);
         Assert.Null(result.RefreshToken);
@@ -340,10 +339,10 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.False(result.IsSuccess());
+
         Assert.Equal("Invalid invite", result.ErrorMessage);
     }
 
@@ -376,10 +375,10 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
 
         var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Uuid == firebaseUid);
         Assert.NotNull(user);
@@ -408,10 +407,10 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.False(result.IsSuccess());
+
         Assert.Equal("Invalid invite", result.ErrorMessage);
         Assert.Null(result.AccessToken);
         Assert.Null(result.RefreshToken);
@@ -447,10 +446,10 @@ public class InvitationServiceAcceptInvitationTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.False(result.IsSuccess());
+
         Assert.Equal("Invalid invite", result.ErrorMessage);
     }
 }

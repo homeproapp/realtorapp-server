@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Moq;
-using RealtorApp.Contracts.Commands.Invitations;
+using RealtorApp.Contracts.Commands.Invitations.Requests;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Infra.Data;
 using RealtorApp.UnitTests.Helpers;
@@ -29,7 +29,7 @@ public class InvitationServiceResendInvitationTests : TestBase
             }
         };
 
-        MockEmailService.Setup(x => x.SendBulkInvitationEmailsAsync(It.IsAny<List<InvitationEmailDto>>()))
+        MockEmailService.Setup(x => x.SendClientBulkInvitationEmailsAsync(It.IsAny<List<InvitationEmailDto>>()))
             .ReturnsAsync(new List<InvitationEmailDto>());
 
         MockUserService.Setup(x => x.GetUserByEmailAsync(It.IsAny<string>()))
@@ -39,7 +39,7 @@ public class InvitationServiceResendInvitationTests : TestBase
         var originalToken = clientInvitation.InvitationToken;
 
         // Act
-        var result = await InvitationService.ResendInvitationAsync(command, agent.UserId);
+        var result = await InvitationService.ResendClientInvitationAsync(command, agent.UserId);
 
         // Assert
         Assert.True(result.Success);
@@ -61,7 +61,7 @@ public class InvitationServiceResendInvitationTests : TestBase
         Assert.NotEqual(originalToken, updatedInvitation.InvitationToken);
 
         // Verify email was sent
-        MockEmailService.Verify(x => x.SendBulkInvitationEmailsAsync(
+        MockEmailService.Verify(x => x.SendClientBulkInvitationEmailsAsync(
             It.Is<List<InvitationEmailDto>>(list =>
                 list.Count == 1 &&
                 list[0].ClientEmail == "updated@example.com")),
@@ -85,7 +85,7 @@ public class InvitationServiceResendInvitationTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.ResendInvitationAsync(command, agent.UserId);
+        var result = await InvitationService.ResendClientInvitationAsync(command, agent.UserId);
 
         // Assert
         Assert.False(result.Success);
@@ -112,7 +112,7 @@ public class InvitationServiceResendInvitationTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.ResendInvitationAsync(command, agent2.UserId);
+        var result = await InvitationService.ResendClientInvitationAsync(command, agent2.UserId);
 
         // Assert
         Assert.False(result.Success);
@@ -142,7 +142,7 @@ public class InvitationServiceResendInvitationTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.ResendInvitationAsync(command, agent.UserId);
+        var result = await InvitationService.ResendClientInvitationAsync(command, agent.UserId);
 
         // Assert
         Assert.False(result.Success);
@@ -168,7 +168,7 @@ public class InvitationServiceResendInvitationTests : TestBase
         };
 
         // Setup email service to return failed invitation
-        MockEmailService.Setup(x => x.SendBulkInvitationEmailsAsync(It.IsAny<List<InvitationEmailDto>>()))
+        MockEmailService.Setup(x => x.SendClientBulkInvitationEmailsAsync(It.IsAny<List<InvitationEmailDto>>()))
             .ReturnsAsync(new List<InvitationEmailDto> { new() {
                 ClientEmail = "test@example.com",
                 AgentName = "Test Agent",
@@ -180,7 +180,7 @@ public class InvitationServiceResendInvitationTests : TestBase
             .ReturnsAsync((User?)null);
 
         // Act
-        var result = await InvitationService.ResendInvitationAsync(command, agent.UserId);
+        var result = await InvitationService.ResendClientInvitationAsync(command, agent.UserId);
 
         // Assert
         Assert.False(result.Success);
@@ -206,7 +206,7 @@ public class InvitationServiceResendInvitationTests : TestBase
             }
         };
 
-        MockEmailService.Setup(x => x.SendBulkInvitationEmailsAsync(It.IsAny<List<InvitationEmailDto>>()))
+        MockEmailService.Setup(x => x.SendClientBulkInvitationEmailsAsync(It.IsAny<List<InvitationEmailDto>>()))
             .ReturnsAsync(new List<InvitationEmailDto>());
 
         MockUserService.Setup(x => x.GetUserByEmailAsync("existing@example.com"))
@@ -218,7 +218,7 @@ public class InvitationServiceResendInvitationTests : TestBase
             .Returns<string>(data => $"encrypted_{data}");
 
         // Act
-        var result = await InvitationService.ResendInvitationAsync(command, agent.UserId);
+        var result = await InvitationService.ResendClientInvitationAsync(command, agent.UserId);
 
         // Assert
         Assert.True(result.Success);

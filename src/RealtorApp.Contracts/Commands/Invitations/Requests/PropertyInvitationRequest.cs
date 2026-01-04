@@ -1,4 +1,4 @@
-namespace RealtorApp.Contracts.Commands.Invitations;
+namespace RealtorApp.Contracts.Commands.Invitations.Requests;
 
 public class PropertyInvitationRequest
 {

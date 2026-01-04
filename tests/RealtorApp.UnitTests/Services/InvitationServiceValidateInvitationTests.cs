@@ -21,7 +21,7 @@ public class InvitationServiceValidateInvitationTests : TestBase
         TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property2.PropertyInvitationId);
 
         // Act
-        var result = await InvitationService.ValidateInvitationAsync(invitation.InvitationToken);
+        var result = await InvitationService.ValidateClientInvitationAsync(invitation.InvitationToken);
 
         // Assert
         Assert.True(result.IsValid);
@@ -51,7 +51,7 @@ public class InvitationServiceValidateInvitationTests : TestBase
         var nonExistentToken = Guid.NewGuid();
 
         // Act
-        var result = await InvitationService.ValidateInvitationAsync(nonExistentToken);
+        var result = await InvitationService.ValidateClientInvitationAsync(nonExistentToken);
 
         // Assert
         Assert.False(result.IsValid);
@@ -75,7 +75,7 @@ public class InvitationServiceValidateInvitationTests : TestBase
         );
 
         // Act
-        var result = await InvitationService.ValidateInvitationAsync(expiredInvitation.InvitationToken);
+        var result = await InvitationService.ValidateClientInvitationAsync(expiredInvitation.InvitationToken);
 
         // Assert
         Assert.False(result.IsValid);
@@ -98,7 +98,7 @@ public class InvitationServiceValidateInvitationTests : TestBase
         );
 
         // Act
-        var result = await InvitationService.ValidateInvitationAsync(acceptedInvitation.InvitationToken);
+        var result = await InvitationService.ValidateClientInvitationAsync(acceptedInvitation.InvitationToken);
 
         // Assert
         Assert.False(result.IsValid);
@@ -114,7 +114,7 @@ public class InvitationServiceValidateInvitationTests : TestBase
         // Intentionally no properties added - this should be invalid
 
         // Act
-        var result = await InvitationService.ValidateInvitationAsync(invitation.InvitationToken);
+        var result = await InvitationService.ValidateClientInvitationAsync(invitation.InvitationToken);
 
         // Assert
         Assert.False(result.IsValid);
@@ -139,7 +139,7 @@ public class InvitationServiceValidateInvitationTests : TestBase
         TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property.PropertyInvitationId);
 
         // Act
-        var result = await InvitationService.ValidateInvitationAsync(invitation.InvitationToken);
+        var result = await InvitationService.ValidateClientInvitationAsync(invitation.InvitationToken);
 
         // Assert
         Assert.True(result.IsValid);
@@ -168,7 +168,7 @@ public class InvitationServiceValidateInvitationTests : TestBase
         await Task.Delay(10);
 
         // Act
-        var result = await InvitationService.ValidateInvitationAsync(invitation.InvitationToken);
+        var result = await InvitationService.ValidateClientInvitationAsync(invitation.InvitationToken);
 
         // Assert
         Assert.False(result.IsValid);
@@ -191,7 +191,7 @@ public class InvitationServiceValidateInvitationTests : TestBase
         );
 
         // Act
-        var result = await InvitationService.ValidateInvitationAsync(invitation.InvitationToken);
+        var result = await InvitationService.ValidateClientInvitationAsync(invitation.InvitationToken);
 
         // Assert
         Assert.False(result.IsValid);
@@ -216,7 +216,7 @@ public class InvitationServiceValidateInvitationTests : TestBase
         TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property3.PropertyInvitationId);
 
         // Act
-        var result = await InvitationService.ValidateInvitationAsync(invitation.InvitationToken);
+        var result = await InvitationService.ValidateClientInvitationAsync(invitation.InvitationToken);
 
         // Assert
         Assert.True(result.IsValid);

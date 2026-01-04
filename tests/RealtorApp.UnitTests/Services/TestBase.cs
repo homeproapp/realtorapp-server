@@ -71,6 +71,7 @@ public abstract class TestBase : IDisposable
             MockCryptoService.Object,
             MockJwtService.Object,
             MockRefreshTokenService.Object,
+            MockAppsettings.Object,
             MockLogger.Object);
 
         // Setup default mock behaviors
@@ -85,7 +86,7 @@ public abstract class TestBase : IDisposable
         MockCryptoService.Setup(x => x.Encrypt(It.IsAny<string>()))
             .Returns<string>(data => $"encrypted_{data}");
 
-        MockEmailService.Setup(x => x.SendBulkInvitationEmailsAsync(It.IsAny<List<InvitationEmailDto>>()))
+        MockEmailService.Setup(x => x.SendClientBulkInvitationEmailsAsync(It.IsAny<List<InvitationEmailDto>>()))
             .ReturnsAsync(new List<InvitationEmailDto>());
 
         MockAuthProviderService.Setup(x => x.ValidateTokenAsync(It.IsAny<string>()))

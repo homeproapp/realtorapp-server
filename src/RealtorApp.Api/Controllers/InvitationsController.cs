@@ -2,7 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
-using RealtorApp.Contracts.Commands.Invitations;
+using RealtorApp.Contracts.Commands.Invitations.Requests;
+using RealtorApp.Contracts.Commands.Invitations.Responses;
 using RealtorApp.Domain.Constants;
 using RealtorApp.Domain.Interfaces;
 
@@ -21,7 +22,7 @@ public class InvitationsController(IInvitationService invitationService, ICrypto
     public async Task<ActionResult<SendInvitationCommandResponse>> SendInvitationsAsync([FromBody] SendInvitationCommand command)
     {
         var agentUserId = RequiredCurrentUserId;
-        var response = await _invitationService.SendInvitationsAsync(command, agentUserId);
+        var response = await _invitationService.SendClientInvitationsAsync(command, agentUserId);
 
         if (response.Errors.Count > 0)
         {
@@ -46,7 +47,7 @@ public class InvitationsController(IInvitationService invitationService, ICrypto
             return BadRequest(new ValidateInvitationResponse() { ErrorMessage = "Invalid invite data" });
         }
 
-        var response = await _invitationService.ValidateInvitationAsync(inviteGuid);
+        var response = await _invitationService.ValidateClientInvitationAsync(inviteGuid);
 
         if (!response.IsValid)
         {
@@ -65,7 +66,7 @@ public class InvitationsController(IInvitationService invitationService, ICrypto
     [EnableRateLimiting("Anonymous")]
     public async Task<ActionResult<AcceptInvitationCommandResponse>> AcceptInvitationAsync([FromBody] AcceptInvitationCommand command)
     {
-        var response = await _invitationService.AcceptInvitationAsync(command);
+        var response = await _invitationService.AcceptClientInvitationAsync(command);
         return Ok(response);
     }
 
@@ -74,7 +75,7 @@ public class InvitationsController(IInvitationService invitationService, ICrypto
     public async Task<ActionResult<ResendInvitationCommandResponse>> ResendInvitationAsync([FromBody] ResendInvitationCommand command)
     {
         var agentUserId = RequiredCurrentUserId;
-        var response = await _invitationService.ResendInvitationAsync(command, agentUserId);
+        var response = await _invitationService.ResendClientInvitationAsync(command, agentUserId);
 
         if (!response.Success)
         {

@@ -1,6 +1,7 @@
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Infra.Data;
 using RealtorApp.Contracts.Commands.Invitations;
+using RealtorApp.Contracts.Commands.Invitations.Responses;
 
 namespace RealtorApp.Domain.Extensions;
 

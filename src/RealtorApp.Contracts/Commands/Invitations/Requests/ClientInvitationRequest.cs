@@ -1,6 +1,6 @@
-namespace RealtorApp.Contracts.Commands.Invitations;
+namespace RealtorApp.Contracts.Commands.Invitations.Requests;
 
-public class ClientInvitationUpdateRequest
+public class ClientInvitationRequest
 {
     public required string Email { get; set; }
     public required string FirstName { get; set; }

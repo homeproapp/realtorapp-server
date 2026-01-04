@@ -1,4 +1,4 @@
-using RealtorApp.Contracts.Commands.Invitations;
+using RealtorApp.Contracts.Commands.Invitations.Responses;
 
 namespace RealtorApp.UnitTests.Services;
 

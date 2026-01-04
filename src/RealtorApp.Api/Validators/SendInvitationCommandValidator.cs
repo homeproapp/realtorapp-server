@@ -1,5 +1,5 @@
 using FluentValidation;
-using RealtorApp.Contracts.Commands.Invitations;
+using RealtorApp.Contracts.Commands.Invitations.Requests;
 
 namespace RealtorApp.Api.Validators;
 

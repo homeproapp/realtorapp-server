@@ -1,12 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using RealtorApp.Contracts.Commands.Invitations;
+using RealtorApp.Contracts.Commands.Invitations.Requests;
+using RealtorApp.Contracts.Commands.Invitations.Responses;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Domain.Settings;
 using RealtorApp.Infra.Data;
-using Task = System.Threading.Tasks.Task;
 
 namespace RealtorApp.Domain.Services;
 
@@ -33,7 +33,60 @@ public class InvitationService(
     private readonly AppSettings _settings = settings;
     private readonly ILogger<InvitationService> _logger = logger;
 
-    public async Task<SendInvitationCommandResponse> SendInvitationsAsync(SendInvitationCommand command, long agentUserId)
+    public async Task<SendTeammateInvitationCommandResponse> SendTeammateInvitationsAsync(SendTeammateInvitationCommand command, long invitingAgentId)
+    {
+        var teammateInvitations = new List<TeammateInvitation>();
+        var teammateEmails = command.Teammates.Select(i => i.Email.ToLower());
+
+        var existingUsersByEmailToId = await _dbContext.Users
+            .Where(i => teammateEmails.Contains(i.Email.ToLower()))
+            .Select(i => new { Email = i.Email.ToLower(), i.UserId })
+            .ToDictionaryAsync(i => i.Email, i => i.UserId);
+
+        foreach (var teammate in command.Teammates)
+        {
+            var teammateInvitation = teammate.ToTeammateInvitation(command.ListingId, invitingAgentId);
+            teammateInvitation.ExpiresAt = DateTime.UtcNow.AddDaysAndSetToEndOfDay(_settings.TeammateInvitationExpirationDays);
+            // we dont assign createduserId here even if they arleady exist
+            // leaving that for accept invitation flow.
+
+            teammateInvitations.Add(teammateInvitation);
+        }
+
+        await _dbContext.TeammateInvitations.AddRangeAsync(teammateInvitations);
+
+        await _dbContext.SaveChangesAsync();
+
+        var invitingUser = await _dbContext.Users
+            .Where(i => i.UserId == invitingAgentId)
+            .Select(i => new
+            {
+                i.FirstName,
+                i.LastName
+            })
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (invitingUser == null)
+        {
+            return new() { ErrorMessage = "Invting user not found" };
+        }
+
+        var agentName = invitingUser.FirstName + " " + invitingUser.LastName;
+
+        var dtos = teammateInvitations
+            .Select(i => {
+                bool isExisting = existingUsersByEmailToId.TryGetValue(i.TeammateEmail.ToLower(), out long id);
+                return i.ToDto(_getEncryptedInviteData(i.InvitationToken, isExisting), agentName, isExisting);
+            })
+            .ToArray();
+
+        var sentCount = await _emailService.SendTeammateBulkInvitationEmailsAsync(dtos);
+
+        return new() { InvitationsSent = sentCount };
+    }
+
+    public async Task<SendInvitationCommandResponse> SendClientInvitationsAsync(SendInvitationCommand command, long agentUserId)
     {
         var agentName = await _userService.GetAgentName(agentUserId);
 
@@ -132,7 +185,7 @@ public class InvitationService(
 
             await _dbContext.SaveChangesAsync();
 
-            var failedInvites = await _emailService.SendBulkInvitationEmailsAsync([.. invitesToSend
+            var failedInvites = await _emailService.SendClientBulkInvitationEmailsAsync([.. invitesToSend
                 .Select(i =>
                     i.Client.ToEmailDto(agentName, _getEncryptedInviteData(i.Client.InvitationToken, i.IsExistingUser), i.IsExistingUser))]);
 
@@ -153,7 +206,7 @@ public class InvitationService(
         }
     }
 
-    public async Task<ValidateInvitationResponse> ValidateInvitationAsync(Guid invitationToken)
+    public async Task<ValidateInvitationResponse> ValidateClientInvitationAsync(Guid invitationToken)
     {
         var invitation = await _clientInvitationWithPropertiesQuery(invitationToken)
             .AsNoTracking()
@@ -172,7 +225,7 @@ public class InvitationService(
         return invitation!.ToValidateInvitationResponse();
     }
 
-    public async Task<AcceptInvitationCommandResponse> AcceptInvitationAsync(AcceptInvitationCommand command)
+    public async Task<AcceptInvitationCommandResponse> AcceptClientInvitationAsync(AcceptInvitationCommand command)
     {
         var tokenFromEncryptedData = GetTokenFromEncryptedData(command.InvitationToken);
         var clientInvitation = await _clientInvitationWithPropertiesQuery(tokenFromEncryptedData)
@@ -383,7 +436,7 @@ public class InvitationService(
         return [.. invitedPropertyAddressesMap.Except(propertyInvitationsRemapped).Select(i => i.Value)];
     }
 
-    public async Task<ResendInvitationCommandResponse> ResendInvitationAsync(ResendInvitationCommand command, long agentUserId)
+    public async Task<ResendInvitationCommandResponse> ResendClientInvitationAsync(ResendInvitationCommand command, long agentUserId)
     {
         try
         {
@@ -423,7 +476,7 @@ public class InvitationService(
             var encryptedData = _getEncryptedInviteData(clientInvitation.InvitationToken, existingUser != null);
 
             var emailDto = clientInvitation.ToEmailDto(agentName, encryptedData, existingUser != null);
-            var failedInvites = await _emailService.SendBulkInvitationEmailsAsync([emailDto]);
+            var failedInvites = await _emailService.SendClientBulkInvitationEmailsAsync([emailDto]);
 
             if (failedInvites.Count > 0)
             {

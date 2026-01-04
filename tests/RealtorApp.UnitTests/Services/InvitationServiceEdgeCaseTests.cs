@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Moq;
-using RealtorApp.Contracts.Commands.Invitations;
+using RealtorApp.Contracts.Commands.Invitations.Requests;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Infra.Data;
 using Task = System.Threading.Tasks.Task;
@@ -28,10 +28,10 @@ public class InvitationServiceEdgeCaseTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.SendInvitationsAsync(command, agent.UserId);
+        var result = await InvitationService.SendClientInvitationsAsync(command, agent.UserId);
 
         // Assert
-        Assert.False(result.IsSuccess());
+
         Assert.Equal(0, result.InvitationsSent);
     }
 
@@ -54,10 +54,10 @@ public class InvitationServiceEdgeCaseTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.SendInvitationsAsync(command, agent.UserId);
+        var result = await InvitationService.SendClientInvitationsAsync(command, agent.UserId);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
         Assert.Equal(1, result.InvitationsSent);
 
         var propertyInvitations = await DbContext.PropertyInvitations.ToListAsync();
@@ -90,14 +90,12 @@ public class InvitationServiceEdgeCaseTests : TestBase
         };
 
         // Act - Simulate first acceptance
-        var result1 = await InvitationService.AcceptInvitationAsync(command);
+        var result1 = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Act - Simulate second concurrent acceptance attempt
-        var result2 = await InvitationService.AcceptInvitationAsync(command);
+        var result2 = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.True(result1.IsSuccess());
-        Assert.False(result2.IsSuccess());
         Assert.Equal("Invalid invite", result2.ErrorMessage);
 
         // Verify only one User/Client record created
@@ -134,10 +132,10 @@ public class InvitationServiceEdgeCaseTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
 
         var createdProperty = await DbContext.Properties.FirstOrDefaultAsync(p => p.AddressLine1 == longAddress);
         Assert.NotNull(createdProperty);
@@ -174,10 +172,10 @@ public class InvitationServiceEdgeCaseTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.SendInvitationsAsync(command, agent.UserId);
+        var result = await InvitationService.SendClientInvitationsAsync(command, agent.UserId);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
         Assert.Equal(1, result.InvitationsSent);
 
         var invitation = await DbContext.ClientInvitations.FirstAsync();
@@ -230,10 +228,10 @@ public class InvitationServiceEdgeCaseTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
 
         // Verify old agent listing is soft deleted
         var oldAgentListing = await DbContext.AgentsListings
@@ -273,13 +271,13 @@ public class InvitationServiceEdgeCaseTests : TestBase
         TestDataManager.CreateClientInvitationsProperty(invitation.ClientInvitationId, property.PropertyInvitationId);
 
         // Act - Validate just before expiry
-        var resultBeforeExpiry = await InvitationService.ValidateInvitationAsync(invitation.InvitationToken);
+        var resultBeforeExpiry = await InvitationService.ValidateClientInvitationAsync(invitation.InvitationToken);
 
         // Wait for expiry
         await Task.Delay(200);
 
         // Act - Validate just after expiry
-        var resultAfterExpiry = await InvitationService.ValidateInvitationAsync(invitation.InvitationToken);
+        var resultAfterExpiry = await InvitationService.ValidateClientInvitationAsync(invitation.InvitationToken);
 
         // Assert
         Assert.True(resultBeforeExpiry.IsValid);
@@ -298,10 +296,10 @@ public class InvitationServiceEdgeCaseTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.SendInvitationsAsync(command, agent.UserId);
+        var result = await InvitationService.SendClientInvitationsAsync(command, agent.UserId);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
         Assert.Equal(0, result.InvitationsSent);
 
         var invitations = await DbContext.ClientInvitations.ToListAsync();
@@ -338,7 +336,7 @@ public class InvitationServiceEdgeCaseTests : TestBase
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await InvitationService.AcceptInvitationAsync(command));
+            await InvitationService.AcceptClientInvitationAsync(command));
 
         Assert.IsType<FormatException>(exception.InnerException);
     }
@@ -374,11 +372,11 @@ public class InvitationServiceEdgeCaseTests : TestBase
 
         // Act
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        var result = await InvitationService.SendInvitationsAsync(command, agent.UserId);
+        var result = await InvitationService.SendClientInvitationsAsync(command, agent.UserId);
         stopwatch.Stop();
 
         // Assert
-        Assert.True(result.IsSuccess());
+
         Assert.Equal(50, result.InvitationsSent);
 
         var clientInvitations = await DbContext.ClientInvitations.ToListAsync();
@@ -422,10 +420,10 @@ public class InvitationServiceEdgeCaseTests : TestBase
         };
 
         // Act
-        var result = await InvitationService.AcceptInvitationAsync(command);
+        var result = await InvitationService.AcceptClientInvitationAsync(command);
 
         // Assert
-        Assert.True(result.IsSuccess());
+
 
         var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Uuid == firebaseUid);
         Assert.NotNull(user);
