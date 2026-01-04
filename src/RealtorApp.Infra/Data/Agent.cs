@@ -27,6 +27,8 @@ public partial class Agent
 
     public virtual Team? Team { get; set; }
 
+    public virtual ICollection<TeammateInvitation> TeammateInvitations { get; set; } = new List<TeammateInvitation>();
+
     public virtual ICollection<ThirdPartyContact> ThirdPartyContacts { get; set; } = new List<ThirdPartyContact>();
 
     public virtual User User { get; set; } = null!;

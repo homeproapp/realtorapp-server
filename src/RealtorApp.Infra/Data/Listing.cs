@@ -54,4 +54,6 @@ public partial class Listing
     public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
 
     public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
+
+    public virtual ICollection<TeammateInvitation> TeammateInvitations { get; set; } = new List<TeammateInvitation>();
 }

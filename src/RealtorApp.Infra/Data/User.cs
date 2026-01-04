@@ -40,4 +40,6 @@ public partial class User
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
     public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
+
+    public virtual ICollection<TeammateInvitation> TeammateInvitations { get; set; } = new List<TeammateInvitation>();
 }

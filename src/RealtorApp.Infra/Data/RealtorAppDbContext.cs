@@ -65,6 +65,8 @@ public partial class RealtorAppDbContext : DbContext
 
     public virtual DbSet<Team> Teams { get; set; }
 
+    public virtual DbSet<TeammateInvitation> TeammateInvitations { get; set; }
+
     public virtual DbSet<ThirdPartyContact> ThirdPartyContacts { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
@@ -817,6 +819,62 @@ public partial class RealtorAppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<TeammateInvitation>(entity =>
+        {
+            entity.HasKey(e => e.TeammateInvitationId).HasName("teammate_invitations_pkey");
+
+            entity.ToTable("teammate_invitations");
+
+            entity.HasIndex(e => e.ExpiresAt, "ix_teammate_invitations_expires_at").HasFilter("((deleted_at IS NULL) AND (accepted_at IS NULL))");
+
+            entity.HasIndex(e => e.InvitationToken, "ix_teammate_invitations_token_active").HasFilter("((deleted_at IS NULL) AND (accepted_at IS NULL))");
+
+            entity.HasIndex(e => e.InvitationToken, "teammate_invitations_invitation_token_key").IsUnique();
+
+            entity.HasIndex(e => new { e.TeammateEmail, e.InvitedBy }, "ux_teammate_invitations_email_active")
+                .IsUnique()
+                .HasFilter("((deleted_at IS NULL) AND (accepted_at IS NULL))");
+
+            entity.Property(e => e.TeammateInvitationId).HasColumnName("teammate_invitation_id");
+            entity.Property(e => e.AcceptedAt).HasColumnName("accepted_at");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedUserId).HasColumnName("created_user_id");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.InvitationToken)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("invitation_token");
+            entity.Property(e => e.InvitedBy).HasColumnName("invited_by");
+            entity.Property(e => e.InvitedListingId).HasColumnName("invited_listing_id");
+            entity.Property(e => e.TeammateEmail)
+                .HasColumnType("citext")
+                .HasColumnName("teammate_email");
+            entity.Property(e => e.TeammateFirstName).HasColumnName("teammate_first_name");
+            entity.Property(e => e.TeammateLastName).HasColumnName("teammate_last_name");
+            entity.Property(e => e.TeammatePhone).HasColumnName("teammate_phone");
+            entity.Property(e => e.TeammateRoleType).HasColumnName("teammate_role_type");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.CreatedUser).WithMany(p => p.TeammateInvitations)
+                .HasForeignKey(d => d.CreatedUserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("teammate_invitations_created_user_id_fkey");
+
+            entity.HasOne(d => d.InvitedByNavigation).WithMany(p => p.TeammateInvitations)
+                .HasForeignKey(d => d.InvitedBy)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("teammate_invitations_invited_by_fkey");
+
+            entity.HasOne(d => d.InvitedListing).WithMany(p => p.TeammateInvitations)
+                .HasForeignKey(d => d.InvitedListingId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("teammate_invitations_invited_listing_id_fkey");
         });
 
         modelBuilder.Entity<ThirdPartyContact>(entity =>
