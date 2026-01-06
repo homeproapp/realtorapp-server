@@ -2,6 +2,7 @@ using RealtorApp.Domain.DTOs;
 using RealtorApp.Infra.Data;
 using RealtorApp.Contracts.Commands.Invitations;
 using RealtorApp.Contracts.Commands.Invitations.Responses;
+using RealtorApp.Contracts.Commands.Invitations.Requests;
 
 namespace RealtorApp.Domain.Extensions;
 
@@ -34,7 +35,7 @@ public static class ClientInvitationExtensions
         return true;
     }
 
-    public static Client ToClientUser(this ClientInvitation invitation, string uuidString)
+    public static Client ToClientUser(this ClientInvitation invitation, AcceptInvitationCommand command, string uuidString)
     {
         return new Client()
         {
@@ -42,8 +43,8 @@ public static class ClientInvitationExtensions
             {
                 Uuid = uuidString,
                 Email = invitation.ClientEmail,
-                FirstName = invitation.ClientFirstName,
-                LastName = invitation.ClientLastName,
+                FirstName = command.EnteredFirstName ?? invitation.ClientFirstName,
+                LastName = command.EnteredLastName ?? invitation.ClientLastName,
                 Phone = invitation.ClientPhone
             }
         };

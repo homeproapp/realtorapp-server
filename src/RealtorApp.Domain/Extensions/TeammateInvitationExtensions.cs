@@ -13,8 +13,8 @@ public static class TeammateInvitationExtensions
         return new()
         {
           TeammateEmail = request.Email,
-          TeammateFirstName = request.FirstName,
-          TeammateLastName = request.LastName,
+          TeammateFirstName = request.FirstName ?? string.Empty,
+          TeammateLastName = request.LastName ?? string.Empty,
           TeammatePhone = request.Phone,
           InvitedListingId = listingId,
           InvitedBy = invitedById,
@@ -53,14 +53,14 @@ public static class TeammateInvitationExtensions
         return true;
     }
 
-    public static User ToTeammateUserByType(this TeammateInvitation invitation, string uuidString)
+    public static User ToTeammateUserByType(this TeammateInvitation invitation, AcceptInvitationCommand command, string uuidString)
     {
         var user = new User()
         {
             Uuid = uuidString,
             Email = invitation.TeammateEmail,
-            FirstName = invitation.TeammateFirstName,
-            LastName = invitation.TeammateLastName,
+            FirstName = command.EnteredFirstName!,
+            LastName = command.EnteredLastName!,
             Phone = invitation.TeammatePhone
         };
 

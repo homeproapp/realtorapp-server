@@ -312,7 +312,11 @@ public class InvitationService(
         }
         else
         {
-            var displayName = $"{teammateInvitation!.TeammateFirstName} {teammateInvitation!.TeammateLastName}";
+            if (string.IsNullOrEmpty(command.EnteredFirstName) || string.IsNullOrEmpty(command.EnteredLastName))
+            {
+                return new() { ErrorMessage = "Invalid form data" };
+            }
+            var displayName = $"{command.EnteredFirstName} {command.EnteredLastName}";
             var firebaseUser = await _authProviderService.RegisterWithEmailAndPasswordAsync(
                 teammateInvitation!.TeammateEmail,
                 command.Password,
@@ -353,7 +357,7 @@ public class InvitationService(
                 teammateInvitation.CreatedUserId = user.UserId;
             } else
             {
-                user = teammateInvitation.ToTeammateUserByType(authUserDto.Uid);
+                user = teammateInvitation.ToTeammateUserByType(command, authUserDto.Uid);
             }
 
             if ((TeammateTypes)teammateInvitation.TeammateRoleType == TeammateTypes.Agent)
@@ -436,9 +440,14 @@ public class InvitationService(
         }
         else
         {
-            var displayName = $"{clientInvitation!.ClientFirstName} {clientInvitation.ClientLastName}";
+            if (string.IsNullOrEmpty(command.EnteredFirstName) || string.IsNullOrEmpty(command.EnteredLastName))
+            {
+                return new() { ErrorMessage = "Invalid form data" };
+            }
+
+            var displayName = $"{command.EnteredFirstName} {command.EnteredFirstName}";
             var firebaseUser = await _authProviderService.RegisterWithEmailAndPasswordAsync(
-                clientInvitation.ClientEmail,
+                clientInvitation!.ClientEmail,
                 command.Password,
                 emailVerified: false
             );
@@ -478,7 +487,7 @@ public class InvitationService(
 
             if (clientUser == null)
             {
-                clientUser = clientInvitation.ToClientUser(authUserDto.Uid);
+                clientUser = clientInvitation.ToClientUser(command, authUserDto.Uid);
                 _dbContext.Clients.Add(clientUser);
             }
             else
