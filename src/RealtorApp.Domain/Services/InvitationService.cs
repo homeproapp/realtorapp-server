@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using RealtorApp.Contracts.Commands.Invitations.Requests;
 using RealtorApp.Contracts.Commands.Invitations.Responses;
 using RealtorApp.Contracts.Enums;
+using RealtorApp.Domain.Constants;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
@@ -389,8 +390,9 @@ public class InvitationService(
 
         _userAuthService.InvalidateUserToListingIdsCache(user.UserId);
 
-        var accessToken = _jwtService.GenerateAccessToken(authUserDto.Uid,
-            ((TeammateTypes)teammateInvitation.TeammateRoleType).ToString());
+        var role = GetRoleByType((TeammateTypes)teammateInvitation.TeammateRoleType);
+
+        var accessToken = _jwtService.GenerateAccessToken(authUserDto.Uid, role);
         var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(user!.UserId);
 
         return new()
@@ -399,6 +401,15 @@ public class InvitationService(
             RefreshToken = refreshToken
         };
 
+    }
+
+    private string GetRoleByType(TeammateTypes type)
+    {
+        return type switch
+        {
+            TeammateTypes.Agent => RoleConstants.Agent,
+            _ => string.Empty,
+        };
     }
 
     private async Task<bool> UserAlreadyExistsOnListing(long userId, long listingId, TeammateTypes teammateType)
@@ -550,7 +561,7 @@ public class InvitationService(
 
             _userAuthService.InvalidateUserToListingIdsCache(clientInvitation.InvitedBy);
 
-            var accessToken = _jwtService.GenerateAccessToken(authUserDto.Uid, "Client");
+            var accessToken = _jwtService.GenerateAccessToken(authUserDto.Uid, RoleConstants.Client);
             var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(clientUser.UserId);
 
             return new()

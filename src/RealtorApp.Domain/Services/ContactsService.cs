@@ -272,7 +272,7 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
                                 {
                                     Name = y.Agent.User.FirstName + ' ' + y.Agent.User.LastName.First() + '.',
                                     AgentId = y.AgentId
-                                }).ToArray(),
+                                }).ToArray()
                     }).ToArray()
             })
             .FirstOrDefaultAsync();
