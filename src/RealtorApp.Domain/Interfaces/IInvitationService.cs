@@ -10,4 +10,7 @@ public interface IInvitationService
     Task<ValidateInvitationResponse> ValidateClientInvitationAsync(Guid invitationToken);
     Task<AcceptInvitationCommandResponse> AcceptClientInvitationAsync(AcceptInvitationCommand command);
     Task<ResendInvitationCommandResponse> ResendClientInvitationAsync(ResendInvitationCommand command, long agentUserId);
+    Task<ValidateTeammateInvitationResponse> ValidateTeammateInvitationAsync(Guid invitationToken);
+    Task<AcceptInvitationCommandResponse> AcceptTeammateInvitationAsync(AcceptInvitationCommand command);
+    Task<SendTeammateInvitationCommandResponse> SendTeammateInvitationsAsync(SendTeammateInvitationCommand command, long invitingAgentId);
 }
