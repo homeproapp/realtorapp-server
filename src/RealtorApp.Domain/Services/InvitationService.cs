@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using RealtorApp.Contracts.Commands.Invitations.Requests;
 using RealtorApp.Contracts.Commands.Invitations.Responses;
+using RealtorApp.Contracts.Enums;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
@@ -39,17 +40,44 @@ public class InvitationService(
         var teammateEmails = command.Teammates.Select(i => i.Email.ToLower());
 
         var existingUsersByEmailToId = await _dbContext.Users
+            .AsNoTracking()
             .Where(i => teammateEmails.Contains(i.Email.ToLower()))
             .Select(i => new { Email = i.Email.ToLower(), i.UserId })
             .ToDictionaryAsync(i => i.Email, i => i.UserId);
 
+        var existingInvitesByEmail = await _dbContext.TeammateInvitations
+            .Where(i => i.AcceptedAt == null &&
+                i.DeletedAt == null &&
+                i.InvitedBy == invitingAgentId &&
+                i.InvitedListingId == command.ListingId &&
+                teammateEmails.Contains(i.TeammateEmail.ToLower()))
+            .ToDictionaryAsync(i => i.TeammateEmail.ToLower(), i => i);
+
         foreach (var teammate in command.Teammates)
         {
+            _ = existingInvitesByEmail.TryGetValue(teammate.Email.ToLower(), out TeammateInvitation? existingInvite);
+
+            if (existingInvite != null && existingInvite.AcceptedAt != null)
+            {
+                // user is being reinvited to the same listing after accepting
+                _logger.LogWarning("User was reinvited to listing they already accepted {InvitedBy} - {UserInvited} - {ListingId}",
+                    invitingAgentId, existingInvite.CreatedUserId, command.ListingId);
+                continue;
+            }
+
+            // not sure this is best way.. but can work for now.
+            if (existingInvite != null &&
+                ((DateTime.UtcNow - existingInvite.CreatedAt) >= TimeSpan.FromMinutes(_settings.MinimumWaitInvitationMinutes)))
+            {
+                // mark existing as deleted, and allow it to send a new one if the user hasnt accepted
+                //TODO: we will have to implement some way to limit this, so users arent getting spammed.
+                existingInvite.DeletedAt = DateTime.UtcNow;
+            }
+
             var teammateInvitation = teammate.ToTeammateInvitation(command.ListingId, invitingAgentId);
             teammateInvitation.ExpiresAt = DateTime.UtcNow.AddDaysAndSetToEndOfDay(_settings.TeammateInvitationExpirationDays);
             // we dont assign createduserId here even if they arleady exist
             // leaving that for accept invitation flow.
-
             teammateInvitations.Add(teammateInvitation);
         }
 
@@ -206,6 +234,27 @@ public class InvitationService(
         }
     }
 
+    public async Task<ValidateTeammateInvitationResponse> ValidateTeammateInvitationAsync(Guid invitationToken)
+    {
+        var invitation = await _dbContext.TeammateInvitations
+            .Include(i => i.InvitedListing)
+            .Where(i => i.InvitationToken == invitationToken)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+
+        if (!invitation.IsValid())
+        {
+            return new ValidateTeammateInvitationResponse
+            {
+                IsValid = false,
+                ErrorMessage = "Invalid invitation"
+            };
+        }
+
+        return invitation!.ToValidateInvitationResponse();
+    }
+
     public async Task<ValidateInvitationResponse> ValidateClientInvitationAsync(Guid invitationToken)
     {
         var invitation = await _clientInvitationWithPropertiesQuery(invitationToken)
@@ -218,11 +267,145 @@ public class InvitationService(
             return new ValidateInvitationResponse
             {
                 IsValid = false,
-                ErrorMessage = "Invalid invitation token"
+                ErrorMessage = "Invalid invitation"
             };
         }
 
         return invitation!.ToValidateInvitationResponse();
+    }
+
+    public async Task<AcceptInvitationCommandResponse> AcceptTeammateInvitationAsync(AcceptInvitationCommand command)
+    {
+        var tokenFromEncryptedData = GetTokenFromEncryptedData(command.InvitationToken);
+        var teammateInvitation = await _dbContext.TeammateInvitations
+            .Where(i => i.InvitationToken == tokenFromEncryptedData &&
+                i.AcceptedAt == null)
+            .FirstOrDefaultAsync();
+
+        if (!teammateInvitation.IsValid())
+        {
+            return new()
+            {
+                ErrorMessage = "Invalid invite"
+            };
+        }
+
+        var existingUser = await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => EF.Functions.ILike(u.Email, teammateInvitation!.TeammateEmail));
+
+
+        AuthProviderUserDto? authUserDto;
+        bool isNewFirebaseUser = false;
+
+        if (existingUser != null)
+        {
+            var userExistsOnListing = await UserAlreadyExistsOnListing(existingUser.UserId, teammateInvitation!.InvitedListingId, (TeammateTypes)teammateInvitation.TeammateRoleType);
+
+            if (userExistsOnListing)
+            {
+                _logger.LogError("User tried to accept invite while already on listing - {AcceptingUser} on Listing {ListingId} ", existingUser.UserId, teammateInvitation.InvitedListingId);
+                return new() { ErrorMessage = "Invalid invite" };
+            }
+
+            authUserDto = await _authProviderService.SignInWithEmailAndPasswordAsync(teammateInvitation!.TeammateEmail, command.Password);
+        }
+        else
+        {
+            var displayName = $"{teammateInvitation!.TeammateFirstName} {teammateInvitation!.TeammateLastName}";
+            var firebaseUser = await _authProviderService.RegisterWithEmailAndPasswordAsync(
+                teammateInvitation!.TeammateEmail,
+                command.Password,
+                emailVerified: false
+            );
+
+            if (firebaseUser == null)
+            {
+                return new()
+                {
+                    ErrorMessage = "Failed to create user account"
+                };
+            }
+
+            isNewFirebaseUser = true;
+            authUserDto = new AuthProviderUserDto
+            {
+                Uid = firebaseUser.Uid,
+                Email = firebaseUser.Email!,
+                DisplayName = displayName
+            };
+        }
+
+        if (authUserDto == null)
+        {
+            return new()
+            {
+                ErrorMessage = "Authentication failed"
+            };
+        }
+
+        var user = existingUser;
+        try
+        {
+
+            if (user != null)
+            {
+                teammateInvitation.CreatedUserId = user.UserId;
+            } else
+            {
+                user = teammateInvitation.ToTeammateUserByType(authUserDto.Uid);
+            }
+
+            if ((TeammateTypes)teammateInvitation.TeammateRoleType == TeammateTypes.Agent)
+            {
+                var agentListing = new AgentsListing()
+                {
+                    AgentId = user.UserId,
+                    ListingId = teammateInvitation.InvitedListingId
+                };
+
+                await _dbContext.AgentsListings.AddAsync(agentListing);
+            }
+
+            //TODO: other types to be added
+        }
+        catch (Exception)
+        {
+            if (isNewFirebaseUser)
+            {
+                await _authProviderService.DeleteUserAsync(authUserDto.Uid);
+            }
+            throw;
+        }
+
+
+        teammateInvitation.AcceptedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        _userAuthService.InvalidateUserToListingIdsCache(user.UserId);
+
+        var accessToken = _jwtService.GenerateAccessToken(authUserDto.Uid,
+            ((TeammateTypes)teammateInvitation.TeammateRoleType).ToString());
+        var refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(user!.UserId);
+
+        return new()
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken
+        };
+
+    }
+
+    private async Task<bool> UserAlreadyExistsOnListing(long userId, long listingId, TeammateTypes teammateType)
+    {
+        if (teammateType == TeammateTypes.Agent)
+        {
+            return await _dbContext.AgentsListings.AnyAsync(i => i.AgentId == userId && i.ListingId == listingId);
+        }
+
+        // true is default case so it will error if for some reason the teammate type isnt covered
+        return true;
     }
 
     public async Task<AcceptInvitationCommandResponse> AcceptClientInvitationAsync(AcceptInvitationCommand command)

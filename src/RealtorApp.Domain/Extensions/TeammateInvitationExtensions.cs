@@ -1,4 +1,6 @@
 using RealtorApp.Contracts.Commands.Invitations.Requests;
+using RealtorApp.Contracts.Commands.Invitations.Responses;
+using RealtorApp.Contracts.Enums;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Infra.Data;
 
@@ -34,6 +36,65 @@ public static class TeammateInvitationExtensions
             EncryptedData = encryptedData,
             AgentName = agentName,
             IsExistingUser = existingUser
+        };
+    }
+
+    public static bool IsValid(this TeammateInvitation? invitation)
+    {
+        if (invitation == null ||
+            invitation.TeammateRoleType == (short)TeammateTypes.Unknown ||
+            invitation.AcceptedAt.HasValue ||
+            invitation.DeletedAt.HasValue ||
+            invitation.ExpiresAt < DateTime.UtcNow)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    public static User ToTeammateUserByType(this TeammateInvitation invitation, string uuidString)
+    {
+        var user = new User()
+        {
+            Uuid = uuidString,
+            Email = invitation.TeammateEmail,
+            FirstName = invitation.TeammateFirstName,
+            LastName = invitation.TeammateLastName,
+            Phone = invitation.TeammatePhone
+        };
+
+        var invitedRoleType = (TeammateTypes)invitation.TeammateRoleType;
+
+        if (invitedRoleType == TeammateTypes.Agent)
+        {
+            user.Agent = new(); // TODO: can check for other agent specific details here.
+        }
+
+        return user;
+    }
+
+    public static ValidateTeammateInvitationResponse ToValidateInvitationResponse(this TeammateInvitation invitation)
+    {
+        return new ValidateTeammateInvitationResponse
+        {
+            IsValid = invitation.IsValid(),
+            TeammateEmail = invitation.TeammateEmail,
+            TeammateFirstName = invitation.TeammateFirstName,
+            TeammateLastName = invitation.TeammateLastName,
+            TeammatePhone = invitation.TeammatePhone,
+            ExpiresAt = invitation.ExpiresAt,
+            InvitingAgentFirstName = invitation.InvitedByNavigation.User.FirstName,
+            InvitingAgentLastName = invitation.InvitedByNavigation.User.LastName,
+            Property = new ValidateInvitationResponseProperties()
+            {
+                AddressLine1 = invitation.InvitedListing.Property.AddressLine1 ?? string.Empty,
+                AddressLine2 = invitation.InvitedListing.Property.AddressLine2 ?? string.Empty,
+                City = invitation.InvitedListing.Property.City ?? string.Empty,
+                PostalCode = invitation.InvitedListing.Property.PostalCode ?? string.Empty,
+                Region = invitation.InvitedListing.Property.Region ?? string.Empty,
+                CountryCode = invitation.InvitedListing.Property.CountryCode ?? string.Empty
+            },
         };
     }
 }
