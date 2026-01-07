@@ -20,7 +20,7 @@ namespace RealtorApp.Api.Controllers
         private readonly IUserAuthService _userAuth = userAuth;
 
         [HttpGet("v1/{listingId}/slim")]
-        public async Task<ActionResult<ListingDetailsSlimQueryResponse>> GetListingDetails([FromRoute] long listingId)
+        public async Task<ActionResult<ListingDetailsSlimQueryResponse>> GetListingDetailsSlim([FromRoute] long listingId)
         {
             var isAssociatedToListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
 
@@ -32,6 +32,14 @@ namespace RealtorApp.Api.Controllers
             var result = await _listingService.GetListingDetailsSlim(listingId);
 
             return Ok(result);
+        }
+
+        [HttpGet("v1/all")]
+        [Authorize(Policy = PolicyConstants.AgentOnly)]
+        public async Task<ActionResult<ListingsQueryResponse>> GetListings()
+        {
+            var response = await _listingService.GetAllListingsForAgent(RequiredCurrentUserId);
+            return Ok(response);
         }
 
         [HttpGet("v1/active")]
@@ -51,6 +59,7 @@ namespace RealtorApp.Api.Controllers
         }
 
         [HttpDelete("v1/{listingId}")]
+        [Authorize(Policy = PolicyConstants.AgentOnly)]
         public async Task<ActionResult<DeleteListingCommandResponse>> DeleteListing(long listingId)
         {
             var isAssociatedToListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);

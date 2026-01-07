@@ -34,6 +34,38 @@ public class ListingService(RealtorAppDbContext context) : IListingService
             }).FirstAsync();
     }
 
+    public async Task<ListingsQueryResponse> GetAllListingsForAgent(long agentId)
+    {
+        var listings = await _context.PropertyInvitations.Where(i => i.InvitedBy == agentId && i.DeletedAt == null)
+            .OrderByDescending(i => i.CreatedAt)
+            .Select(i => new ListingItem
+            {
+                ListingId = i.CreatedListingId,
+                AddressLine1 = i.AddressLine1,
+                AddressLine2 = i.AddressLine2,
+                ListingAgents = i.CreatedListingId == null ? Array.Empty<ListingAgent>() :
+                    i.CreatedListing!.AgentsListings
+                        .Where(x => x.AgentId != agentId)
+                        .Select(x => new ListingAgent() { Name = x.Agent.User.FirstName + " " + x.Agent.User.LastName })
+                        .ToArray(),
+                InvitedTeammates = i.InvitedByNavigation.TeammateInvitations
+                    .Where(x => x.InvitedListingId == i.CreatedListingId && x.CreatedUserId == null)
+                    .Select(x => new PendingTeammateInvitation() { TeammateInvitationId = x.TeammateInvitationId, Email = x.TeammateEmail, IsExpired = x.ExpiresAt < DateTime.UtcNow })
+                    .ToArray(),
+                Status = i.CreatedListingId != null && i.CreatedListing!.DeletedAt == null ? "Active" :
+                    i.ClientInvitationsProperties.All(x => x.ClientInvitation.ExpiresAt < DateTime.UtcNow) ? "Invite Expired" :
+                    "Pending"
+            })
+            .AsNoTracking()
+            .ToArrayAsync();
+
+        return new()
+        {
+            Listings = listings,
+            HasMore = false // I dont suspect we'll actually need this pagination..
+        };
+    }
+
     public async Task<ActiveListingsQueryResponse> GetAgentActiveListings(long agentId)
     {
         var activeListings = await _context.AgentsListings

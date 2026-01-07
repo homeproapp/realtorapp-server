@@ -10,4 +10,5 @@ public interface IListingService
     Task<ActiveListingsQueryResponse> GetAgentActiveListings (long agentId);
     Task<ActiveListingsQueryResponse> GetClientActiveListings(long clientId);
     Task<DeleteListingCommandResponse> DeleteListing(long listingId, long agentId);
+    Task<ListingsQueryResponse> GetAllListingsForAgent(long agentId);
 }

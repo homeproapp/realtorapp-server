@@ -9,7 +9,7 @@ public class AppSettings()
     public string ClientUrl { get; set; } = string.Empty;
     public string AppName { get; set; } = "HomePro";
     public int ClientInvitationExpirationDays { get; set; } = 14;
-    public int TeammateInvitationExpirationDays { get; set; } = 7;
+    public int TeammateInvitationExpirationDays { get; set; } = 14;
     public int MinimumWaitInvitationMinutes { get; set; } = 10;
     public JwtSettings Jwt { get; set; } = new();
     public FirebaseSettings Firebase { get; set; } = new();

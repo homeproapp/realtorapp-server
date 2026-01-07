@@ -158,9 +158,9 @@ public class EmailService(AppSettings appSettings, ILogger<EmailService> logger)
         return failedInvites;
     }
 
-    public async Task<int> SendTeammateBulkInvitationEmailsAsync(TeammateInvitationEmailDto[] teammateInvitations)
+    public async Task<List<TeammateInvitationEmailDto>> SendTeammateBulkInvitationEmailsAsync(TeammateInvitationEmailDto[] teammateInvitations)
     {
-        var sentCount = 0;
+        var successfulInvites = new List<TeammateInvitationEmailDto>();
 
         var credentials = new Amazon.Runtime.BasicAWSCredentials(
             _appSettings.Aws.AccessKey,
@@ -220,7 +220,7 @@ public class EmailService(AppSettings appSettings, ILogger<EmailService> logger)
 
                 _logger.LogInformation("Successfully sent teammate invitation email to {TeammateEmail} from {AgentName}",
                     invitation.TeammateEmail, invitation.AgentName);
-                sentCount++;
+                successfulInvites.Add(invitation);
             }
             catch (Exception ex)
             {
@@ -228,7 +228,7 @@ public class EmailService(AppSettings appSettings, ILogger<EmailService> logger)
             }
         }
 
-        return sentCount;
+        return successfulInvites;
     }
 
     private string GenerateNewTeammateInvitationEmailBody(string? teammateFirstName, string agentName, string invitationLink)

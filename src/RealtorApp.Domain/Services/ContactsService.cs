@@ -254,6 +254,7 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
                     })
                     .ToArray(),
                 Listings = i.ClientInvitationsProperties
+                    .Where(i => i.DeletedAt == null && i.PropertyInvitation.DeletedAt == null)
                     .Select(x => new ClientContactListingDetailsResponse()
                     {
                         IsActive = x.PropertyInvitation.CreatedListing != null && x.PropertyInvitation.CreatedListing.AgentsListings.Any(j => j.AgentId == agentId),

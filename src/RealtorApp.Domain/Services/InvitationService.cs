@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using RealtorApp.Contracts.Commands.Invitations.Requests;
 using RealtorApp.Contracts.Commands.Invitations.Responses;
 using RealtorApp.Contracts.Enums;
+using RealtorApp.Contracts.Queries.Listing.Responses;
 using RealtorApp.Domain.Constants;
 using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Extensions;
@@ -110,9 +111,16 @@ public class InvitationService(
             })
             .ToArray();
 
-        var sentCount = await _emailService.SendTeammateBulkInvitationEmailsAsync(dtos);
+        var successfulInvitations = await _emailService.SendTeammateBulkInvitationEmailsAsync(dtos);
 
-        return new() { InvitationsSent = sentCount };
+        return new()
+        { InvitationsSent = successfulInvitations.Count, PendingTeamInvitations =
+            [.. successfulInvitations
+                .Select(i => new PendingTeammateInvitation()
+                {
+                    TeammateInvitationId = i.TeammateInvitationId, Email = i.TeammateEmail, IsExpired = false
+                })]
+        };
     }
 
     public async Task<SendInvitationCommandResponse> SendClientInvitationsAsync(SendInvitationCommand command, long agentUserId)
