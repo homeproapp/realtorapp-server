@@ -15,6 +15,7 @@ public class ListingItem
     public required string AddressLine1 { get; set; }
     public string? AddressLine2 { get; set; }
     public required string Status { get; set; }
+    public bool IsSupportingOnListing { get; set; }
     //TODO: will need to add a field for every type of support staff
     public ListingAgent[] ListingAgents { get; set; } = [];
     public PendingTeammateInvitation[] InvitedTeammates { get; set; } = [];

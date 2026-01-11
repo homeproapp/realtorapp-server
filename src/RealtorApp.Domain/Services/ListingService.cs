@@ -37,7 +37,7 @@ public class ListingService(RealtorAppDbContext context) : IListingService
     public async Task<ListingsQueryResponse> GetAllListingsForAgent(long agentId)
     {
         var listings = await _context.PropertyInvitations.Where(i => i.InvitedBy == agentId && i.DeletedAt == null)
-            .OrderByDescending(i => i.CreatedAt)
+            .OrderByDescending(i => i.UpdatedAt)
             .Select(i => new ListingItem
             {
                 ListingId = i.CreatedListingId,
@@ -46,7 +46,11 @@ public class ListingService(RealtorAppDbContext context) : IListingService
                 ListingAgents = i.CreatedListingId == null ? Array.Empty<ListingAgent>() :
                     i.CreatedListing!.AgentsListings
                         .Where(x => x.AgentId != agentId)
-                        .Select(x => new ListingAgent() { Name = x.Agent.User.FirstName + " " + x.Agent.User.LastName })
+                        .Select(x => new ListingAgent()
+                            {
+                                AgentId = x.AgentId,
+                                Name = x.Agent.User.FirstName + " " + x.Agent.User.LastName
+                            })
                         .ToArray(),
                 InvitedTeammates = i.InvitedByNavigation.TeammateInvitations
                     .Where(x => x.InvitedListingId == i.CreatedListingId && x.CreatedUserId == null)
@@ -59,9 +63,34 @@ public class ListingService(RealtorAppDbContext context) : IListingService
             .AsNoTracking()
             .ToArrayAsync();
 
+        var listingIds = listings.Where(i => i.ListingId != null).Select(i => i.ListingId);
+
+        // this is fetched for users that werent the ones that initiated the listing, but were invted later to support
+        var listingsAgentIsSupportingOn = await _context.AgentsListings
+            .Where(i => i.AgentId == agentId && i.DeletedAt == null && !listingIds.Contains(i.ListingId))
+            .OrderByDescending(i => i.UpdatedAt)
+            .Select(i => new ListingItem
+            {
+                ListingId = i.ListingId,
+                AddressLine1 = i.Listing.Property.AddressLine1,
+                AddressLine2 = i.Listing.Property.AddressLine2,
+                ListingAgents = i.Listing.AgentsListings.Where(x => x.AgentId != agentId)
+                        .Select(x => new ListingAgent()
+                            {
+                                AgentId = x.AgentId,
+                                Name = x.Agent.User.FirstName + " " + x.Agent.User.LastName
+                            })
+                        .ToArray(),
+                InvitedTeammates = Array.Empty<PendingTeammateInvitation>(),
+                IsSupportingOnListing = true,
+                Status = "Active",
+            })
+            .AsNoTracking()
+            .ToArrayAsync();
+
         return new()
         {
-            Listings = listings,
+            Listings = [.. listings, .. listingsAgentIsSupportingOn],
             HasMore = false // I dont suspect we'll actually need this pagination..
         };
     }
@@ -122,5 +151,34 @@ public class ListingService(RealtorAppDbContext context) : IListingService
             .ExecuteUpdateAsync(setter => setter.SetProperty(i => i.DeletedAt, DateTime.UtcNow));
 
         return new() { Success = true };
+    }
+
+    public async Task<RemoveAgentFromListingCommandResponse> RemoveAgentFromListing(long listingId, long agentIdToRemove, long requestingAgentId)
+    {
+
+        if (requestingAgentId == agentIdToRemove)
+        {
+            return new() { ErrorMessage = "Bad request" };
+        }
+
+        var requestingAgentListing = await _context.AgentsListings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.AgentId == requestingAgentId && i.ListingId == listingId && i.DeletedAt == null);
+
+        if (requestingAgentListing == null)
+        {
+            return new() { ErrorMessage = "Bad request" };
+        }
+
+        if (!requestingAgentListing.IsLeadAgent)
+        {
+            return new() { ErrorMessage = "Not allowed" };
+        }
+
+        var rowsUpdated = await _context.AgentsListings
+            .Where(i => i.AgentId == agentIdToRemove && i.ListingId == listingId)
+            .ExecuteUpdateAsync(setter => setter.SetProperty(i => i.DeletedAt, DateTime.UtcNow));
+
+        return new() { Success = rowsUpdated != 0 };
     }
 }

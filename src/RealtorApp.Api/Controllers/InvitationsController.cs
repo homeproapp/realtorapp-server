@@ -128,7 +128,7 @@ public class InvitationsController(IInvitationService invitationService, ICrypto
     [EnableRateLimiting("Anonymous")]
     public async Task<ActionResult<AcceptInvitationCommandResponse>> AcceptTeammateInvitationAsync([FromBody] AcceptInvitationCommand command)
     {
-        var response = await _invitationService.AcceptClientInvitationAsync(command);
+        var response = await _invitationService.AcceptTeammateInvitationAsync(command);
         return Ok(response);
     }
 

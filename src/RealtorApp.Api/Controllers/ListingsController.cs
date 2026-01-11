@@ -78,5 +78,26 @@ namespace RealtorApp.Api.Controllers
 
             return Ok(result);
         }
+
+        [HttpDelete("v1/{listingId}/agent/{agentId}")]
+        [Authorize(Policy = PolicyConstants.AgentOnly)]
+        public async Task<ActionResult<RemoveAgentFromListingCommandResponse>> RemoveAgentFromListing(long listingId, long agentId)
+        {
+            var isAssociatedToListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
+
+            if (!isAssociatedToListing)
+            {
+                return BadRequest(new RemoveAgentFromListingCommandResponse() { ErrorMessage = "Not allowed" });
+            }
+
+            var result = await _listingService.RemoveAgentFromListing(listingId, agentId, RequiredCurrentUserId);
+
+            if (!string.IsNullOrEmpty(result.ErrorMessage))
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
     }
 }

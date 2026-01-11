@@ -246,7 +246,10 @@ public class InvitationService(
     public async Task<ValidateTeammateInvitationResponse> ValidateTeammateInvitationAsync(Guid invitationToken)
     {
         var invitation = await _dbContext.TeammateInvitations
+            .Include(i => i.InvitedByNavigation)
+                .ThenInclude(i => i.User)
             .Include(i => i.InvitedListing)
+                .ThenInclude(i => i.Property)
             .Where(i => i.InvitationToken == invitationToken)
             .AsNoTracking()
             .FirstOrDefaultAsync();
@@ -373,7 +376,10 @@ public class InvitationService(
             {
                 var agentListing = new AgentsListing()
                 {
-                    AgentId = user.UserId,
+                    Agent = new()
+                    {
+                        User = user
+                    },
                     ListingId = teammateInvitation.InvitedListingId
                 };
 

@@ -19,6 +19,7 @@ public static class TeammateInvitationExtensions
           InvitedListingId = listingId,
           InvitedBy = invitedById,
           InvitationToken = Guid.NewGuid(),
+          TeammateRoleType = (short)request.Type
         };
     }
 
