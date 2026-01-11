@@ -745,6 +745,101 @@ public class InvitationService(
                     i.AcceptedAt == null);
     }
 
+    public async Task<ResendInvitationCommandResponse> ResendTeammateInvitationAsync(ResendTeammateInvitationCommand command, long agentUserId)
+    {
+        try
+        {
+            var teammateInvitation = await _dbContext.TeammateInvitations
+                .Include(i => i.InvitedByNavigation)
+                .ThenInclude(a => a.User)
+                .FirstOrDefaultAsync(i => i.TeammateInvitationId == command.TeammateInvitationId &&
+                                        i.AcceptedAt == null &&
+                                        i.DeletedAt == null &&
+                                        i.InvitedBy == agentUserId);
+
+            if (teammateInvitation == null)
+            {
+                return new ResendInvitationCommandResponse
+                {
+                    Success = false,
+                    ErrorMessage = "Invitation not found or already accepted"
+                };
+            }
+
+            teammateInvitation.InvitationToken = Guid.NewGuid();
+            teammateInvitation.ExpiresAt = DateTime.UtcNow.AddDaysAndSetToEndOfDay(_settings.TeammateInvitationExpirationDays);
+            teammateInvitation.UpdatedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync();
+
+            var existingUser = await _userService.GetUserByEmailAsync(teammateInvitation.TeammateEmail);
+
+            var agentName = $"{teammateInvitation.InvitedByNavigation.User.FirstName} {teammateInvitation.InvitedByNavigation.User.LastName}".Trim();
+
+            var encryptedData = _getEncryptedInviteData(teammateInvitation.InvitationToken, existingUser != null);
+
+            var emailDto = teammateInvitation.ToDto(encryptedData, agentName, existingUser != null);
+            var successfulInvites = await _emailService.SendTeammateBulkInvitationEmailsAsync([emailDto]);
+
+            if (successfulInvites.Count == 0)
+            {
+                return new ResendInvitationCommandResponse
+                {
+                    Success = false,
+                    ErrorMessage = "Failed to send invitation email"
+                };
+            }
+
+            return new ResendInvitationCommandResponse
+            {
+                Success = true
+            };
+        }
+        catch (Exception)
+        {
+            return new ResendInvitationCommandResponse
+            {
+                Success = false,
+                ErrorMessage = "An unexpected error occurred"
+            };
+        }
+    }
+
+    public async Task<RemoveTeammateInvitationResponse> RemoveTeammateInvitationAsync(long teammateInvitationId, long agentUserId)
+    {
+        try
+        {
+            var rowsAffected = await _dbContext.TeammateInvitations
+                .Where(i => i.TeammateInvitationId == teammateInvitationId &&
+                            i.AcceptedAt == null &&
+                            i.DeletedAt == null &&
+                            i.InvitedBy == agentUserId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(i => i.DeletedAt, DateTime.UtcNow));
+
+            if (rowsAffected == 0)
+            {
+                return new RemoveTeammateInvitationResponse
+                {
+                    Success = false,
+                    ErrorMessage = "Invitation not found or already processed"
+                };
+            }
+
+            return new RemoveTeammateInvitationResponse
+            {
+                Success = true
+            };
+        }
+        catch (Exception)
+        {
+            return new RemoveTeammateInvitationResponse
+            {
+                Success = false,
+                ErrorMessage = "An unexpected error occurred"
+            };
+        }
+    }
+
     private Guid GetTokenFromEncryptedData(string data)
     {
         var decryptedData = _crypto.Decrypt(data);

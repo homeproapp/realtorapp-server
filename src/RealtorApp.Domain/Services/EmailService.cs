@@ -24,7 +24,7 @@ public class EmailService(AppSettings appSettings, ILogger<EmailService> logger)
     {
         try
         {
-            var invitationLink = GenerateInvitationLink(encryptedData);
+            var invitationLink = GenerateInvitationLink(encryptedData, queryParams: string.Empty);
             var emailBody = isExistingUser
                     ? GenerateExistingClientInvitationEmailBody(clientFirstName, agentName, invitationLink)
                     : GenerateNewClientInvitationEmailBody(clientFirstName, agentName, invitationLink);
@@ -101,7 +101,7 @@ public class EmailService(AppSettings appSettings, ILogger<EmailService> logger)
         {
             try
             {
-                var invitationLink = GenerateInvitationLink(invitation.EncryptedData);
+                var invitationLink = GenerateInvitationLink(invitation.EncryptedData, queryParams: string.Empty);
                 var emailBody = invitation.IsExistingUser
                     ? GenerateExistingClientInvitationEmailBody(invitation.ClientFirstName, invitation.AgentName, invitationLink)
                     : GenerateNewClientInvitationEmailBody(invitation.ClientFirstName, invitation.AgentName, invitationLink);
@@ -174,7 +174,7 @@ public class EmailService(AppSettings appSettings, ILogger<EmailService> logger)
         {
             try
             {
-                var invitationLink = GenerateInvitationLink(invitation.EncryptedData);
+                var invitationLink = GenerateInvitationLink(invitation.EncryptedData, "&teammate=true");
                 var emailBody = invitation.IsExistingUser
                     ? GenerateExistingTeammateInvitationEmailBody(invitation.TeammateFirstName, invitation.AgentName, invitationLink)
                     : GenerateNewTeammateInvitationEmailBody(invitation.TeammateFirstName, invitation.AgentName, invitationLink);
@@ -270,9 +270,9 @@ If you have any questions, please don't hesitate to reach out to {agentName}.
 Best regards,
 The {_appSettings.AppName} Team";
     }
-    private string GenerateInvitationLink(string encryptedData)
+    private string GenerateInvitationLink(string encryptedData, string queryParams)
     {
-        return $"{_appSettings.ClientUrl}/invitations/accept?data={HttpUtility.UrlEncode(encryptedData)}";
+        return $"{_appSettings.ClientUrl}/invitations/accept?data={HttpUtility.UrlEncode(encryptedData)}{queryParams}";
     }
 
     private string GenerateNewClientInvitationEmailBody(string? clientFirstName, string agentName, string invitationLink)

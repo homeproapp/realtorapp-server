@@ -146,4 +146,34 @@ public class InvitationsController(IInvitationService invitationService, ICrypto
 
         return Ok(response);
     }
+
+    [HttpPut("v1/resend/teammate")]
+    [EnableRateLimiting("Authenticated")]
+    public async Task<ActionResult<ResendInvitationCommandResponse>> ResendTeammateInvitationAsync([FromBody] ResendTeammateInvitationCommand command)
+    {
+        var agentUserId = RequiredCurrentUserId;
+        var response = await _invitationService.ResendTeammateInvitationAsync(command, agentUserId);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpDelete("v1/teammate/{teammateInvitationId}")]
+    [EnableRateLimiting("Authenticated")]
+    public async Task<ActionResult<RemoveTeammateInvitationResponse>> RemoveTeammateInvitationAsync([FromRoute] long teammateInvitationId)
+    {
+        var agentUserId = RequiredCurrentUserId;
+        var response = await _invitationService.RemoveTeammateInvitationAsync(teammateInvitationId, agentUserId);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
 }
