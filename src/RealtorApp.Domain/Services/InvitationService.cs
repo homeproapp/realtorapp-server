@@ -417,6 +417,72 @@ public class InvitationService(
 
     }
 
+    public async Task<AcceptInvitationWithTokenCommandResponse> AcceptTeammateInvitationWithTokenAsync(AcceptInvitationWithTokenCommand command, long userId)
+    {
+        var tokenFromEncryptedData = GetTokenFromEncryptedData(command.InvitationToken);
+        var teammateInvitation = await _dbContext.TeammateInvitations
+            .Where(i => i.InvitationToken == tokenFromEncryptedData &&
+                i.AcceptedAt == null)
+            .FirstOrDefaultAsync();
+
+        if (!teammateInvitation.IsValid())
+        {
+            return new()
+            {
+                ErrorMessage = "Invalid invite"
+            };
+        }
+
+        var existingUser = await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.UserId == userId);
+
+        if (existingUser == null)
+        {
+            return new()
+            {
+                ErrorMessage = "Invalid user"
+            };
+        }
+
+        var userExistsOnListing = await UserAlreadyExistsOnListing(existingUser.UserId, teammateInvitation!.InvitedListingId, (TeammateTypes)teammateInvitation.TeammateRoleType);
+
+        if (userExistsOnListing)
+        {
+            _logger.LogError("User tried to accept invite while already on listing - {AcceptingUser} on Listing {ListingId} ", existingUser.UserId, teammateInvitation.InvitedListingId);
+            return new() { ErrorMessage = "Invalid invite" };
+        }
+
+
+        teammateInvitation.CreatedUserId = existingUser.UserId;
+
+        if ((TeammateTypes)teammateInvitation.TeammateRoleType == TeammateTypes.Agent)
+        {
+            var agentListing = new AgentsListing()
+            {
+                AgentId = existingUser.UserId,
+                ListingId = teammateInvitation.InvitedListingId
+            };
+
+            await _dbContext.AgentsListings.AddAsync(agentListing);
+        }
+
+        //TODO: other types to be added
+
+
+
+        teammateInvitation.AcceptedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        _userAuthService.InvalidateUserToListingIdsCache(existingUser.UserId);
+
+        return new()
+        {
+            Success = true
+        };
+    }
+
     private string GetRoleByType(TeammateTypes type)
     {
         return type switch
@@ -592,6 +658,91 @@ public class InvitationService(
             }
             throw;
         }
+    }
+
+    public async Task<AcceptInvitationWithTokenCommandResponse> AcceptClientInvitationWithTokenAsync(AcceptInvitationWithTokenCommand command, long userId)
+    {
+        var tokenFromEncryptedData = GetTokenFromEncryptedData(command.InvitationToken);
+        var clientInvitation = await _clientInvitationWithPropertiesQuery(tokenFromEncryptedData)
+                    .FirstOrDefaultAsync(i => i.InvitationToken == tokenFromEncryptedData &&
+                                                i.AcceptedAt == null);
+
+        if (!clientInvitation.IsValid())
+        {
+            return new()
+            {
+                ErrorMessage = "Invalid invite"
+            };
+        }
+
+        var clientUser = await _dbContext.Users
+            .Include(i => i.Client)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.UserId == userId);
+
+        if (clientUser == null || clientUser.Client == null)
+        {
+            return new()
+            {
+                ErrorMessage = "Invalid user"
+            };
+        }
+
+        var propertiesToAdd = clientInvitation!.ClientInvitationsProperties.Select(i => i.PropertyInvitation);
+
+        var propertyAddressesMap = clientInvitation.ClientInvitationsProperties
+            .ToDictionary(i => i.PropertyInvitation.AddressLine1.ToLower(), i => i.PropertyInvitation);
+        propertiesToAdd = await _checkIfPropertiesExistOnExistingUser(clientUser.Client!, clientInvitation.InvitedBy, propertyAddressesMap);
+
+        clientInvitation.CreatedUserId = clientUser.UserId;
+
+        foreach (var propertyToAdd in propertiesToAdd)
+        {
+            Listing listing;
+            if (!propertyToAdd.CreatedListingId.HasValue)
+            {
+                listing = new Listing()
+                {
+                    Property = propertyToAdd.ToProperty(),
+                    Conversation = new(),
+                };
+                await _dbContext.Listings.AddAsync(listing);
+
+                // lead agent is set when the listing is first being created
+                // this is the first agent to "own" the listing
+                // other agents can be added later, in which case this value will be false.
+                var agentListing = new AgentsListing()
+                {
+                    AgentId = clientInvitation.InvitedBy,
+                    IsLeadAgent = true
+                };
+
+                listing.AgentsListings.Add(agentListing);
+                propertyToAdd.CreatedListing = listing;
+            }
+            else
+            {
+                listing = propertyToAdd.CreatedListing!;
+            }
+
+
+
+            var clientListing = new ClientsListing();
+            clientListing.ClientId = clientUser.UserId;
+
+            listing.ClientsListings.Add(clientListing);
+        }
+
+        clientInvitation.AcceptedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        _userAuthService.InvalidateUserToListingIdsCache(clientInvitation.InvitedBy);
+
+        return new()
+        {
+            Success = true
+        };
     }
 
     private string _getEncryptedInviteData(Guid inviteToken, bool isExistingUser)

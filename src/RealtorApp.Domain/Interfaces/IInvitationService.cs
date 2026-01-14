@@ -15,4 +15,6 @@ public interface IInvitationService
     Task<SendTeammateInvitationCommandResponse> SendTeammateInvitationsAsync(SendTeammateInvitationCommand command, long invitingAgentId);
     Task<ResendInvitationCommandResponse> ResendTeammateInvitationAsync(ResendTeammateInvitationCommand command, long agentUserId);
     Task<RemoveTeammateInvitationResponse> RemoveTeammateInvitationAsync(long teammateInvitationId, long agentUserId);
+    Task<AcceptInvitationWithTokenCommandResponse> AcceptTeammateInvitationWithTokenAsync(AcceptInvitationWithTokenCommand command, long userId);
+    Task<AcceptInvitationWithTokenCommandResponse> AcceptClientInvitationWithTokenAsync(AcceptInvitationWithTokenCommand command, long userId);
 }

@@ -123,6 +123,22 @@ public class InvitationsController(IInvitationService invitationService, ICrypto
         return Ok(response);
     }
 
+    [HttpPost("v1/accept/token")]
+    [Authorize(Policy = PolicyConstants.ClientOnly)]
+    public async Task<ActionResult<AcceptInvitationWithTokenCommandResponse>> AcceptInvitationWithTokenAsync([FromBody] AcceptInvitationWithTokenCommand command)
+    {
+        var response = await _invitationService.AcceptClientInvitationWithTokenAsync(command, RequiredCurrentUserId);
+        return Ok(response);
+    }
+
+    [HttpPost("v1/accept/teammate/token")]
+    [Authorize(Policy = PolicyConstants.AgentOnly)]
+    public async Task<ActionResult<AcceptInvitationWithTokenCommandResponse>> AcceptTeammateInvitationAsync([FromBody] AcceptInvitationWithTokenCommand command)
+    {
+        var response = await _invitationService.AcceptTeammateInvitationWithTokenAsync(command, RequiredCurrentUserId);
+        return Ok(response);
+    }
+
     [AllowAnonymous]
     [HttpPost("v1/accept/teammate")]
     [EnableRateLimiting("Anonymous")]
