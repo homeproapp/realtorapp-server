@@ -42,6 +42,7 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<IAuthProviderService, FirebaseAuthProviderService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IInvitationService, InvitationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICryptoService, CryptoService>();
