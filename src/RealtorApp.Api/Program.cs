@@ -78,6 +78,8 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
             .AllowAnyHeader();
     });
+
+    // options.AddPolicy(allowAll, policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()); // used for mobile emulator locally
 });
 
 // Add rate limiting
