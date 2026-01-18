@@ -190,6 +190,14 @@ namespace RealtorApp.Api.Controllers
             return Ok(updatedTask);
         }
 
+        [HttpPost("v1/{listingId}/ai-create")]
+        [Authorize(Policy = PolicyConstants.AgentOnly)]
+        public async Task<ActionResult<AddOrUpdateTaskCommandResponse>> AiCreateTasks([FromForm] IFormFile[] images, [FromForm] IFormFile audio, [FromRoute] long listingId)
+        {
+            await Task.CompletedTask;
+            return Ok();
+        }
+
         [HttpDelete("v1/{listingId}/{taskId}")]
         [Authorize(Policy = PolicyConstants.AgentOnly)]
         public async Task<ActionResult> DeleteTask([FromRoute] long listingId, [FromRoute] long taskId)
