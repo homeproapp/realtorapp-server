@@ -13,6 +13,9 @@ public interface ITaskService
     Task<TaskListItemResponse?> GetTaskByIdAsync(long taskId, long listingId);
     Task<AddOrUpdateTaskCommandResponse> AddOrUpdateTaskAsync(AddOrUpdateTaskCommand command, long listingId, FileUploadRequest[] images);
     Task<bool> MarkTaskAndChildrenAsDeleted(long taskId, long listingId);
+    Task<bool> BulkMarkTaskAndChildrenAsDeleted(long[] taskIds, long listingId);
     Task<SlimListingTasksQueryResponse> GetSlimListingTasksAsync(long listingId);
     Task<int> UpdateTaskStatusAsync(long taskId, long listingId, Contracts.Enums.TaskStatus status);
+    Task<Dictionary<long, TaskListItemResponse>> BulkGetTasksByIds(long[] taskIds, long listingId);
+    Task<long[]> AiCreateTasks(FileUploadRequest audio, FileUploadRequest[] images, AiTaskCreateMetadataCommand[] metadata, long listingId);
 }

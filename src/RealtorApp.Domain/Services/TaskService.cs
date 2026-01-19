@@ -6,6 +6,7 @@ using RealtorApp.Contracts.Common.Requests;
 using RealtorApp.Contracts.Queries;
 using RealtorApp.Contracts.Queries.Tasks.Requests;
 using RealtorApp.Contracts.Queries.Tasks.Responses;
+using RealtorApp.Domain.DTOs;
 using RealtorApp.Domain.Extensions;
 using RealtorApp.Domain.Interfaces;
 using RealtorApp.Infra.Data;
@@ -14,11 +15,12 @@ using TaskStatus = RealtorApp.Contracts.Enums.TaskStatus;
 
 namespace RealtorApp.Domain.Services;
 
-public class TaskService(RealtorAppDbContext dbContext, ILogger<TaskService> logger, IImagesService imagesService) : ITaskService
+public class TaskService(RealtorAppDbContext dbContext, ILogger<TaskService> logger, IImagesService imagesService, IAiService ai) : ITaskService
 {
     private readonly RealtorAppDbContext _dbContext = dbContext;
     private readonly ILogger<TaskService> _logger = logger;
     private readonly IImagesService _imagesService = imagesService;
+    private readonly IAiService _ai = ai;
 
     public async Task<ListingTasksListDetailsQueryResponse> GetClientGroupedTasksListAsync(ListingsTaskListQuery query, long agentId)
     {
@@ -88,6 +90,54 @@ public class TaskService(RealtorAppDbContext dbContext, ILogger<TaskService> log
             TotalCount = totalCount,
             HasMore = query.Offset + query.Limit < totalCount
         };
+    }
+
+    public async Task<long[]> AiCreateTasks(FileUploadRequest audio, FileUploadRequest[] images, AiTaskCreateMetadataCommand[] metadata, long listingId)
+    {
+        AiCreatedTaskDto[] tasksToCreate = await _ai.ProcessSessionWithClient(audio, images, metadata);
+
+        if (tasksToCreate.Length == 0)
+        {
+            _logger.LogWarning("No tasks to create after ai processing");
+            return [];
+        }
+
+        return await BulkAddAiTasksAsync(tasksToCreate, listingId, images.ToDictionary(i => i.FileName, i => i));
+    }
+
+    public async Task<Dictionary<long, TaskListItemResponse>> BulkGetTasksByIds(long[] taskIds, long listingId)
+    {
+        var tasks = await _dbContext.Tasks
+            .Where(t => t.ListingId == listingId && taskIds.Contains(t.TaskId))
+            .AsNoTracking()
+            .Select(t => new TaskListItemResponse
+            {
+                TaskId = t.TaskId,
+                Title = t.Title,
+                Room = t.Room,
+                Priority = t.Priority,
+                Description = t.Description,
+                Status = t.Status,
+                FollowUpDate = t.FollowUpDate,
+                EstimatedCost = t.EstimatedCost,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                TaskFiles = t.FilesTasks.Select(tf => new TaskFilesResponse
+                {
+                    FileId = tf.FileId,
+                    FileTaskId = tf.FileTaskId,
+                    FileTypeName = tf.File.FileType.Name,
+                }).ToArray(),
+                Links = t.Links.Select(l => new LinkResponse
+                {
+                    LinkId = l.LinkId,
+                    Url = l.Url,
+                    Name = l.Name,
+                }).ToArray()
+            })
+            .ToDictionaryAsync(i => i.TaskId, i => i);
+
+        return tasks;
     }
 
     public async Task<Dictionary<long, TaskListItemResponse>> GetListingTasksAsync(ListingTasksQuery query, long listingId)
@@ -180,6 +230,58 @@ public class TaskService(RealtorAppDbContext dbContext, ILogger<TaskService> log
         };
     }
 
+    public async Task<long[]> BulkAddAiTasksAsync(AiCreatedTaskDto[] dtos, long listingId, Dictionary<string, FileUploadRequest> imagesByFileName)
+    {
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            var addedTasks = new List<DbTask>();
+            foreach (var dto in dtos)
+            {
+
+                DbTask? newTask = await AddNewTaskAsync(dto, listingId);
+
+                if (newTask == null)
+                {
+                    _logger.LogWarning("Failed to add task, skipping {TaskName}", dto.Title);
+                    continue;
+                }
+
+                if (dto.AssociatedImagesFileNames.Length != 0)
+                {
+                    var images = dto.AssociatedImagesFileNames
+                        .Where(imagesByFileName.ContainsKey)
+                        .Select(i => imagesByFileName[i]).ToArray();
+
+                    (int FailedCount, int SucceededCount) = await _imagesService.UploadNewTaskImages(images, newTask);
+
+                    if (FailedCount > 0 && SucceededCount > 0)
+                    {
+                        _logger.LogWarning("Adding some images failed");
+                    }
+
+                    if (FailedCount > 0 && SucceededCount == 0)
+                    {
+                        _logger.LogWarning("Adding all images failed");
+                    }
+                }
+
+                addedTasks.Add(newTask);
+            }
+
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return [.. addedTasks.Select(i => i.TaskId)];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "error during bulk add ai tasks, rolling back");
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
     public async Task<AddOrUpdateTaskCommandResponse> AddOrUpdateTaskAsync(AddOrUpdateTaskCommand command, long listingId, FileUploadRequest[] images)
     {
         await using var transaction = await _dbContext.Database.BeginTransactionAsync();
@@ -244,6 +346,40 @@ public class TaskService(RealtorAppDbContext dbContext, ILogger<TaskService> log
         foreach (var link in task.Links)
         {
             link.DeletedAt = DateTime.UtcNow;
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        return true;
+    }
+
+    public async Task<bool> BulkMarkTaskAndChildrenAsDeleted(long[] taskIds, long listingId)
+    {
+        var tasks = await _dbContext.Tasks
+            .Include(i => i.FilesTasks)
+                .ThenInclude(i => i.File)
+            .Include(i => i.Links)
+            .Where(i => taskIds.Contains(i.TaskId) && i.ListingId == listingId)
+            .ToArrayAsync();
+
+        if (tasks == null || tasks.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (var task in tasks)
+        {
+            task.DeletedAt = DateTime.UtcNow;
+            foreach (var fileTask in task.FilesTasks)
+            {
+                fileTask.DeletedAt = DateTime.UtcNow;
+                fileTask.File.DeletedAt = DateTime.UtcNow;
+            }
+
+            foreach (var link in task.Links)
+            {
+                link.DeletedAt = DateTime.UtcNow;
+            }
         }
 
         await _dbContext.SaveChangesAsync();
@@ -359,6 +495,23 @@ public class TaskService(RealtorAppDbContext dbContext, ILogger<TaskService> log
                 newTask.Links.Add(newLink);
             }
         }
+
+        await _dbContext.Tasks.AddAsync(newTask);
+        return newTask;
+    }
+
+    private async Task<DbTask> AddNewTaskAsync(AiCreatedTaskDto dto, long listingId)
+    {
+        var newTask = new DbTask
+        {
+            Title = dto.Title,
+            ListingId = listingId,
+            Room = dto.Room,
+            Description = dto.Description,
+            Priority = (short)dto.Priority,
+            Status = (short)TaskStatus.NotStarted,
+            Links = []
+        };
 
         await _dbContext.Tasks.AddAsync(newTask);
         return newTask;

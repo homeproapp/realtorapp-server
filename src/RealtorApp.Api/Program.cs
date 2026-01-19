@@ -19,6 +19,7 @@ using RealtorApp.Api.Policies;
 using Microsoft.AspNetCore.Authorization;
 using RealtorApp.Api.Providers;
 using Microsoft.AspNetCore.SignalR;
+using System.Net.Http.Headers;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 JwtSecurityTokenHandler.DefaultOutboundClaimTypeMap.Clear();
@@ -49,6 +50,7 @@ builder.Services.AddScoped<ICryptoService, CryptoService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IListingService, ListingService>();
 builder.Services.AddScoped<IS3Service, S3Service>();
+builder.Services.AddScoped<IAiService, AiService>();
 builder.Services.AddScoped<IImagesService, ImagesService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IContactsService, ContactsService>();
@@ -82,10 +84,16 @@ builder.Services.AddCors(options =>
     // options.AddPolicy(allowAll, policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()); // used for mobile emulator locally
 });
 
-// Add rate limiting
+builder.Services.AddHttpClient("OpenAI", (sp, client) =>
+  {
+      var settings = sp.GetRequiredService<AppSettings>();
+      client.BaseAddress = new Uri("https://api.openai.com/v1/");
+      client.DefaultRequestHeaders.Authorization =
+          new AuthenticationHeaderValue("Bearer", settings.Ai.ApiKey);
+  });
+
 builder.Services.AddRateLimiter(options =>
 {
-    // Anonymous endpoints - more restrictive
     options.AddFixedWindowLimiter("Anonymous", limiterOptions =>
     {
         limiterOptions.Window = TimeSpan.FromMinutes(1);
@@ -94,7 +102,6 @@ builder.Services.AddRateLimiter(options =>
         limiterOptions.QueueLimit = 5;
     });
 
-    // Authenticated endpoints - more permissive
     options.AddFixedWindowLimiter("Authenticated", limiterOptions =>
     {
         limiterOptions.Window = TimeSpan.FromMinutes(1);
@@ -103,7 +110,6 @@ builder.Services.AddRateLimiter(options =>
         limiterOptions.QueueLimit = 10;
     });
 
-    // Global rejection response
     options.RejectionStatusCode = 429;
 });
 
@@ -121,7 +127,6 @@ builder.Services
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            // Signature validation
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(appSettings.Jwt.SecretKey)),
             ValidateIssuer = true,
@@ -169,7 +174,6 @@ builder.Services.AddSignalR().AddJsonProtocol(o =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 var isDev = app.Environment.IsDevelopment();
 if (isDev)
 {

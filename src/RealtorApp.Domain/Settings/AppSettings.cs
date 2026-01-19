@@ -14,6 +14,7 @@ public class AppSettings()
     public JwtSettings Jwt { get; set; } = new();
     public FirebaseSettings Firebase { get; set; } = new();
     public required AwsSettings Aws { get; set; }
+    public required AiSettings Ai { get; set; }
 }
 
 public class JwtSettings
@@ -51,4 +52,9 @@ public class SesSettings
     public required string Region { get; set; }
     public required string FromEmail { get; set; }
     public required string FromName { get; set; }
+}
+
+public class AiSettings
+{
+    public required string ApiKey { get; set; }
 }

@@ -21,6 +21,10 @@ namespace RealtorApp.Api.Controllers
         private readonly IUserAuthService _userAuth = userAuth;
         private readonly ILogger<TasksController> _logger = logger;
         private readonly IReminderService _reminderService = reminderService;
+        private readonly JsonSerializerOptions _jsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        };
 
         [HttpGet("v1/listings")]
         [Authorize(Policy = PolicyConstants.AgentOnly)]
@@ -49,6 +53,45 @@ namespace RealtorApp.Api.Controllers
 
             var tasks = await _taskService.GetListingTasksAsync(query, listingId);
             long[] taskIds = [.. tasks.Keys];
+            var taskReminders = await _reminderService.GetUsersTaskReminders(RequiredCurrentUserId, taskIds);
+
+            foreach (var taskReminder in taskReminders)
+            {
+                if (tasks.TryGetValue(taskReminder.ReferencingObjectId, out TaskListItemResponse? task) && task != null)
+                {
+                    task.TaskReminders.Add(new TaskReminderSlim()
+                    {
+                        ReminderId = taskReminder.ReminderId,
+                        RemindAt = taskReminder.RemindAt,
+                        ReminderText = taskReminder.ReminderText
+                    });
+                }
+            }
+
+            TaskListItemResponse[] tasksArray =  [.. tasks.Values];
+
+            var response = new ListingTasksQueryResponse()
+            {
+                Tasks = tasksArray,
+                TaskCompletionCounts = tasksArray.ToCompletionCounts(),
+                FilterOptions = tasksArray.ToFilterOptions(),
+            };
+
+            return Ok(response);
+        }
+
+        [HttpGet("v1/listings/{listingId}/bulk")]
+        [Authorize(Policy = PolicyConstants.AgentOnly)]
+        public async Task<ActionResult<ListingTasksQueryResponse>> BulkGetTasks([FromRoute] long listingId, [FromQuery] long[] taskIds)
+        {
+            var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
+
+            if (!isAssociatedWithListing)
+            {
+                return BadRequest(new ListingTasksQueryResponse() { ErrorMessage = "Not allowed" });
+            }
+
+            var tasks = await _taskService.BulkGetTasksByIds(taskIds, listingId);
             var taskReminders = await _reminderService.GetUsersTaskReminders(RequiredCurrentUserId, taskIds);
 
             foreach (var taskReminder in taskReminders)
@@ -135,11 +178,8 @@ namespace RealtorApp.Api.Controllers
             AddOrUpdateTaskCommand? command;
             try
             {
-                var options = new JsonSerializerOptions()
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                };
-                command = JsonSerializer.Deserialize<AddOrUpdateTaskCommand>(commandJson, options);
+
+                command = JsonSerializer.Deserialize<AddOrUpdateTaskCommand>(commandJson, _jsonOptions);
                 if (command == null)
                 {
                     return BadRequest(new AddOrUpdateTaskCommandResponse() { ErrorMessage = "Invalid request" });
@@ -185,18 +225,103 @@ namespace RealtorApp.Api.Controllers
                 })];
             }
 
-            var updatedTask = await _taskService.AddOrUpdateTaskAsync(command, listingId, newFiles);
-
-            return Ok(updatedTask);
+            try
+            {
+                var updatedTask = await _taskService.AddOrUpdateTaskAsync(command, listingId, newFiles);
+                return Ok(updatedTask);
+            }
+            finally
+            {
+                foreach (var file in newFiles)
+                {
+                    file.Dispose();
+                }
+            }
         }
 
         [HttpPost("v1/{listingId}/ai-create")]
         [Authorize(Policy = PolicyConstants.AgentOnly)]
-        public async Task<ActionResult<AddOrUpdateTaskCommandResponse>> AiCreateTasks([FromForm] IFormFile[] images, [FromForm] IFormFile audio, [FromRoute] long listingId)
+        public async Task<ActionResult<AiTaskCreateCommandResponse>> AiCreateTasks([FromForm] IFormFile[] images, [FromForm] string metadata, [FromForm] IFormFile audio, [FromRoute] long listingId)
         {
-            await Task.CompletedTask;
-            return Ok();
+            if (audio == null || audio.Length == 0)
+            {
+                return BadRequest("No recording detected");
+            }
+
+            AiTaskCreateMetadataCommand[] parsedMetadata = [];
+            try
+            {
+                parsedMetadata = JsonSerializer.Deserialize<AiTaskCreateMetadataCommand[]>(metadata, _jsonOptions) ?? [];
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Something went wrong parsing metadata");
+            }
+
+            if (parsedMetadata.Length == 0 && parsedMetadata.Any(i => string.IsNullOrEmpty(i.FileName) || string.IsNullOrEmpty(i.Timestamp)))
+            {
+                _logger.LogError("Parsed metadata was invalid, original string = {Metadata}", metadata);
+                return BadRequest("Something went wrong processing request");
+            }
+
+            if (images.Length != parsedMetadata.Length)
+            {
+                _logger.LogError("Difference in counts between metadata and uploaded images");
+                return BadRequest("Something went wrong processing request");
+            }
+
+            var audioUploadRequest = new FileUploadRequest()
+            {
+                FileExtension = Path.GetExtension(audio.FileName),
+                FileName = Path.GetFileName(audio.FileName),
+                Content = audio.OpenReadStream(),
+                ContentType = audio.ContentType,
+                ContentLength = audio.Length
+            };
+
+            FileUploadRequest[] imageUploadRequests = [.. images.Select(file => new FileUploadRequest()
+            {
+                    Content = file.OpenReadStream(),
+                    FileName = Path.GetFileName(file.FileName),
+                    FileExtension = Path.GetExtension(file.FileName),
+                    ContentType = file.ContentType,
+                    ContentLength = file.Length
+            })];
+
+            var response = await _taskService.AiCreateTasks(audioUploadRequest, imageUploadRequests, parsedMetadata, listingId);
+
+            if (response == null || response.Length == 0)
+            {
+                return BadRequest(new AiTaskCreateCommandResponse() { ErrorMessage = "Unable to create tasks" });
+            }
+
+            return Ok(new AiTaskCreateCommandResponse()
+            {
+                TaskIds = response
+            });
         }
+
+        [HttpDelete("v1/{listingId}")]
+        [Authorize(Policy = PolicyConstants.AgentOnly)]
+        public async Task<ActionResult> BulkDeleteTasks([FromRoute] long listingId, [FromBody] long[] taskIds)
+        {
+            var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
+
+            if (!isAssociatedWithListing)
+            {
+                return BadRequest(new { ErrorMessage = "Not allowed" });
+            }
+
+            var deleted = await _taskService.BulkMarkTaskAndChildrenAsDeleted(taskIds, listingId);
+
+            if (!deleted)
+            {
+                return NotFound(new { ErrorMessage = "Unable to delete tasks" });
+            }
+
+            return Ok(new { Message = "Tasks deleted successfully" });
+        }
+
 
         [HttpDelete("v1/{listingId}/{taskId}")]
         [Authorize(Policy = PolicyConstants.AgentOnly)]
