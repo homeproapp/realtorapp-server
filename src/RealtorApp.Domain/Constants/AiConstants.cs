@@ -64,12 +64,13 @@ Return ONLY a JSON object matching the provided schema. No additional text, expl
 ## Task Extraction Guidelines
 1. Focus on actionable items that prepare the listing for showing
 2. Ignore casual conversation, greetings, and non-actionable discussion
-3. For vague mentions, make a best-effort attempt using available images for context
-4. If still unclear, use a generic but descriptive title - the user will refine manually
+3. Pay special attention as discussion can change from room to room, use this as a cue to know that context of the discussion has changed to be about a different room
+4. For vague mentions, make a best-effort attempt using available images for context
+5. If still unclear, use a generic but descriptive title - the user will refine manually
 
 ## Field Population
 
-**title**: Clear, concise action item (e.g., "Repair cracked tile in entryway")
+**title**: Clear, concise action item (e.g., "Repair cracked tile") don't include the room name as part of the title since there is a separate field for room.
 
 **description**: Additional context, scope, or specific details mentioned. Null if no additional detail beyond the title.
 

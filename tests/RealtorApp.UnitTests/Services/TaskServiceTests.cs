@@ -23,6 +23,7 @@ public class TaskServiceTests : IDisposable
     private readonly Mock<IS3Service> _mockS3Service;
     private readonly Mock<ILogger<TaskService>> _mockLogger;
     private readonly Mock<IImagesService> _mockImagesService;
+    private readonly Mock<IAiService> _mockAiService;
     private TestDataManager _testData;
 
     public TaskServiceTests()
@@ -46,6 +47,7 @@ public class TaskServiceTests : IDisposable
         _mockS3Service = new Mock<IS3Service>();
         _mockLogger = new Mock<ILogger<TaskService>>();
         _mockImagesService = new Mock<IImagesService>();
+        _mockAiService = new Mock<IAiService>();
 
         _mockS3Service.Setup(x => x.UploadFileAsync(It.IsAny<string>(),It.IsAny<string>(), It.IsAny<FileUploadRequest>(), It.IsAny<string>()))
             .ReturnsAsync((string fileKey, FileUploadRequest request, string folderName) => new FileUploadResponseDto()
@@ -55,7 +57,7 @@ public class TaskServiceTests : IDisposable
                 Successful = true
             });
 
-        _taskService = new TaskService(_dbContext, _mockLogger.Object, _mockImagesService.Object);
+        _taskService = new TaskService(_dbContext, _mockLogger.Object, _mockImagesService.Object, _mockAiService.Object);
     }
 
     private void CleanupAllTestData()

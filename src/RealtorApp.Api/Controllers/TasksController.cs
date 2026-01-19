@@ -82,8 +82,23 @@ namespace RealtorApp.Api.Controllers
 
         [HttpGet("v1/listings/{listingId}/bulk")]
         [Authorize(Policy = PolicyConstants.AgentOnly)]
-        public async Task<ActionResult<ListingTasksQueryResponse>> BulkGetTasks([FromRoute] long listingId, [FromQuery] long[] taskIds)
+        public async Task<ActionResult<ListingTasksQueryResponse>> BulkGetTasks([FromRoute] long listingId, [FromQuery] string taskIds)
         {
+            if (string.IsNullOrWhiteSpace(taskIds))
+            {
+                return BadRequest(new ListingTasksQueryResponse() { ErrorMessage = "Task IDs are required" });
+            }
+
+            long[] parsedTaskIds;
+            try
+            {
+                parsedTaskIds = taskIds.Split(',').Select(long.Parse).ToArray();
+            }
+            catch (FormatException)
+            {
+                return BadRequest(new ListingTasksQueryResponse() { ErrorMessage = "Invalid task IDs format" });
+            }
+
             var isAssociatedWithListing = await _userAuth.UserIsConnectedToListing(RequiredCurrentUserId, listingId);
 
             if (!isAssociatedWithListing)
@@ -91,8 +106,8 @@ namespace RealtorApp.Api.Controllers
                 return BadRequest(new ListingTasksQueryResponse() { ErrorMessage = "Not allowed" });
             }
 
-            var tasks = await _taskService.BulkGetTasksByIds(taskIds, listingId);
-            var taskReminders = await _reminderService.GetUsersTaskReminders(RequiredCurrentUserId, taskIds);
+            var tasks = await _taskService.BulkGetTasksByIds(parsedTaskIds, listingId);
+            var taskReminders = await _reminderService.GetUsersTaskReminders(RequiredCurrentUserId, parsedTaskIds);
 
             foreach (var taskReminder in taskReminders)
             {

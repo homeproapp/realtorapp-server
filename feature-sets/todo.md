@@ -20,3 +20,5 @@
     - find some way to set a global limit
 
 - links redirect to app
+
+- task upsert endpoint should return full task data (including taskFiles, links) so client can update local state without needing a second getTaskById call
