@@ -78,6 +78,7 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
                 .Where(i => i.MessageId == message.MessageId)
                 .Select(i => new Attachment()
                 {
+                    AttachmentId = i.AttachmentId,
                     TaskAttachment = i.TaskAttachment == null ? null : new()
                     {
                         TaskId = i.TaskAttachment.Task.TaskId,
@@ -92,6 +93,7 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
                         ThirdPartyContact = new()
                         {
                             Name = i.ContactAttachment.ThirdPartyContact.Name,
+                            Trade = i.ContactAttachment.ThirdPartyContact.Trade
                         }
                     }
                 })
