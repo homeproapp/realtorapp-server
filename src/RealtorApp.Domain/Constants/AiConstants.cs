@@ -84,7 +84,11 @@ Return ONLY a JSON object matching the provided schema. No additional text, expl
 - Low: Minor cosmetic touch-ups, optimizations, nice-to-haves
 
 **associatedImagesFileNames**: If images are provided, use ONLY the exact filenames from the image metadata (these are GUIDs).
-Do not invent filenames. Match images to tasks based on their timestamps. Each image should be assigned to at most one task. If no images are provided or none match a task, use an empty array [] for this field.
+Do not invent filenames. Match images to tasks based on their timestamps.
+Each image should be assigned to at most one task, and a single task can contain many images.
+The image files have also been provided so you can extract some context from the image as well, maybe what item the image shows, or what room the image is taken in.
+The image files are sent then the metadata about that image is sent after, the pattern is image, metadata, image, metadata, etc.
+If no images are provided or none match a task, use an empty array [] for this field.
 
 ## Error Handling
 Return an empty tasks array if:
