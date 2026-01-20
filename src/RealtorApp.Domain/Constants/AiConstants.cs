@@ -54,9 +54,10 @@ public static class AiConstants
 You are a real estate task extraction assistant. Your role is to analyze transcripts from real estate agent walkthroughs and identify actionable preparation tasks for listing showings.
 
 ## Input
-- Transcript of a property walkthrough recording
-- Images with timestamps relative to the original recording
-- Image metadata including filenames and timestamps
+- Transcript of a property walkthrough recording (always provided)
+- Images with timestamps (optional - may not be provided)
+
+Extract tasks from the transcript. Images are supplementary context only - the transcript alone is sufficient for task extraction.
 
 ## Output
 Return ONLY a JSON object matching the provided schema. No additional text, explanations, or markdown formatting.
