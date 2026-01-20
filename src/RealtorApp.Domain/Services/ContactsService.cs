@@ -90,6 +90,30 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
         return contact.ToCommandResponse();
     }
 
+    public async Task<GetThirdPartyContactsQueryResponse> BulkAddThirdPartyContactAsync(BulkAddThirdPartyContactCommand command, long agentId)
+    {
+        var contactsToAdd = new List<ThirdPartyContact>();
+        foreach (var importedContact in command.Contacts)
+        {
+            var contact = new ThirdPartyContact()
+            {
+                Name = importedContact.Name,
+                Phone = importedContact.PhoneNumber,
+                Email = importedContact.Email,
+                AgentId = agentId,
+                Trade = string.Empty,
+            };
+
+            contactsToAdd.Add(contact);
+        }
+
+        await _context.ThirdPartyContacts.AddRangeAsync(contactsToAdd);
+
+        await _context.SaveChangesAsync();
+
+        return new () { ThirdPartyContacts = contactsToAdd.ToResponse() };
+    }
+
     private async Task<AddOrUpdateThirdPartyContactCommandResponse> UpdateThirdPartyContactAsync(AddOrUpdateThirdPartyContactCommand command, long agentId)
     {
 
@@ -294,4 +318,31 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
         };
     }
 
+    public async Task<GetThirdPartyContactQueryResponse> GetThirdPartyContactByAttachmentAsync(long attachmentId)
+    {
+        var contact = await _context.Attachments
+            .Where(a => a.AttachmentId == attachmentId && a.ContactAttachment != null)
+            .AsNoTracking()
+            .Select(a => new ThirdPartyContactResponse()
+            {
+                ThirdPartyId = a.ContactAttachment!.ThirdPartyContact.ThirdPartyContactId,
+                Name = a.ContactAttachment.ThirdPartyContact.Name,
+                Service = a.ContactAttachment.ThirdPartyContact.Trade,
+                Email = a.ContactAttachment.ThirdPartyContact.Email,
+                PhoneNumber = a.ContactAttachment.ThirdPartyContact.Phone
+            })
+            .FirstOrDefaultAsync();
+
+        var response = new GetThirdPartyContactQueryResponse()
+        {
+            ThirdPartyContact = contact
+        };
+
+        if (contact == null)
+        {
+            response.ErrorMessage = "No contact attachment found";
+        }
+
+        return response;
+    }
 }

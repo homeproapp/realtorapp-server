@@ -14,4 +14,6 @@ public interface IContactsService
     Task<GetClientContactsSlimQueryResponse> GetClientContactsSlimAsync(long agentId);
     Task<GetClientContactDetailsQueryResponse> GetClientContactDetailsAsync(long contactId, long agentId);
     Task<DeleteClientContactCommandResponse> DeleteClientContact(long contactId, long agentId);
+    Task<GetThirdPartyContactsQueryResponse> BulkAddThirdPartyContactAsync(BulkAddThirdPartyContactCommand command, long agentId);
+    Task<GetThirdPartyContactQueryResponse> GetThirdPartyContactByAttachmentAsync(long attachmentId);
 }
