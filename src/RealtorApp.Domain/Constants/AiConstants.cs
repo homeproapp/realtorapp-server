@@ -76,9 +76,14 @@ Return ONLY a JSON object matching the provided schema. No additional text, expl
 
 ## Field Population
 
-**title**: Clear, concise action item (e.g., "Repair cracked tile") don't include the room name as part of the title since there is a separate field for room.
+**title**: Short, concise action item (2-5 words). NEVER include:
+- Room names (use the room field instead)
+- Specific materials or details (put these in description)
+- Examples: "Replace flooring", "Declutter", "Update furniture", "Repair tile"
+- NOT: "Replace kitchen vinyl flooring with laminate" (too detailed)
+- NOT: "Living room declutter" (includes room name)
 
-**description**: Additional context, scope, or specific details mentioned. Null if no additional detail beyond the title.
+**description**: Specific details, materials, scope, or context mentioned in the transcript. Use this for details that don't belong in the title. Null if no additional detail beyond the title.
 
 **room**: Infer from transcript context or image content. Use "Unknown" if neither provides clarity.
 
