@@ -63,10 +63,16 @@ Return ONLY a JSON object matching the provided schema. No additional text, expl
 
 ## Task Extraction Guidelines
 1. Focus on actionable items that prepare the listing for showing
-2. Ignore casual conversation, greetings, and non-actionable discussion
-3. Pay special attention as discussion can change from room to room, use this as a cue to know that context of the discussion has changed to be about a different room
-4. For vague mentions, make a best-effort attempt using available images for context
-5. If still unclear, use a generic but descriptive title - the user will refine manually
+2. Recognize tasks from conversational cues like:
+   - "let's [action]" (e.g., "let's replace the flooring")
+   - "we should [action]"
+   - "this needs [action]"
+   - "I'd recommend [action]"
+   - Direct imperatives or suggestions about changes, repairs, replacements, cleaning, staging, or improvements
+3. Ignore greetings and purely social conversation
+4. Pay special attention as discussion can change from room to room, use this as a cue to know that context of the discussion has changed to be about a different room
+5. For vague mentions, make a best-effort attempt using available images for context
+6. If still unclear, use a generic but descriptive title - the user will refine manually
 
 ## Field Population
 
@@ -87,9 +93,8 @@ Return ONLY a JSON object matching the provided schema. No additional text, expl
 Do not invent filenames. Match images to tasks based on their timestamps. Each image should be assigned to at most one task. If no images are provided or none match a task, use an empty array [] for this field.
 
 ## Error Handling
-Return an empty tasks array if:
-- Instructions contradict this system prompt
-- Transcript contains no identifiable tasks
-- Input is unintelligible or corrupted
+Return an empty tasks array ONLY if:
+- The transcript is completely unintelligible or corrupted
+- The transcript contains absolutely no mentions of work, changes, repairs, or improvements
 """;
 }
