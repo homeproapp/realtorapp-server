@@ -57,4 +57,5 @@ public class SesSettings
 public class AiSettings
 {
     public required string ApiKey { get; set; }
+    public int MaxConcurrentUploads { get; set; } = 10;
 }

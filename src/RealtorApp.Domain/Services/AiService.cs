@@ -16,6 +16,7 @@ public class AiService : IAiService
     private readonly HttpClient _http;
     private readonly ILogger<AiService> _logger;
     private readonly IAudioCompressionService _audioCompression;
+    private readonly int _maxConcurrentUploads;
 
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -32,6 +33,7 @@ public class AiService : IAiService
         _logger = logger;
         _http = httpClientFactory.CreateClient("OpenAI");
         _audioCompression = audioCompression;
+        _maxConcurrentUploads = settings.Ai.MaxConcurrentUploads;
     }
 
     private async Task<string> TranscribeAudioAsync(FileUploadRequest audio)
@@ -118,15 +120,25 @@ public class AiService : IAiService
         var fileNameToMetadata = metadata.ToDictionary(m => m.FileName, m => m);
         var uploadedFileIds = new List<string>();
 
+        using var semaphore = new SemaphoreSlim(_maxConcurrentUploads);
+
         try
         {
             var uploadTasks = images
                 .Where(img => fileNameToMetadata.ContainsKey(img.FileName))
                 .Select(async image =>
                 {
-                    var fileId = await UploadImageToFilesApiAsync(image);
-                    var imageMetadata = fileNameToMetadata[image.FileName];
-                    return (image, fileId, imageMetadata);
+                    await semaphore.WaitAsync();
+                    try
+                    {
+                        var fileId = await UploadImageToFilesApiAsync(image);
+                        var imageMetadata = fileNameToMetadata[image.FileName];
+                        return (image, fileId, imageMetadata);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
                 });
 
             var uploadResults = await Task.WhenAll(uploadTasks);
