@@ -50,6 +50,7 @@ builder.Services.AddScoped<ICryptoService, CryptoService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IListingService, ListingService>();
 builder.Services.AddScoped<IS3Service, S3Service>();
+builder.Services.AddScoped<IAudioCompressionService, AudioCompressionService>();
 builder.Services.AddScoped<IAiService, AiService>();
 builder.Services.AddScoped<IImagesService, ImagesService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();

@@ -15,6 +15,7 @@ public class AiService : IAiService
 {
     private readonly HttpClient _http;
     private readonly ILogger<AiService> _logger;
+    private readonly IAudioCompressionService _audioCompression;
 
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -22,20 +23,27 @@ public class AiService : IAiService
         Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
     };
 
-    public AiService(IHttpClientFactory httpClientFactory, ILogger<AiService> logger, AppSettings settings)
+    public AiService(
+        IHttpClientFactory httpClientFactory,
+        ILogger<AiService> logger,
+        IAudioCompressionService audioCompression,
+        AppSettings settings)
     {
         _logger = logger;
         _http = httpClientFactory.CreateClient("OpenAI");
+        _audioCompression = audioCompression;
     }
 
     private async Task<string> TranscribeAudioAsync(FileUploadRequest audio)
     {
-        var audioBytes = await ReadStreamToBytes(audio.Content);
+        using var compressed = await _audioCompression.CompressAudioAsync(audio.Content, audio.FileName);
+
+        var audioBytes = await ReadStreamToBytes(compressed.Stream);
 
         using var multipart = new MultipartFormDataContent();
         var byteContent = new ByteArrayContent(audioBytes);
-        byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(audio.ContentType);
-        multipart.Add(byteContent, "file", audio.FileName);
+        byteContent.Headers.ContentType = new MediaTypeHeaderValue(compressed.ContentType);
+        multipart.Add(byteContent, "file", compressed.FileName);
 
         multipart.Add(new StringContent("whisper-1"), "model");
         multipart.Add(new StringContent("verbose_json"), "response_format");
