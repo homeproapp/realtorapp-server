@@ -78,6 +78,29 @@ public class AiService : IAiService
         return sb.ToString();
     }
 
+    private async Task<string?> UploadImageToFilesApiAsync(FileUploadRequest image)
+    {
+        var imageBytes = await ReadStreamToBytes(image.Content);
+
+        using var multipart = new MultipartFormDataContent();
+        var byteContent = new ByteArrayContent(imageBytes);
+        byteContent.Headers.ContentType = new MediaTypeHeaderValue(image.ContentType);
+        multipart.Add(byteContent, "file", image.FileName);
+        multipart.Add(new StringContent("vision"), "purpose");
+
+        var response = await _http.PostAsync("files", multipart);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            _logger.LogError("File upload failed for {FileName}: {Error}", image.FileName, error);
+            return null;
+        }
+
+        var responseJson = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(responseJson);
+        return doc.RootElement.GetProperty("id").GetString();
+    }
 
     public async Task<AiCreatedTaskDto[]> ProcessSessionWithClient(
         FileUploadRequest audio,
@@ -93,119 +116,133 @@ public class AiService : IAiService
         }
 
         var fileNameToMetadata = metadata.ToDictionary(m => m.FileName, m => m);
+        var uploadedFileIds = new List<string>();
 
-        var imageList = new List<string>();
-        var imageParts = new List<object>();
-
-        foreach (var image in images)
+        try
         {
-            if (!fileNameToMetadata.TryGetValue(image.FileName, out var imageMetadata))
+            var uploadTasks = images
+                .Where(img => fileNameToMetadata.ContainsKey(img.FileName))
+                .Select(async image =>
+                {
+                    var fileId = await UploadImageToFilesApiAsync(image);
+                    var imageMetadata = fileNameToMetadata[image.FileName];
+                    return (image, fileId, imageMetadata);
+                });
+
+            var uploadResults = await Task.WhenAll(uploadTasks);
+
+            var imageList = new List<string>();
+            var imageParts = new List<object>();
+
+            foreach (var (image, fileId, imageMetadata) in uploadResults)
             {
-                _logger.LogWarning(
-                    "No metadata found for image {FileName}, skipping",
-                    image.FileName);
-                continue;
+                if (fileId == null)
+                {
+                    _logger.LogWarning("Skipping image {FileName} - upload failed", image.FileName);
+                    continue;
+                }
+
+                uploadedFileIds.Add(fileId);
+                imageList.Add($"- Filename: \"{image.FileName}\" | Timestamp: {imageMetadata.Timestamp}");
+
+                imageParts.Add(new
+                {
+                    type = "input_image",
+                    file_id = fileId
+                });
+
+                imageParts.Add(new
+                {
+                    type = "input_text",
+                    text = $"[Image: {image.FileName} at {imageMetadata.Timestamp}]"
+                });
             }
 
-            imageList.Add($"- Filename: \"{image.FileName}\" | Timestamp: {imageMetadata.Timestamp}");
+            var imageListText = imageList.Count > 0
+                ? $"## Available Images (use these EXACT filenames)\n\n{string.Join("\n", imageList)}"
+                : "## No images provided";
 
-            var imageBytes = await ReadStreamToBytes(image.Content);
-            var imageBase64 = Convert.ToBase64String(imageBytes);
-            var dataUrl = $"data:{image.ContentType};base64,{imageBase64}";
-
-            imageParts.Add(new
-            {
-                type = "input_image",
-                image_url = dataUrl
-            });
-
-            imageParts.Add(new
-            {
-                type = "input_text",
-                text = $"[Image: {image.FileName} at {imageMetadata.Timestamp}]"
-            });
-        }
-
-        var imageListText = imageList.Count > 0
-            ? $"## Available Images (use these EXACT filenames)\n\n{string.Join("\n", imageList)}"
-            : "## No images provided";
-
-        var contentParts = new List<object>
-        {
-            new
-            {
-                type = "input_text",
-                text = $"## Walkthrough Transcript\n\n{transcript}\n\n{imageListText}"
-            }
-        };
-
-        contentParts.AddRange(imageParts);
-
-        var requestBody = new
-        {
-            model = "gpt-4o-mini",
-            instructions = AiConstants.TaskExtractionSystemPrompt,
-            input = new[]
+            var contentParts = new List<object>
             {
                 new
                 {
-                    role = "user",
-                    content = contentParts
+                    type = "input_text",
+                    text = $"## Walkthrough Transcript\n\n{transcript}\n\n{imageListText}"
                 }
-            },
-            text = new
+            };
+
+            contentParts.AddRange(imageParts);
+
+            var requestBody = new
             {
-                format = new
+                model = "gpt-4o-mini",
+                instructions = AiConstants.TaskExtractionSystemPrompt,
+                input = new[]
                 {
-                    type = "json_schema",
-                    name = "ai_created_tasks",
-                    schema = JsonDocument.Parse(AiConstants.TasksOutputSchema).RootElement.GetProperty("schema"),
-                    strict = true
+                    new
+                    {
+                        role = "user",
+                        content = contentParts
+                    }
+                },
+                text = new
+                {
+                    format = new
+                    {
+                        type = "json_schema",
+                        name = "ai_created_tasks",
+                        schema = JsonDocument.Parse(AiConstants.TasksOutputSchema).RootElement.GetProperty("schema"),
+                        strict = true
+                    }
                 }
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _http.PostAsync("responses", httpContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogError("OpenAI error: {Error}", error);
+                return [];
             }
-        };
 
-        var json = JsonSerializer.Serialize(requestBody);
-        var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+            var responseJson = await response.Content.ReadAsStringAsync();
 
-        var response = await _http.PostAsync("responses", httpContent);
+            using var doc = JsonDocument.Parse(responseJson);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadAsStringAsync();
-            _logger.LogError("OpenAI error: {Error}", error);
-            return [];
+            var outputText =
+                doc.RootElement
+                   .GetProperty("output")[0]
+                   .GetProperty("content")[0]
+                   .GetProperty("text")
+                   .GetString();
+
+            if (string.IsNullOrEmpty(outputText))
+            {
+                _logger.LogWarning("OpenAI response contained empty text");
+                return [];
+            }
+
+            AiTasksResponse? result;
+            try
+            {
+                result = JsonSerializer.Deserialize<AiTasksResponse>(outputText, _jsonOptions);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse response");
+                result = new();
+            }
+
+            return result?.Tasks ?? [];
         }
-
-        var responseJson = await response.Content.ReadAsStringAsync();
-
-        using var doc = JsonDocument.Parse(responseJson);
-
-        var outputText =
-            doc.RootElement
-               .GetProperty("output")[0]
-               .GetProperty("content")[0]
-               .GetProperty("text")
-               .GetString();
-
-        if (string.IsNullOrEmpty(outputText))
+        finally
         {
-            _logger.LogWarning("OpenAI response contained empty text");
-            return [];
+            await DeleteUploadedFilesAsync(uploadedFileIds);
         }
-
-        AiTasksResponse? result;
-        try
-        {
-            result = JsonSerializer.Deserialize<AiTasksResponse>(outputText, _jsonOptions);
-        } catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to parse response");
-            result = new();
-        }
-
-
-        return result?.Tasks ?? [];
     }
 
     private static async Task<byte[]> ReadStreamToBytes(Stream stream)
@@ -213,6 +250,23 @@ public class AiService : IAiService
         using var memoryStream = new MemoryStream();
         await stream.CopyToAsync(memoryStream);
         return memoryStream.ToArray();
+    }
+
+    private async Task DeleteUploadedFilesAsync(List<string> fileIds)
+    {
+        var deleteTasks = fileIds.Select(async fileId =>
+        {
+            try
+            {
+                await _http.DeleteAsync($"files/{fileId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete file {FileId}", fileId);
+            }
+        });
+
+        await Task.WhenAll(deleteTasks);
     }
 
     private sealed class AiTasksResponse
