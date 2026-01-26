@@ -99,12 +99,12 @@ public class UserAuthService(IMemoryCache cache, RealtorAppDbContext context, Ap
             {
                 entry.SetOptions(_userPropertyAssignmentEntryOptions);
 
-                var listingUserIds = await _context.Conversations
+                var listingUserIds = await _context.Listings
                     .Where(i => i.ListingId == listingId)
                     .AsNoTracking()
-                    .SelectMany(i => i.Listing.AgentsListings
+                    .SelectMany(i => i.AgentsListings
                         .Select(al => al.AgentId)
-                        .Union(i.Listing.ClientsListings
+                        .Union(i.ClientsListings
                             .Select(cl => cl.ClientId)))
                     .ToArrayAsync();
 
