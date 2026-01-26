@@ -144,6 +144,9 @@ public class ListingService(RealtorAppDbContext context) : IListingService
         await _context.ClientsListings.Where(i => i.ListingId == listingId)
             .ExecuteUpdateAsync(setter => setter.SetProperty(i => i.DeletedAt, DateTime.UtcNow));
 
+        await _context.Reminders.Where(i => i.ListingId == listingId)
+            .ExecuteUpdateAsync(setter => setter.SetProperty(i => i.DeletedAt, DateTime.UtcNow));
+
         await _context.PropertyInvitations.Where(i => i.CreatedListingId == listingId)
             .ExecuteUpdateAsync(setter => setter.SetProperty(i => i.DeletedAt, DateTime.UtcNow));
 

@@ -219,7 +219,8 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
             clientInvitationProperty.DeletedAt = DateTime.UtcNow;
         }
 
-        foreach (var activeListing in clientContact.ActiveListings)
+        // only remove listings where this client is the only client
+        foreach (var activeListing in clientContact.ActiveListings.Where(i => i.ClientListings.All(i => i.ClientId == clientContact.ClientInvitation.CreatedUserId)))
         {
             if (activeListing == null || activeListing.Listing == null) continue;
 
