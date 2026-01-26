@@ -196,7 +196,8 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
                         Listing = i.PropertyInvitation.CreatedListing,
                         LeadAgents = i.PropertyInvitation.CreatedListing!.AgentsListings.Where(x => x.IsLeadAgent).Select(x => x.AgentId),
                         AgentListings = i.PropertyInvitation.CreatedListing!.AgentsListings,
-                        ClientListings = i.PropertyInvitation.CreatedListing!.ClientsListings
+                        ClientListings = i.PropertyInvitation.CreatedListing!.ClientsListings,
+                        Reminders = i.PropertyInvitation.CreatedListing!.Reminders,
                     })
             })
             .AsSplitQuery()
@@ -237,6 +238,11 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
                 foreach (var clientListing in activeListing.ClientListings)
                 {
                     clientListing.DeletedAt = DateTime.UtcNow;
+                }
+
+                foreach (var reminder in activeListing.Reminders)
+                {
+                    reminder.DeletedAt = DateTime.UtcNow;
                 }
             }
         }
