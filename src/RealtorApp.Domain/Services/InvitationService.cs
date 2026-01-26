@@ -402,6 +402,7 @@ public class InvitationService(
 
         await _dbContext.SaveChangesAsync();
 
+        _userAuthService.InvalidateUserIsConnectedToListingCache(teammateInvitation.InvitedListingId);
         _userAuthService.InvalidateUserToListingIdsCache(user.UserId);
 
         var role = GetRoleByType((TeammateTypes)teammateInvitation.TeammateRoleType);
@@ -475,6 +476,7 @@ public class InvitationService(
 
         await _dbContext.SaveChangesAsync();
 
+        _userAuthService.InvalidateUserIsConnectedToListingCache(teammateInvitation.InvitedListingId);
         _userAuthService.InvalidateUserToListingIdsCache(existingUser.UserId);
 
         return new()
@@ -617,6 +619,7 @@ public class InvitationService(
                 else
                 {
                     listing = propertyToAdd.CreatedListing!;
+                    _userAuthService.InvalidateUserIsConnectedToListingCache(propertyToAdd.CreatedListingId.Value);
                 }
 
 
@@ -723,6 +726,7 @@ public class InvitationService(
             else
             {
                 listing = propertyToAdd.CreatedListing!;
+                _userAuthService.InvalidateUserIsConnectedToListingCache(propertyToAdd.CreatedListingId.Value);
             }
 
 
