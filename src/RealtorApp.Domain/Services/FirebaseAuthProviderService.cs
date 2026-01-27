@@ -158,6 +158,73 @@ public class FirebaseAuthProviderService(
             return false;
         }
     }
+
+    public async Task<bool> UpdateEmailAsync(string uid, string newEmail)
+    {
+        try
+        {
+            var auth = FirebaseAuth.GetAuth(GetFirebaseApp());
+            var userRecordArgs = new UserRecordArgs()
+            {
+                Uid = uid,
+                Email = newEmail
+            };
+
+            await auth.UpdateUserAsync(userRecordArgs);
+            return true;
+        }
+        catch (FirebaseAuthException ex)
+        {
+            _logger.LogError(ex, "Firebase error updating email: {ErrorCode}", ex.AuthErrorCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating email: {Message}", ex.Message);
+            return false;
+        }
+    }
+
+    public async Task<bool> ChangePasswordAsync(string uid, string currentPassword, string newPassword)
+    {
+        try
+        {
+            var auth = FirebaseAuth.GetAuth(GetFirebaseApp());
+            var userRecord = await auth.GetUserAsync(uid);
+
+            if (userRecord?.Email == null)
+            {
+                _logger.LogWarning("User not found in Firebase for password change: {Uid}", uid);
+                return false;
+            }
+
+            var signInResult = await SignInWithEmailAndPasswordAsync(userRecord.Email, currentPassword);
+            if (signInResult == null)
+            {
+                _logger.LogWarning("Current password verification failed for password change: {Uid}", uid);
+                return false;
+            }
+
+            var userRecordArgs = new UserRecordArgs()
+            {
+                Uid = uid,
+                Password = newPassword
+            };
+
+            await auth.UpdateUserAsync(userRecordArgs);
+            return true;
+        }
+        catch (FirebaseAuthException ex)
+        {
+            _logger.LogError(ex, "Firebase error changing password: {ErrorCode}", ex.AuthErrorCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error changing password: {Message}", ex.Message);
+            return false;
+        }
+    }
 }
 
 internal class FirebaseSignInResponse

@@ -9,4 +9,6 @@ public interface IAuthProviderService
     Task<UserRecord?> RegisterWithEmailAndPasswordAsync(string email, string password, bool emailVerified);
     Task<AuthProviderUserDto?> SignInWithEmailAndPasswordAsync(string email, string password);
     Task<bool> DeleteUserAsync(string uid);
+    Task<bool> UpdateEmailAsync(string uid, string newEmail);
+    Task<bool> ChangePasswordAsync(string uid, string currentPassword, string newPassword);
 }

@@ -6,16 +6,16 @@ namespace RealtorApp.Api.Controllers;
 
 public abstract class RealtorApiBaseController : ControllerBase
 {
-    protected Guid? CurrentUserUuid
+    protected string? CurrentUserUuid
     {
         get
         {
             var userUuidClaim = User.FindFirst(TokenConstants.UuidClaim)?.Value;
-            if (string.IsNullOrEmpty(userUuidClaim) || !Guid.TryParse(userUuidClaim, out var userUuid))
+            if (string.IsNullOrEmpty(userUuidClaim))
             {
                 return null;
             }
-            return userUuid;
+            return userUuidClaim;
         }
     }
 
@@ -34,7 +34,7 @@ public abstract class RealtorApiBaseController : ControllerBase
         }
     }
 
-    protected Guid RequiredCurrentUserUuid
+    protected string RequiredCurrentUserUuid
     {
         get
         {
