@@ -252,7 +252,8 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
                     OtherUsers = [.. clientListing.AgentUsers.Select(i => new UserDetailsConversationResponse()
                         {
                             Name = i.FirstName + " " + i.LastName,
-                            UserId = i.UserId
+                            UserId = i.UserId,
+                            ProfileImageId = i.ProfileImageId
                         })],
                     Address = clientListing.Address,
                     ConversationUpdatedAt = clientListing.Conversation!.UpdatedAt,
@@ -291,7 +292,7 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
                 .Select(i => new
                 {
                     ClientIds = i.Listing.ClientsListings.Select(i => i.ClientId).OrderByDescending(i => i).ToList(),
-                    ClientData = i.Listing.ClientsListings.Select(x => new { x.ClientId, ClientName = x.Client.User.FirstName + " " + x.Client.User.LastName }).ToList(),
+                    ClientData = i.Listing.ClientsListings.Select(x => new { x.ClientId, ClientName = x.Client.User.FirstName + " " + x.Client.User.LastName, x.Client.User.ProfileImageId }).ToList(),
                     Conversation = i,
                     Address = i.Listing.Property.AddressLine1 + " " + i.Listing.Property.AddressLine2,
                     LastMessage = i.Messages.OrderByDescending(i => i.CreatedAt).FirstOrDefault(),
@@ -312,7 +313,7 @@ public class ChatService(RealtorAppDbContext context, ILogger<ChatService> logge
                     ConversationId = convo.Conversation.ListingId,
                     Address = convo.Address,
                     OtherUsers = convo.ClientData?
-                        .Select(i => new UserDetailsConversationResponse() { UserId = i.ClientId, Name = i.ClientName })
+                        .Select(i => new UserDetailsConversationResponse() { UserId = i.ClientId, Name = i.ClientName, ProfileImageId = i.ProfileImageId })
                         .ToArray() ?? [],
                     LastMessage = convo.LastMessage?.ToMessageResponse(),
                     HasUnreadMessage = convo.LastMessage != null && !convo.LatestMessageIsReadByUser

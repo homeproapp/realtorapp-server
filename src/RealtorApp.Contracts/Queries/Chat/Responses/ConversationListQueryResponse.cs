@@ -23,4 +23,5 @@ public class UserDetailsConversationResponse
 {
     public long UserId { get; set; }
     public string Name { get; set; } = string.Empty;
+    public long? ProfileImageId { get; set; }
 }
