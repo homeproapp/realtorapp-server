@@ -221,7 +221,7 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
         }
 
         // only remove listings where this client is the only client
-        foreach (var activeListing in clientContact.ActiveListings.Where(i => i.ClientListings.All(i => i.ClientId == clientContact.ClientInvitation.CreatedUserId)))
+        foreach (var activeListing in clientContact.ActiveListings)
         {
             if (activeListing == null || activeListing.Listing == null) continue;
 
