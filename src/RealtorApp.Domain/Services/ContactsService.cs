@@ -189,10 +189,11 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
                     Array.Empty<PropertyInvitation>(),
                 ClientInvitationsProperty = i.ClientInvitationsProperties.Where(i => i.ClientInvitationId == contactId),
                 ActiveListings = i.ClientInvitationsProperties
-                    .Where(i => i.PropertyInvitation.CreatedListing != null &&
-                        i.PropertyInvitation.CreatedListing!.ClientsListings.All(x => x.ClientId == i.ClientInvitation.CreatedUserId))
+                    .Where(i => i.PropertyInvitation.CreatedListing != null)
                     .Select(i => new
                     {
+                        IsOnlyUserOnListing =  i.PropertyInvitation.CreatedListing!.ClientsListings.All(x => x.ClientId == i.ClientInvitation.CreatedUserId),
+                        UserId = i.ClientInvitation.CreatedUserId,
                         Listing = i.PropertyInvitation.CreatedListing,
                         LeadAgents = i.PropertyInvitation.CreatedListing!.AgentsListings.Where(x => x.IsLeadAgent).Select(x => x.AgentId),
                         AgentListings = i.PropertyInvitation.CreatedListing!.AgentsListings,
@@ -220,10 +221,21 @@ public class ContactsService(RealtorAppDbContext context) : IContactsService
             clientInvitationProperty.DeletedAt = DateTime.UtcNow;
         }
 
-        // only remove listings where this client is the only client, see ActiveListings where query above
+
+        // only remove listings where this client is the only client
         foreach (var activeListing in clientContact.ActiveListings)
         {
             if (activeListing == null || activeListing.Listing == null) continue;
+
+            if (!activeListing.IsOnlyUserOnListing)
+            {
+                foreach (var clientListing in activeListing.ClientListings.Where(i => i.ClientId == activeListing.UserId))
+                {
+                    clientListing.DeletedAt = DateTime.UtcNow;
+                }
+
+                continue;
+            }
 
             // I think this is fine and I dont need to 'delete' all the child tables
             // TODO: verify this assumption
