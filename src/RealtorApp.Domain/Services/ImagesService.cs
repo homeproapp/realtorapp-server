@@ -138,8 +138,7 @@ public class ImagesService(RealtorAppDbContext context, IS3Service s3Service, IL
 
     private async Task<FileUploadResponseDto> UploadFile(File file, FileUploadRequest fileData)
     {
-        var folderName = $"{file.FileType.Name.ToLowerInvariant()}";
-        var key = $"{folderName}/{file.Uuid}{file.FileExtension}";
+        var key = $"{file.FileType.Name}/{file.Uuid}{file.FileExtension}";
 
         return await _s3Service.UploadFileAsync(_appSettings.Aws.S3.ImagesBucketName, key, fileData);
     }
@@ -163,7 +162,7 @@ public class ImagesService(RealtorAppDbContext context, IS3Service s3Service, IL
 
     private async Task<(Stream? ImageStream, string? ContentType)> GetImage(File file)
     {
-        var folderName = file.FileType.Name.ToLower();
+        var folderName = file.FileType.Name;
         var key = $"{folderName}/{file.Uuid}{file.FileExtension}";
 
         return await _s3Service.GetFileAsync(_appSettings.Aws.S3.ImagesBucketName, key);

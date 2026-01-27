@@ -61,7 +61,7 @@ namespace RealtorApp.Api.Controllers
 
                 hasAccessToViewUserProfilePic.Add(isValid);
             }
-            
+
             // if they are assigned to 1 listing, grant access to view profile pic
             // otherwise, deny
 
@@ -92,9 +92,6 @@ namespace RealtorApp.Api.Controllers
             {
                 return NotFound();
             }
-
-            Response.Headers.CacheControl = $"public, max-age={_appSettings.ImageCacheDurationInSeconds}";
-            Response.Headers.Expires = DateTime.UtcNow.AddSeconds(_appSettings.ImageCacheDurationInSeconds).ToString("R");
 
             return File(ImageStream, ContentType);
         }
